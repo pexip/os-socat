@@ -4,7 +4,7 @@ Priority: optional
 Maintainer: Pexip AS <packaging@pexip.com>
 XSBC-Pexip-Original-Maintainer: Laszlo Boszormenyi (GCS) <gcs@debian.org>
 Homepage: http://www.dest-unreach.org/socat/
-Build-Depends: debhelper (>= 10), libssl-dev, libwrap0-dev
+Build-Depends: debhelper (>= 10), libssl1.0-dev | libssl-dev (<< 1.1), libwrap0-dev
 Standards-Version: 4.1.1
 XS-Pexip-Upstream: http://mirror.einval.org/debian/ buster
 

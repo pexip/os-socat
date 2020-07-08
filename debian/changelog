@@ -1,6 +1,7 @@
 socat (1.7.3.2-2pexip1) pexip; urgency=medium
 
   * Prepare Pexip packaging
+  * Change libssl-dev build-deps to suit our system
 
  -- Steve McIntyre <steve.mcintyre@pexip.com>  Tue, 07 Jul 2020 10:46:32 +0000
 
