@@ -3,8 +3,9 @@ Section: net
 Priority: optional
 Maintainer: Laszlo Boszormenyi (GCS) <gcs@debian.org>
 Homepage: http://www.dest-unreach.org/socat/
-Build-Depends: debhelper (>= 10), libssl-dev, libwrap0-dev
-Standards-Version: 4.1.1
+Build-Depends: debhelper-compat (= 12), libssl-dev, libwrap0-dev, openssl <!nocheck>, net-tools <!nocheck>, iproute2 [linux-any] <!nocheck>, netbase <!nocheck>
+Standards-Version: 4.5.1
+Rules-Requires-Root: no
 
 Package: socat
 Architecture: any

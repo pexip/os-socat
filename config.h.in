@@ -63,11 +63,17 @@
 /* Define if you have the select function.  */
 #undef HAVE_SELECT
 
+/* Define if you have the pselect function.  */
+#undef HAVE_PSELECT
+
 /* Define if you have the poll function.  */
 #undef HAVE_POLL
 
 /* Define if you have the socket function.  */
 #undef HAVE_SOCKET
+
+/* Define if you have the posix_memalign function.  */
+#undef HAVE_PROTOTYPE_LIB_posix_memalign
 
 /* Define if you have the strdup function.  */
 #undef HAVE_PROTOTYPE_LIB_strdup
@@ -99,17 +105,29 @@
 /* Define if you have the nanosleep function.  */
 #undef HAVE_NANOSLEEP
 
+/* Define if you have the gethostbyname function.  */
+#undef HAVE_GETHOSTBYNAME
+
 /* Define if you have the getaddrinfo function.  */
 #undef HAVE_GETADDRINFO
 
 /* Define if you have the getipnodebyname function.  */
 #undef HAVE_PROTOTYPE_LIB_getipnodebyname
 
+/* Define if you have the getprotobynumber_r function. */
+#undef HAVE_GETPROTOBYNUMBER_R
+
+/* Define if you have the getprotobynumber function. */
+#undef HAVE_GETPROTOBYNUMBER
+
 /* Define if you have the setgroups function. */
 #undef HAVE_SETGROUPS
 
 /* Define if you have the inet_aton function. */
 #undef HAVE_INET_ATON
+
+/* Define if you have the strndup function. */
+#undef HAVE_PROTOTYPE_LIB_strndup
 
 /* Define if you have the memrchr function. */
 #undef HAVE_PROTOTYPE_LIB_memrchr
@@ -261,6 +279,9 @@
 /* Define if you have the <linux/if_tun.h> header file.  */
 #undef HAVE_LINUX_IF_TUN_H
 
+/* Define if you have the <linux/vm_sockets.h> header file.  */
+#undef HAVE_LINUX_VM_SOCKETS_H
+
 /* Define if you have the <netpacket/packet.h> header file.  */
 #undef HAVE_NETPACKET_PACKET_H
 
@@ -318,6 +339,10 @@
 /* fdset may have component fds_bits or __fds_bits */
 #undef HAVE_FDS_BITS
 
+/* struct termios may have components c_ispeed,c_ospeed */
+#undef HAVE_STRUCT_TERMIOS_C_ISPEED
+#undef HAVE_STRUCT_TERMIOS_C_OSPEED
+
 /* Define if you have the sa_family_t */
 #undef HAVE_TYPE_SA_FAMILY_T
 
@@ -326,20 +351,6 @@
 
 /* define if you have struct sock_extended_err */
 #undef HAVE_STRUCT_SOCK_EXTENDED_ERR
-
-/* Define if your struct termios has component c_ispeed */
-#undef HAVE_TERMIOS_ISPEED
-
-/* the offset of c_ispeed in struct termios - usable in an speed_t array.
-   Applies only when HAVE_TERMIOS_ISPEED is set */
-#undef ISPEED_OFFSET
-
-/* the offset of c_ospeed in struct termios - see ISPEED_OFFSET */
-#ifdef ISPEED_OFFSET
-#  define OSPEED_OFFSET (ISPEED_OFFSET+1)
-#else
-#  undef OSPEED_OFFSET
-#endif
 
 /* Define if your termios.h likes _SVID3 defined */
 #undef _SVID3
@@ -370,6 +381,9 @@
 
 /* Define if you have struct ipv6_mreq */
 #undef HAVE_STRUCT_IPV6_MREQ
+
+/* Define if you have struct ip_mreq_source */
+#undef HAVE_STRUCT_IP_MREQ_SOURCE
 
 /* Define if you have struct ifreq */
 #undef HAVE_STRUCT_IFREQ
@@ -419,12 +433,36 @@
 /* Define if you have the unsetenv function. not on HP-UX */
 #undef HAVE_UNSETENV
 
+/* Define if you have the cfsetispeed,cfgetispeed,cfsetspeed,cfgetospeed function */
+#undef HAVE_CFSETISPEED
+#undef HAVE_CFSETOSPEED
+
+#if HAVE_CFSETISPEED
+#  define HAVE_TERMIOS_ISPEED 1
+#endif
+#if HAVE_CFSETOSPEED
+#  define HAVE_TERMIOS_OSPEED 1
+#endif
+#if defined(HAVE_TERMIOS_ISPEED) && defined(HAVE_TERMIOS_OSPEED)
+#  define HAVE_TERMIOS_SPEED 1
+#endif
+
+/* Define if you have the OPENSSL_init_ssl function */
+#undef HAVE_OPENSSL_INIT_SSL
+
+/* Define if you have the SSL_library_init function */
+#undef HAVE_SSL_LIBRARY_INIT
+
 /* Define if you have the SSLv2 client and server method functions. not in new openssl */
 #undef HAVE_SSLv2_client_method
 #undef HAVE_SSLv2_server_method
 
 /* Define if you have the HAVE_SSL_CTX_set_default_verify_paths function */
 #undef HAVE_SSL_CTX_set_default_verify_paths
+
+/* Define if you have the TLS client and server method functions. not in old openssl? */
+#undef HAVE_TLS_client_method
+#undef HAVE_TLS_server_method
 
 /* Define if you have the SSLv3 client and server method functions. not in new openssl */
 #undef HAVE_SSLv3_client_method
@@ -446,9 +484,23 @@
 #undef HAVE_TLSv1_2_client_method
 #undef HAVE_TLSv1_2_server_method
 
+/* Define if you have the DTLS client and server method functions */
+#undef HAVE_DTLS_client_method
+#undef HAVE_DTLS_server_method
+
 /* Define if you have the DTLSv1 client and server method functions */
 #undef HAVE_DTLSv1_client_method
 #undef HAVE_DTLSv1_server_method
+
+/* Define if you have the SSL CTX_set_min_proto_version function/macro */
+#undef HAVE_SSL_CTX_set_min_proto_version
+
+/* Define if you have the SSL_CTX_set_max_proto_version function/macro */
+#undef HAVE_SSL_CTX_set_max_proto_version
+
+/* Define if you have the DTLSv1_2 client and server method functions */
+#undef HAVE_DTLSv1_2_client_method
+#undef HAVE_DTLSv1_2_server_method
 
 /* Define if you have the EC_KEY type */
 #undef HAVE_TYPE_EC_KEY
@@ -464,6 +516,12 @@
 
 /* Define if you have the OpenSSL ASN1_STRING_get0_data function */
 #undef HAVE_ASN1_STRING_get0_data
+
+/* Define if you have the OpenSSL SSL_CTX_clear_mode macro or function */
+#undef HAVE_SSL_CTX_clear_mode
+
+/* Define if you have the OpenSSL SSL_set_tlsext_host_name define/function */
+#undef HAVE_SSL_set_tlsext_host_name
 
 /* Define if you have the flock function */
 #undef HAVE_FLOCK
@@ -546,6 +604,13 @@
 #endif
 
 /* 1..short, 3..int, 5..long; 2,4,6..unsigned */
+#undef HAVE_BASIC_UINT16_T
+#undef HAVE_BASIC_UINT32_T
+#undef HAVE_BASIC_UINT64_T
+#undef HAVE_BASIC_INT16_T
+#undef HAVE_BASIC_INT32_T
+#undef HAVE_BASIC_INT64_T
+
 #undef HAVE_BASIC_SIZE_T
 #undef HAVE_BASIC_MODE_T
 #undef HAVE_BASIC_PID_T
@@ -555,6 +620,7 @@
 #undef HAVE_BASIC_OFF_T
 #undef HAVE_BASIC_OFF64_T
 #undef HAVE_BASIC_DEV_T
+#undef HAVE_BASIC_SPEED_T
 
 #undef HAVE_BASIC_SOCKLEN_T
 
@@ -572,6 +638,7 @@
 #undef HAVE_TYPEOF_ST64_BLOCKS
 
 #undef HAVE_TYPEOF_STRUCT_TIMEVAL_TV_USEC
+#undef HAVE_TYPEOF_STRUCT_TIMESPEC_TV_NSEC
 
 #undef HAVE_TYPEOF_RLIM_MAX
 
@@ -609,14 +676,17 @@
 #undef WITH_LISTEN
 #undef WITH_SOCKS4
 #undef WITH_SOCKS4A
+#undef WITH_VSOCK
 #undef WITH_PROXY
 #undef WITH_EXEC
 #undef WITH_SYSTEM
 #undef WITH_READLINE
 #undef WITH_TUN
 #undef WITH_PTY
-#undef WITH_EXT2
+#undef WITH_FS
 #undef WITH_OPENSSL
+#undef WITH_OPENSSL_METHOD
+#undef WITH_RES_DEPRECATED 	/* AAONLY,PRIMARY */
 #define WITH_STREAMS 1
 #undef WITH_FIPS
 #undef OPENSSL_FIPS

@@ -23,7 +23,7 @@ static char *inet6addr_info(const struct in6_addr *sa, char *buff, size_t blen);
 const struct optdesc opt_ipv6_v6only = { "ipv6-v6only", "ipv6only", OPT_IPV6_V6ONLY, GROUP_SOCK_IP6, PH_PREBIND, TYPE_INT, OFUNC_SOCKOPT, SOL_IPV6, IPV6_V6ONLY };
 #endif
 #ifdef IPV6_JOIN_GROUP
-const struct optdesc opt_ipv6_join_group = { "ipv6-join-group", "join-group", OPT_IPV6_JOIN_GROUP, GROUP_SOCK_IP6, PH_PASTBIND, TYPE_IP_MREQN, OFUNC_SOCKOPT, SOL_IPV6, IPV6_JOIN_GROUP };
+const struct optdesc opt_ipv6_join_group = { "ipv6-join-group", "join-group", OPT_IPV6_JOIN_GROUP, GROUP_SOCK_IP6, PH_PASTSOCKET, TYPE_IP_MREQN, OFUNC_SOCKOPT, SOL_IPV6, IPV6_JOIN_GROUP };
 #endif
 #ifdef IPV6_PKTINFO
 const struct optdesc opt_ipv6_pktinfo = { "ipv6-pktinfo", "pktinfo", OPT_IPV6_PKTINFO, GROUP_SOCK_IP6, PH_PASTSOCKET, TYPE_INT, OFUNC_SOCKOPT, SOL_IPV6, IPV6_PKTINFO };
@@ -75,6 +75,32 @@ const struct optdesc opt_ipv6_recvtclass = { "ipv6-recvtclass", "recvtclass", OP
 const struct optdesc opt_ipv6_recvpathmtu = { "ipv6-recvpathmtu", "recvpathmtu", OPT_IPV6_RECVPATHMTU, GROUP_SOCK_IP6, PH_PASTSOCKET, TYPE_INT, OFUNC_SOCKOPT, SOL_IPV6, IPV6_RECVPATHMTU };
 #endif
 
+/* Returns canonical form of IPv6 address.
+   IPv6 address may bei enclose in brackets.
+   Returns STAT_OK on success, STAT_NORETRY on failure. */
+int xioip6_pton(const char *src, struct in6_addr *dst) {
+   union sockaddr_union sockaddr;
+   socklen_t sockaddrlen = sizeof(sockaddr);
+
+   if (src[0] == '[') {
+      char plainaddr[INET6_ADDRSTRLEN];
+      char *clos;
+
+      strncpy(plainaddr, src+1, INET6_ADDRSTRLEN);
+      plainaddr[INET6_ADDRSTRLEN-1] = '\0';
+      if ((clos = strchr(plainaddr, ']')) != NULL)
+	 *clos = '\0';
+      return xioip6_pton(plainaddr, dst);
+   }
+   if (xiogetaddrinfo(src, NULL, PF_INET6, 0, 0, &sockaddr, &sockaddrlen,
+		      0, 0)
+       != STAT_OK) {
+      return STAT_NORETRY;
+   }
+   *dst = sockaddr.ip6.sin6_addr;
+   return STAT_OK;
+}
+
 int xioparsenetwork_ip6(const char *rangename, struct xiorange *range) {
    char *delimpos;	/* absolute address of delimiter */
    size_t delimind;	/* index of delimiter in string */
@@ -87,23 +113,23 @@ int xioparsenetwork_ip6(const char *rangename, struct xiorange *range) {
    union xioin6_u *rangemask = (union xioin6_u *)&range->netmask.ip6.sin6_addr;
    union xioin6_u *nameaddr = (union xioin6_u *)&sockaddr.ip6.sin6_addr;
 
-   if (rangename[0] != '[' || rangename[strlen(rangename)-1] != ']') {
-      Error1("missing brackets for IPv6 range definition \"%s\"",
-	     rangename);
-      return STAT_NORETRY;
-   }
    if ((delimpos = strchr(rangename, '/')) == NULL) {
       Error1("xioparsenetwork_ip6(\"%s\",,): missing mask bits delimiter '/'",
 	     rangename);
       return STAT_NORETRY;
    }
    delimind = delimpos - rangename;
+   if (rangename[0] != '[' || rangename[delimind-1] != ']') {
+      Error1("missing brackets for IPv6 range definition \"%s\"",
+	     rangename);
+      return STAT_NORETRY;
+   }
 
-   if ((baseaddr = strdup(rangename+1)) == NULL) {
+   if ((baseaddr = strndup(rangename+1,delimind-2)) == NULL) {
       Error1("strdup(\"%s\"): out of memory", rangename+1);
       return STAT_NORETRY;
    }
-   baseaddr[delimind-1] = '\0';
+   baseaddr[delimind-2] = '\0';
    if (xiogetaddrinfo(baseaddr, NULL, PF_INET6, 0, 0, &sockaddr, &sockaddrlen,
 		      0, 0)
        != STAT_OK) {
@@ -175,7 +201,7 @@ int xiocheckrange_ip6(struct sockaddr_in6 *pa, struct xiorange *range) {
    int i;
    char peername[256];
    union xioin6_u *rangeaddr = (union xioin6_u *)&range->netaddr.ip6.sin6_addr;
-   union xioin6_u *rangemask = (union xioin6_u *)&range->netmask.ip6;
+   union xioin6_u *rangemask = (union xioin6_u *)&range->netmask.ip6.sin6_addr;
 
    Debug16("permitted client subnet: [%04x:%04x:%04x:%04x:%04x:%04x:%04x:%04x]:[%04x:%04x:%04x:%04x:%04x:%04x:%04x:%04x]",
 	   htons(rangeaddr->u6_addr16[0]),  htons(rangeaddr->u6_addr16[1]),
@@ -190,7 +216,7 @@ int xiocheckrange_ip6(struct sockaddr_in6 *pa, struct xiorange *range) {
 	  sockaddr_inet6_info(pa, peername, sizeof(peername)));
 
    for (i = 0; i < 4; ++i) {
-      masked.u6_addr32[i] = pa->sin6_addr.s6_addr[i] & rangemask->u6_addr16[i];
+      masked.u6_addr32[i] = ((union xioin6_u *)&pa->sin6_addr.s6_addr[0])->u6_addr32[i] & rangemask->u6_addr32[i];
    }
    Debug8("masked address is [%04x:%04x:%04x:%04x:%04x:%04x:%04x:%04x]",
 	   htons(masked.u6_addr16[0]),  htons(masked.u6_addr16[1]),
