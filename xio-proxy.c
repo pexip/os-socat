@@ -11,6 +11,7 @@
 
 #include "xioopen.h"
 #include "xio-socket.h"
+#include "xio-ip.h"
 #include "xio-ipapp.h"
 #include "xio-ascii.h"	/* for base64 encoding of authentication */
 
@@ -28,6 +29,7 @@ const struct optdesc opt_proxyport = { "proxyport", NULL, OPT_PROXYPORT, GROUP_H
 const struct optdesc opt_ignorecr  = { "ignorecr",  NULL, OPT_IGNORECR,  GROUP_HTTP, PH_LATE, TYPE_BOOL,  OFUNC_SPEC };
 const struct optdesc opt_proxy_resolve   = { "proxy-resolve",   "resolve", OPT_PROXY_RESOLVE,   GROUP_HTTP, PH_LATE, TYPE_BOOL,  OFUNC_SPEC };
 const struct optdesc opt_proxy_authorization  = { "proxy-authorization",  "proxyauth", OPT_PROXY_AUTHORIZATION,  GROUP_HTTP, PH_LATE, TYPE_STRING,  OFUNC_SPEC };
+const struct optdesc opt_proxy_authorization_file  = { "proxy-authorization-file",  "proxyauthfile", OPT_PROXY_AUTHORIZATION_FILE,  GROUP_HTTP, PH_LATE, TYPE_STRING,  OFUNC_SPEC };
 
 const struct addrdesc addr_proxy_connect = { "proxy", 3, xioopen_proxy_connect, GROUP_FD|GROUP_SOCKET|GROUP_SOCK_IP4|GROUP_SOCK_IP6|GROUP_IP_TCP|GROUP_HTTP|GROUP_CHILD|GROUP_RETRY, 0, 0, 0 HELP(":<proxy-server>:<host>:<port>") };
 
@@ -148,7 +150,7 @@ static int xioopen_proxy_connect(int argc, const char *argv[], struct opt *opts,
 
    result =
       _xioopen_connect(xfd,
-		       needbind?(struct sockaddr *)us:NULL, sizeof(*us),
+		       needbind?us:NULL, sizeof(*us),
 		       (struct sockaddr *)them, themlen,
 		       opts, pf, socktype, IPPROTO_TCP, lowport, level);
       switch (result) {
@@ -231,24 +233,66 @@ static int xioopen_proxy_connect(int argc, const char *argv[], struct opt *opts,
 
 int _xioopen_proxy_prepare(struct proxyvars *proxyvars, struct opt *opts,
 			   const char *targetname, const char *targetport) {
-   struct hostent *host;
+   union sockaddr_union host;
+   socklen_t socklen = sizeof(host);
+   int rc;
 
    retropt_bool(opts, OPT_IGNORECR, &proxyvars->ignorecr);
    retropt_bool(opts, OPT_PROXY_RESOLVE, &proxyvars->doresolve);
    retropt_string(opts, OPT_PROXY_AUTHORIZATION, &proxyvars->authstring);
+   retropt_string(opts, OPT_PROXY_AUTHORIZATION_FILE, &proxyvars->authfile);
+
+   if (proxyvars->authfile) {
+      int authfd;
+      off_t length;
+      ssize_t bytes;
+
+      /* if we have a file containing authentication credentials and they were also
+	 provided on the command line, something is misspecified */
+      if (proxyvars->authstring) {
+	 Error("Only one of options proxy-authorization and proxy-authorization-file allowed");
+	 return STAT_NORETRY;
+      }
+      authfd = Open(proxyvars->authfile, O_RDONLY, 0);
+      if (authfd < 0) {
+	 Error2("open(\"%s\", O_RDONLY): %s", proxyvars->authfile, strerror(errno));
+	 return STAT_NORETRY;
+      }
+      /* go to the end of our proxy auth file to 
+	 figure out how long our proxy auth is */
+      if ((length = Lseek(authfd, 0, SEEK_END)) < 0) {
+	 Error2("lseek(<%s>, 0, SEEK_END): %s",
+		proxyvars->authfile, strerror(errno));
+	 return STAT_RETRYLATER;
+      }
+      proxyvars->authstring = Malloc(length+1);
+      /* go back to the beginning */
+      Lseek(authfd, 0, SEEK_SET);
+      /* read our proxy info from the file */
+      if ((bytes = Read(authfd, proxyvars->authstring, (size_t) length)) < 0) {
+	 Error3("read(<%s>, , "F_Zu"): %s", proxyvars->authfile, length, strerror(errno));
+	 free(proxyvars->authstring);
+	 Close(authfd);
+	 return STAT_NORETRY;
+      }
+      if (bytes < length) {
+	 Error3("read(<%s>, , "F_Zu"): got only "F_Zu" bytes",
+		proxyvars->authfile, length, bytes);
+	 Close(authfd);
+	 return STAT_NORETRY;
+      }
+      proxyvars->authstring[bytes] = '\0';	/* string termination */
+      Close(authfd);
+   }
 
    if (proxyvars->doresolve) {
       /* currently we only resolve to IPv4 addresses. This is in accordance to
 	 RFC 2396; however once it becomes clear how IPv6 addresses should be
 	 represented in CONNECT commands this code might be extended */
-      host = Gethostbyname(targetname);
-      if (host == NULL) {
-	 int level = E_WARN;
-	 /* note: cast is req on AIX: */
-	 Msg2(level, "gethostbyname(\"%s\"): %s", targetname,
-	      h_errno == NETDB_INTERNAL ? strerror(errno) :
-	      (char *)hstrerror(h_errno)/*0 h_messages[h_errno-1]*/);
-
+      rc = xiogetaddrinfo(targetname, targetport, PF_UNSPEC,
+			  SOCK_STREAM, IPPROTO_TCP,
+			  &host, &socklen, 0, 0);
+      if (rc != STAT_OK) {
 	 proxyvars->targetaddr = strdup(targetname);
       } else {
 #define LEN 16	/* www.xxx.yyy.zzz\0 */
@@ -256,10 +300,10 @@ int _xioopen_proxy_prepare(struct proxyvars *proxyvars, struct opt *opts,
 	    return STAT_RETRYLATER;
 	 }
 	 snprintf(proxyvars->targetaddr, LEN, "%u.%u.%u.%u",
-		  (unsigned char)host->h_addr_list[0][0],
-		  (unsigned char)host->h_addr_list[0][1],
-		  (unsigned char)host->h_addr_list[0][2],
-		  (unsigned char)host->h_addr_list[0][3]);
+		  ((unsigned char *)&host.ip4.sin_addr.s_addr)[0],
+		  ((unsigned char *)&host.ip4.sin_addr.s_addr)[1],
+		  ((unsigned char *)&host.ip4.sin_addr.s_addr)[2],
+		  ((unsigned char *)&host.ip4.sin_addr.s_addr)[3]);
 #undef LEN
       }
    } else {

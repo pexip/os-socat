@@ -36,6 +36,8 @@ struct {
    char logopt;		/* y..syslog; s..stderr; f..file; m..mixed */
    bool lefttoright;	/* first addr ro, second addr wo */
    bool righttoleft;	/* first addr wo, second addr ro */
+   int sniffleft;	/* -1 or an FD for teeing data arriving on xfd1 */
+   int sniffright;	/* -1 or an FD for teeing data arriving on xfd2 */
    xiolock_t lock;	/* a lock file */
 } socat_opts = {
    8192,	/* bufsiz */
@@ -49,14 +51,17 @@ struct {
    's',		/* logopt */
    false,	/* lefttoright */
    false,	/* righttoleft */
+   -1,		/* sniffleft */
+   -1,		/* sniffright */
    { NULL, 0 },	/* lock */
 };
 
 void socat_usage(FILE *fd);
+void socat_opt_hint(FILE *fd, char a, char b);
 void socat_version(FILE *fd);
 int socat(const char *address1, const char *address2);
 int _socat(void);
-int cv_newline(unsigned char **buff, ssize_t *bytes, int lineterm1, int lineterm2);
+int cv_newline(unsigned char *buff, ssize_t *bytes, int lineterm1, int lineterm2);
 void socat_signal(int sig);
 static int socat_sigchild(struct single *file);
 
@@ -108,7 +113,8 @@ int main(int argc, const char *argv[]) {
    arg1 = argv+1;  --argc;
    while (arg1[0] && (arg1[0][0] == '-')) {
       switch (arg1[0][1]) {
-      case 'V': socat_version(stdout); Exit(0);
+      case 'V':  if (arg1[0][2])  { socat_usage(stderr); Exit(1); }
+	 socat_version(stdout); Exit(0);
 #if WITH_HELP
       case '?':
       case 'h':
@@ -116,9 +122,21 @@ int main(int argc, const char *argv[]) {
 	 xioopenhelp(stdout, (arg1[0][2]=='?'||arg1[0][2]=='h') ? (arg1[0][3]=='?'||arg1[0][3]=='h') ? 2 : 1 : 0);
 	 Exit(0);
 #endif /* WITH_HELP */
-      case 'd': diag_set('d', NULL); break;
+      case 'd':
+	 a = *arg1+1;
+	 while (*a)  {
+	    if (*a == 'd') {
+	       diag_set('d', NULL);
+	    } else {
+	       socat_usage(stderr);
+	       Exit(1);
+	    }
+	    ++a;
+	 }
+	 break;
 #if WITH_FILAN
-      case 'D': socat_opts.debug = true; break;
+      case 'D':  if (arg1[0][2])  { socat_opt_hint(stderr, arg1[0][1], arg1[0][2]); Exit(1); }
+	 socat_opts.debug = true; break;
 #endif
       case 'l':
 	 switch (arg1[0][2]) {
@@ -156,8 +174,42 @@ int main(int argc, const char *argv[]) {
 	    break;
 	 }
 	 break;
-      case 'v': socat_opts.verbose = true; break;
-      case 'x': socat_opts.verbhex = true; break;
+      case 'v':  if (arg1[0][2])  { socat_opt_hint(stderr, arg1[0][1], arg1[0][2]); Exit(1); }
+	 socat_opts.verbose = true; break;
+      case 'x':  if (arg1[0][2])  { socat_opt_hint(stderr, arg1[0][1], arg1[0][2]); Exit(1); }
+	 socat_opts.verbhex = true; break;
+      case 'r': if (arg1[0][2]) {
+	    a = *arg1+2;
+	 } else {
+	    ++arg1, --argc;
+	    if ((a = *arg1) == NULL) {
+	       Error("option -r requires an argument; use option \"-h\" for help");
+	       break;
+	    }
+	 }
+	 if ((socat_opts.sniffleft = Open(a, O_CREAT|O_WRONLY|O_APPEND|
+#ifdef O_LARGEFILE
+					  O_LARGEFILE|
+#endif
+					  O_NONBLOCK, 0664)) < 0)
+	    Error2("option -r \"%s\": %s", a, strerror(errno));
+	 break;
+      case 'R': if (arg1[0][2]) {
+	    a = *arg1+2;
+	 } else {
+	    ++arg1, --argc;
+	    if ((a = *arg1) == NULL) {
+	       Error("option -R requires an argument; use option \"-h\" for help");
+	       break;
+	    }
+	 }
+	 if ((socat_opts.sniffright = Open(a, O_CREAT|O_WRONLY|O_APPEND|
+#ifdef O_LARGEFILE
+					   O_LARGEFILE|
+#endif
+					   O_NONBLOCK, 0664)) < 0)
+	    Error2("option -r \"%s\": %s", a, strerror(errno));
+	 break;
       case 'b': if (arg1[0][2]) {
 	    a = *arg1+2;
 	 } else {
@@ -169,7 +221,7 @@ int main(int argc, const char *argv[]) {
 	 }
 	 socat_opts.bufsiz = strtoul(a, (char **)&a, 0);
 	 break;
-      case 's':
+      case 's':  if (arg1[0][2])  { socat_opt_hint(stderr, arg1[0][1], arg1[0][2]); Exit(1); }
 	 diag_set_int('e', E_FATAL); break;
       case 't': if (arg1[0][2]) {
 	    a = *arg1+2;
@@ -199,9 +251,12 @@ int main(int argc, const char *argv[]) {
 	 socat_opts.total_timeout.tv_usec =
 	    (rto-socat_opts.total_timeout.tv_sec) * 1000000; 
 	 break;
-      case 'u': socat_opts.lefttoright = true; break;
-      case 'U': socat_opts.righttoleft = true; break;
-      case 'g': xioopts_ignoregroups = true; break;
+      case 'u':  if (arg1[0][2])  { socat_opt_hint(stderr, arg1[0][1], arg1[0][2]); Exit(1); }
+	 socat_opts.lefttoright = true; break;
+      case 'U':  if (arg1[0][2])  { socat_opt_hint(stderr, arg1[0][1], arg1[0][2]); Exit(1); }
+	 socat_opts.righttoleft = true; break;
+      case 'g':  if (arg1[0][2])  { socat_opt_hint(stderr, arg1[0][1], arg1[0][2]); Exit(1); }
+	 xioopts_ignoregroups = true; break;
       case 'L': if (socat_opts.lock.lockfile)
 	     Error("only one -L and -W option allowed");
 	 if (arg1[0][2]) {
@@ -236,6 +291,7 @@ int main(int argc, const char *argv[]) {
 #if WITH_IP6
       case '6':
 #endif
+	 if (arg1[0][2])  { socat_opt_hint(stderr, arg1[0][1], arg1[0][2]); Exit(1); }
 	 xioopts.default_ip = arg1[0][1];
 	 xioopts.preferred_ip = arg1[0][1];
 	 break;
@@ -333,7 +389,7 @@ void socat_usage(FILE *fd) {
    fputs("      -hh    like -h, plus a list of all common address option names\n", fd);
    fputs("      -hhh   like -hh, plus a list of all available address option names\n", fd);
 #endif /* WITH_HELP */
-   fputs("      -d     increase verbosity (use up to 4 times; 2 are recommended)\n", fd);
+   fputs("      -d[ddd]         increase verbosity (use up to 4 times; 2 are recommended)\n", fd);
 #if WITH_FILAN
    fputs("      -D     analyze file descriptors before loop\n", fd);
 #endif
@@ -344,8 +400,10 @@ void socat_usage(FILE *fd) {
    fputs("      -lp<progname>  set the program name used for logging\n", fd);
    fputs("      -lu            use microseconds for logging timestamps\n", fd);
    fputs("      -lh            add hostname to log messages\n", fd);
-   fputs("      -v     verbose data traffic, text\n", fd);
-   fputs("      -x     verbose data traffic, hexadecimal\n", fd);
+   fputs("      -v     verbose text dump of data traffic\n", fd);
+   fputs("      -x     verbose hexadecimal dump of data traffic\n", fd);
+   fputs("      -r <file>      raw dump of data flowing from left to right\n", fd);
+   fputs("      -R <file>      raw dump of data flowing from right to left\n", fd);
    fputs("      -b<size_t>     set data buffer size (8192)\n", fd);
    fputs("      -s     sloppy (continue on error)\n", fd);
    fputs("      -t<timeout>    wait seconds before closing second channel\n", fd);
@@ -361,6 +419,11 @@ void socat_usage(FILE *fd) {
 #if WITH_IP6
    fputs("      -6     prefer IPv6 if version is not explicitly specified\n", fd);
 #endif
+}
+
+void socat_opt_hint(FILE *fd, char a, char b) {
+   fprintf(fd, "Do not merge single character options, i.e. use \"-%c -%c\" instead of \"-%c%c\"\n",
+	   a, b, a, b);
 }
 
 
@@ -473,6 +536,11 @@ void socat_version(FILE *fd) {
 #else
    fputs("  #undef WITH_SOCKS4A\n", fd);
 #endif
+#ifdef WITH_VSOCK
+   fprintf(fd, "  #define WITH_VSOCK %d\n", WITH_VSOCK);
+#else
+   fputs("  #undef WITH_VSOCK\n", fd);
+#endif
 #ifdef WITH_PROXY
    fprintf(fd, "  #define WITH_PROXY %d\n", WITH_PROXY);
 #else
@@ -572,29 +640,20 @@ int socat(const char *address1, const char *address2) {
        (XIO_RDSTREAM(sock1)->howtoend == END_KILL ||
 	XIO_RDSTREAM(sock1)->howtoend == END_CLOSE_KILL ||
 	XIO_RDSTREAM(sock1)->howtoend == END_SHUTDOWN_KILL)) {
-      if (XIO_RDSTREAM(sock1)->para.exec.pid == diedunknown1) {
-	 /* child has alread died... but it might have put regular data into
-	    the communication channel, so continue */
-	 Info1("child "F_pid" has already died (diedunknown1)",
-	       XIO_RDSTREAM(sock1)->para.exec.pid);
-	 diedunknown1 = 0;
-	 XIO_RDSTREAM(sock1)->para.exec.pid = 0;
-	 /* return STAT_RETRYLATER; */
-      } else if (XIO_RDSTREAM(sock1)->para.exec.pid == diedunknown2) {
-	 Info1("child "F_pid" has already died (diedunknown2)",
-	       XIO_RDSTREAM(sock1)->para.exec.pid);
-	 diedunknown2 = 0;
-	 XIO_RDSTREAM(sock1)->para.exec.pid = 0;
-      } else if (XIO_RDSTREAM(sock1)->para.exec.pid == diedunknown3) {
-	 Info1("child "F_pid" has already died (diedunknown3)",
-	       XIO_RDSTREAM(sock1)->para.exec.pid);
-	 diedunknown3 = 0;
-	 XIO_RDSTREAM(sock1)->para.exec.pid = 0;
-      } else if (XIO_RDSTREAM(sock1)->para.exec.pid == diedunknown4) {
-	 Info1("child "F_pid" has already died (diedunknown4)",
-	       XIO_RDSTREAM(sock1)->para.exec.pid);
-	 diedunknown4 = 0;
-	 XIO_RDSTREAM(sock1)->para.exec.pid = 0;
+      int i;
+      for (i = 0; i < NUMUNKNOWN; ++i) {
+	 if (XIO_RDSTREAM(sock1)->para.exec.pid == diedunknown[i]) {
+	    /* child has alread died... but it might have put regular data into
+	       the communication channel, so continue */
+	    Info2("child "F_pid" has already died with status %d",
+		  XIO_RDSTREAM(sock1)->para.exec.pid, statunknown[i]);
+	    if (statunknown[i] != 0) {
+	       return 1;
+	    }
+	    diedunknown[i] = 0;
+	    XIO_RDSTREAM(sock1)->para.exec.pid = 0;
+	    /* return STAT_RETRYLATER; */
+	 }
       }
    }
 #endif
@@ -623,29 +682,20 @@ int socat(const char *address1, const char *address2) {
        (XIO_RDSTREAM(sock2)->howtoend == END_KILL ||
 	XIO_RDSTREAM(sock2)->howtoend == END_CLOSE_KILL ||
 	XIO_RDSTREAM(sock2)->howtoend == END_SHUTDOWN_KILL)) {
-      if (XIO_RDSTREAM(sock2)->para.exec.pid == diedunknown1) {
-	 /* child has alread died... but it might have put regular data into
-	    the communication channel, so continue */
-	 Info1("child "F_pid" has already died (diedunknown1)",
-	       XIO_RDSTREAM(sock2)->para.exec.pid);
-	 diedunknown1 = 0;
-	 XIO_RDSTREAM(sock2)->para.exec.pid = 0;
-	 /* return STAT_RETRYLATER; */
-      } else if (XIO_RDSTREAM(sock2)->para.exec.pid == diedunknown2) {
-	 Info1("child "F_pid" has already died (diedunknown2)",
-	       XIO_RDSTREAM(sock2)->para.exec.pid);
-	 diedunknown2 = 0;
-	 XIO_RDSTREAM(sock2)->para.exec.pid = 0;
-      } else if (XIO_RDSTREAM(sock2)->para.exec.pid == diedunknown3) {
-	 Info1("child "F_pid" has already died (diedunknown3)",
-	       XIO_RDSTREAM(sock2)->para.exec.pid);
-	 diedunknown3 = 0;
-	 XIO_RDSTREAM(sock2)->para.exec.pid = 0;
-      } else if (XIO_RDSTREAM(sock2)->para.exec.pid == diedunknown4) {
-	 Info1("child "F_pid" has already died (diedunknown4)",
-	       XIO_RDSTREAM(sock2)->para.exec.pid);
-	 diedunknown4 = 0;
-	 XIO_RDSTREAM(sock2)->para.exec.pid = 0;
+      int i;
+      for (i = 0; i < NUMUNKNOWN; ++i) {
+	 if (XIO_RDSTREAM(sock2)->para.exec.pid == diedunknown[i]) {
+	    /* child has alread died... but it might have put regular data into
+	       the communication channel, so continue */
+	    Info2("child "F_pid" has already died with status %d",
+		  XIO_RDSTREAM(sock2)->para.exec.pid, statunknown[i]);
+	    if (statunknown[i] != 0) {
+	       return 1;
+	    }
+	    diedunknown[i] = 0;
+	    XIO_RDSTREAM(sock2)->para.exec.pid = 0;
+	    /* return STAT_RETRYLATER; */
+	 }
       }
    }
 #endif
@@ -701,7 +751,7 @@ int childleftdata(xiofile_t *xfd) {
 }
 
 int xiotransfer(xiofile_t *inpipe, xiofile_t *outpipe,
-		unsigned char **buff, size_t bufsiz, bool righttoleft);
+		unsigned char *buff, size_t bufsiz, bool righttoleft);
 
 bool mayrd1;		/* sock1 has read data or eof, according to poll() */
 bool mayrd2;		/* sock2 has read data or eof, according to poll() */
@@ -754,8 +804,25 @@ int _socat(void) {
 #endif /* WITH_FILAN */
 
    /* when converting nl to crnl, size might double */
+   if (socat_opts.bufsiz > (SIZE_MAX-1)/2) {
+      Error2("buffer size option (-b) to big - "F_Zu" (max is "F_Zu")", socat_opts.bufsiz, (SIZE_MAX-1)/2);
+      socat_opts.bufsiz = (SIZE_MAX-1)/2;
+   }
+
+#if HAVE_PROTOTYPE_LIB_posix_memalign
+   /* Operations on files with flag O_DIRECT might need buffer alignment.
+      Without this, eg.read() fails with "Invalid argument" */
+   {
+      int _errno;
+      if ((_errno = Posix_memalign((void **)&buff, getpagesize(), 2*socat_opts.bufsiz+1)) != 0) {
+	 Error1("posix_memalign(): %s", strerror(_errno));
+	 return -1;
+      }
+   }
+#else /* !HAVE_PROTOTYPE_LIB_posix_memalign */
    buff = Malloc(2*socat_opts.bufsiz+1);
    if (buff == NULL)  return -1;
+#endif /* !HAVE_PROTOTYPE_LIB_posix_memalign */
 
    if (socat_opts.logopt == 'm' && xioinqopt('l', NULL, 0) == 'm') {
       Info("switching to syslog");
@@ -977,7 +1044,7 @@ int _socat(void) {
 
       if (mayrd1 && maywr2) {
 	 mayrd1 = false;
-	 if ((bytes1 = xiotransfer(sock1, sock2, &buff, socat_opts.bufsiz, false))
+	 if ((bytes1 = xiotransfer(sock1, sock2, buff, socat_opts.bufsiz, false))
 	     < 0) {
 	    if (errno != EAGAIN) {
 	       closing = MAX(closing, 1);
@@ -1009,7 +1076,7 @@ int _socat(void) {
 
       if (mayrd2 && maywr1) {
 	 mayrd2 = false;
-	 if ((bytes2 = xiotransfer(sock2, sock1, &buff, socat_opts.bufsiz, true))
+	 if ((bytes2 = xiotransfer(sock2, sock1, buff, socat_opts.bufsiz, true))
 	     < 0) {
 	    if (errno != EAGAIN) {
 	       closing = MAX(closing, 1);
@@ -1051,10 +1118,10 @@ int _socat(void) {
 		   XIO_RDSTREAM(sock1)->fd);	/*! */
 	    mayrd1 = true;
 	    polling = 1;	/* do not hook this eof fd to poll for pollintv*/
-	 } else {
+	 } else if (XIO_RDSTREAM(sock1)->eof <= 2) {
 	    Notice1("socket 1 (fd %d) is at EOF", XIO_GETRDFD(sock1));
 	    xioshutdown(sock2, SHUT_WR);
-	    XIO_RDSTREAM(sock1)->eof = 2;
+	    XIO_RDSTREAM(sock1)->eof = 3;
 	    XIO_RDSTREAM(sock1)->ignoreeof = false;
 	 }
       } else if (polling && XIO_RDSTREAM(sock1)->ignoreeof) {
@@ -1074,10 +1141,10 @@ int _socat(void) {
 		   XIO_RDSTREAM(sock2)->fd);
 	    mayrd2 = true;
 	    polling = 1;	/* do not hook this eof fd to poll for pollintv*/
-	 } else {
+	 } else if (XIO_RDSTREAM(sock2)->eof <= 2) {
 	    Notice1("socket 2 (fd %d) is at EOF", XIO_GETRDFD(sock2));
 	    xioshutdown(sock1, SHUT_WR);
-	    XIO_RDSTREAM(sock2)->eof = 2;
+	    XIO_RDSTREAM(sock2)->eof = 3;
 	    XIO_RDSTREAM(sock2)->ignoreeof = false;
 	 }
       } else if (polling && XIO_RDSTREAM(sock2)->ignoreeof) {
@@ -1095,7 +1162,7 @@ int _socat(void) {
    xioclose(sock1);
    xioclose(sock2);
 
-		  free(buff);
+   free(buff);
    return 0;
 }
 
@@ -1183,10 +1250,10 @@ static int
    */
 /* inpipe, outpipe must be single descriptors (not dual!) */
 int xiotransfer(xiofile_t *inpipe, xiofile_t *outpipe,
-		unsigned char **buff, size_t bufsiz, bool righttoleft) {
+		unsigned char *buff, size_t bufsiz, bool righttoleft) {
    ssize_t bytes, writt = 0;
 
-	 bytes = xioread(inpipe, *buff, bufsiz);
+	 bytes = xioread(inpipe, buff, bufsiz);
 	 if (bytes < 0) {
 	    if (errno != EAGAIN)
 	       XIO_RDSTREAM(inpipe)->eof = 2;
@@ -1204,7 +1271,7 @@ int xiotransfer(xiofile_t *inpipe, xiofile_t *outpipe,
 	    /* handle escape char */
 	    if (XIO_RDSTREAM(inpipe)->escape != -1) {
 	       /* check input data for escape char */
-	       unsigned char *ptr = *buff;
+	       unsigned char *ptr = buff;
 	       size_t ctr = 0;
 	       while (ctr < bytes) {
 		  if (*ptr == XIO_RDSTREAM(inpipe)->escape) {
@@ -1234,14 +1301,20 @@ int xiotransfer(xiofile_t *inpipe, xiofile_t *outpipe,
 	       errno = EAGAIN;  return -1;
 	    }
 
+	    if (!righttoleft && socat_opts.sniffleft >= 0) {
+	       Write(socat_opts.sniffleft, buff, bytes);
+	    } else if (socat_opts.sniffright >= 0) {
+	       Write(socat_opts.sniffright, buff, bytes);
+	    }
+
 	    if (socat_opts.verbose && socat_opts.verbhex) {
 	       /* Hack-o-rama */
 	       size_t i = 0;
 	       size_t j;
 	       size_t N = 16;
 	       const unsigned char *end, *s, *t;
-	       s = *buff;
-	       end = (*buff)+bytes;
+	       s = buff;
+	       end = buff+bytes;
 	       xioprintblockheader(stderr, bytes, righttoleft);
 	       while (s < end) {
 		  /*! prefix? */
@@ -1287,8 +1360,8 @@ int xiotransfer(xiofile_t *inpipe, xiofile_t *outpipe,
 	       size_t i = 0;
 	       xioprintblockheader(stderr, bytes, righttoleft);
 	       while (i < (size_t)bytes) {
-		  int c = (*buff)[i];
-		  if (i > 0 && (*buff)[i-1] == '\n')
+		  int c = buff[i];
+		  if (i > 0 && buff[i-1] == '\n')
 		     /*! prefix? */;
 		  switch (c) {
 		  case '\a' : fputs("\\a", stderr); break;
@@ -1312,12 +1385,12 @@ int xiotransfer(xiofile_t *inpipe, xiofile_t *outpipe,
 	       /* print prefix */
 	       xioprintblockheader(stderr, bytes, righttoleft);
 	       for (i = 0; i < bytes; ++i) {
-		  fprintf(stderr, " %02x", (*buff)[i]);
+		  fprintf(stderr, " %02x", buff[i]);
 	       }
 	       fputc('\n', stderr);
 	    }
 
-	    writt = xiowrite(outpipe, *buff, bytes);
+	    writt = xiowrite(outpipe, buff, bytes);
 	    if (writt < 0) {
 	       /* EAGAIN when nonblocking but a mandatory lock is on file.
 		  the problem with EAGAIN is that the read cannot be repeated,
@@ -1344,11 +1417,9 @@ int xiotransfer(xiofile_t *inpipe, xiofile_t *outpipe,
 /* converts the newline characters (or character sequences) from the one
    specified in lineterm1 to that of lineterm2. Possible values are
    LINETERM_CR, LINETERM_CRNL, LINETERM_RAW.
-   buff points to the malloc()'ed data, input and output. It may be subject to
-   realloc(). bytes specifies the number of bytes input and output */
-int cv_newline(unsigned char **buff, ssize_t *bufsiz,
+   bytes specifies the number of bytes input and output */
+int cv_newline(unsigned char *buff, ssize_t *bytes,
 	       int lineterm1, int lineterm2) {
-   ssize_t *bytes = bufsiz;
    /* must perform newline changes */
    if (lineterm1 <= LINETERM_CR && lineterm2 <= LINETERM_CR) {
       /* no change in data length */
@@ -1358,23 +1429,23 @@ int cv_newline(unsigned char **buff, ssize_t *bufsiz,
       } else {
 	 from = '\r'; to = '\n';
       }
-      z = *buff + *bytes;
-      p = *buff;
+      z = buff + *bytes;
+      p = buff;
       while (p < z) {
 	 if (*p == from)  *p = to;
 	 ++p;
       }
 
    } else if (lineterm1 == LINETERM_CRNL) {
-      /* buffer becomes shorter */
+      /* buffer might become shorter */
       unsigned char to,  *s, *t, *z;
       if (lineterm2 == LINETERM_RAW) {
 	 to = '\n';
       } else {
 	 to = '\r';
       }
-      z = *buff + *bytes;
-      s = t = *buff;
+      z = buff + *bytes;
+      s = t = buff;
       while (s < z) {
 	 if (*s == '\r') {
 	    ++s;
@@ -1386,20 +1457,24 @@ int cv_newline(unsigned char **buff, ssize_t *bufsiz,
 	    *t++ = *s++;
 	 }
       }
-      *bufsiz = t - *buff;
+      *bytes = t - buff;
    } else {
-      /* buffer becomes longer, must alloc another space */
-      unsigned char *buf2;
+      /* buffer becomes longer (up to double length), must alloc another space */
+      static unsigned char *buf2;	/*! not threadsafe */
       unsigned char from;  unsigned char *s, *t, *z;
+
       if (lineterm1 == LINETERM_RAW) {
 	 from = '\n';
       } else {
 	 from = '\r';
       }
-      if ((buf2 = Malloc(2*socat_opts.bufsiz/*sic!*/+1)) == NULL) {
-	 return -1;
+      if (buf2 == NULL) {
+	 if ((buf2 = Malloc(socat_opts.bufsiz)) == NULL) {
+	    return -1;
+	 }
       }
-      s = *buff;  t = buf2;  z = *buff + *bytes;
+      memcpy(buf2, buff, *bytes);
+      s = buf2;  t = buff;  z = buf2 + *bytes;
       while (s < z) {
 	 if (*s == from) {
 	    *t++ = '\r'; *t++ = '\n';
@@ -1409,9 +1484,7 @@ int cv_newline(unsigned char **buff, ssize_t *bufsiz,
 	    *t++ = *s++;
 	 }
       }
-      free(*buff);
-      *buff = buf2;
-      *bufsiz = t - buf2;;
+      *bytes = t - buff;;
    }
    return 0;
 }
