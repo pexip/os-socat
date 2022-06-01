@@ -1,0 +1,7 @@
+config.log
+testalt.conf
+testcert*.conf
+test*.pem
+test*.crt
+test*.key
+testcert.dh

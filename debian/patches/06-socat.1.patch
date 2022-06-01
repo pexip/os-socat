@@ -1,6 +1,6 @@
 --- socat-1.7.3.0.orig/doc/socat.1
 +++ socat-1.7.3.0/doc/socat.1
-@@ -688,18 +688,12 @@ PIPE,
+@@ -686,18 +686,12 @@ PIPE,
  EXEC, SYSTEM
  .IP "\fB\f(CWREADLINE\fP\fP"
  Uses GNU readline and history on stdio to allow editing and reusing input
@@ -24,7 +24,7 @@
  .IP "\fB\f(CWSCTP\-CONNECT:<host>:<port>\fP\fP"
  Establishes an SCTP stream connection to the specified <host> [IP
  address] and <port> [TCP service]
-@@ -2003,6 +1997,8 @@ Makes the process the leader of a new se
+@@ -2001,6 +1995,8 @@ Makes the process the leader of a new se
  .PP 
  \fI\fBREADLINE option group\fP\fP
  .PP 
@@ -33,7 +33,7 @@
  These options apply to the readline address type\&.
  .IP "\fB\f(CWhistory=<filename>\fP\fP"
  Reads and writes history from/to <filename> (example)\&.
-@@ -3259,7 +3259,6 @@ modem\&. rawer sets the console\(cq\&s a
+@@ -3258,7 +3258,6 @@ modem\&. rawer sets the console\(cq\&s a
  ttyS0\(cq\&s terminal parameters to practicable values, crnl 
  converts to correct newline characters\&. escape allows
  terminating the socat process with character control\-O\&. 
@@ -41,7 +41,7 @@
  .IP 
  \.LP
  \.nf
-@@ -3318,16 +3313,6 @@ If the file does not exist, socat creat\
+@@ -3317,16 +3312,6 @@ If the file does not exist, socat creat\
  Option reuseaddr allows immediate restart of the server
  process\&. 
  .IP 
@@ -58,7 +58,7 @@
  \.LP
  \.nf
  \fBsocat PTY,link=$HOME/dev/vmodem0,rawer,wait-slave \\\bf
-@@ -3733,7 +3718,8 @@ Verbose modes (\-x and/or \-v) display l
+@@ -3732,7 +3717,8 @@ Verbose modes (\-x and/or \-v) display l
  when address options cr or crnl are used: They show the data \fIafter\fP
  conversion in either direction\&.
  .PP 

@@ -15,7 +15,7 @@ Last-Update: 2017-07-09
  Writes messages to <logfile> [filename] instead of
  stderr\&. Some third party libraries, in particular libwrap, might not obey
  this option\&.
-@@ -3170,7 +3170,7 @@ close the relay with ^D or abort it with
+@@ -3169,7 +3169,7 @@ close the relay with ^D or abort it with
  .IP 
  \.LP
  \.nf
@@ -24,12 +24,7 @@ Last-Update: 2017-07-09
  TCP4:www.domain.org:www,crnl\fP
  \.fi
  .IP 
-@@ -3188,11 +3188,11 @@ installs a simple TCP port forwarder\&.
- TCP4\-LISTEN it listens on local port \(dq\&www\(dq\& until a
- connection comes in, accepts it, then connects to the remote host
- (TCP4) and starts data transfer\&. It will not accept
--a econd connection\&. 
-+a second connection\&. 
+@@ -3191,7 +3191,7 @@ a second connection\&.
  .IP 
  \.LP
  \.nf
@@ -38,7 +33,7 @@ Last-Update: 2017-07-09
  TCP4-LISTEN:80,bind=myaddr1,reuseaddr,fork,su=nobody,range=10.0.0.0/8 \\ 
  TCP4:www.domain.org:80,bind=myaddr2\fP
  \.fi
-@@ -3297,7 +3297,7 @@ might also be a listening UNIX domain so
+@@ -3296,7 +3296,7 @@ might also be a listening UNIX domain so
  \.LP
  \.nf
  \fB(sleep 5; echo PASSWORD; sleep 5; echo ls; sleep 1) | 
@@ -47,7 +42,7 @@ Last-Update: 2017-07-09
  \.fi
  .IP 
  EXEC\(cq\&utes an ssh session to server\&. Uses a pty for communication between \fBsocat\fP and
-@@ -3307,7 +3307,7 @@ a new process group (setsid), so ssh acc
+@@ -3306,7 +3306,7 @@ a new process group (setsid), so ssh acc
  .IP 
  \.LP
  \.nf
@@ -56,7 +51,7 @@ Last-Update: 2017-07-09
  OPEN:/tmp/in.log,creat,append\fP
  \.fi
  .IP 
-@@ -3354,7 +3354,7 @@ through the proxy daemon listening on po
+@@ -3353,7 +3353,7 @@ through the proxy daemon listening on po
  CONNECT method, where they are authenticated as \(dq\&user\(dq\& with \(dq\&pass\(dq\& (proxyauth)\&. The proxy 
  should establish connections to host www\&.domain\&.org on port 22 then\&.
  .IP 
@@ -65,7 +60,7 @@ Last-Update: 2017-07-09
  
  .IP 
  is an OpenSSL client that tries to establish a secure connection to an SSL
-@@ -3398,7 +3398,7 @@ connection, invokes a shell\&. This shel
+@@ -3397,7 +3397,7 @@ connection, invokes a shell\&. This shel
  connected to the TCP socket (nofork)\&.  The shell starts filan and lets it print the socket addresses to
  stderr (your terminal window)\&.
  .IP 
@@ -74,7 +69,7 @@ Last-Update: 2017-07-09
  
  .IP 
  functions as primitive binary editor: it writes the 4 bytes 000 014 000 000 to
-@@ -3426,8 +3426,9 @@ connection)\&.
+@@ -3425,8 +3425,9 @@ connection)\&.
  sends a broadcast to the network 192\&.168\&.1\&.0/24 and receives the replies of the
  timeservers there\&. Ignores NTP packets from hosts outside this network\&.
  .IP 
@@ -86,7 +81,7 @@ Last-Update: 2017-07-09
  .IP 
  is semantically equivalent to the previous
  example, but all parameters are
-@@ -3469,8 +3470,9 @@ socat creates a PTY to make pppd happy,
+@@ -3468,8 +3469,9 @@ socat creates a PTY to make pppd happy,
  interface \f(CWhdlc0\fP, and can transfer data between
  both devices\&. Use pppd on device \f(CW/var/run/ppp\fP then\&.
  .IP 

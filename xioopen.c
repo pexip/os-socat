@@ -41,6 +41,17 @@ const struct addrname addressnames[] = {
    { "datagram",		&xioaddr_socket_datagram },
    { "dgram",			&xioaddr_socket_datagram },
 #endif
+#if WITH_OPENSSL
+   { "dtls",		&xioaddr_openssl_dtls_client },
+   { "dtls-c",		&xioaddr_openssl_dtls_client },
+   { "dtls-client",	&xioaddr_openssl_dtls_client },
+   { "dtls-connect",	&xioaddr_openssl_dtls_client },
+#if WITH_LISTEN
+   { "dtls-l",		&xioaddr_openssl_dtls_server },
+   { "dtls-listen",	&xioaddr_openssl_dtls_server },
+   { "dtls-server",	&xioaddr_openssl_dtls_server },
+#endif
+#endif
 #if WITH_PIPE
    { "echo",		&addr_pipe },
 #endif
@@ -122,10 +133,14 @@ const struct addrname addressnames[] = {
    { "open",		&addr_open },
 #endif
 #if WITH_OPENSSL
-   { "openssl",		&addr_openssl },
-   { "openssl-connect",		&addr_openssl },
+   { "openssl",		&xioaddr_openssl },
+   { "openssl-connect",		&xioaddr_openssl },
+   { "openssl-dtls-client",	&xioaddr_openssl_dtls_client },
+   { "openssl-dtls-connect",	&xioaddr_openssl_dtls_client },
 #if WITH_LISTEN
-   { "openssl-listen",		&addr_openssl_listen },
+   { "openssl-dtls-listen",		&xioaddr_openssl_dtls_server },
+   { "openssl-dtls-server",		&xioaddr_openssl_dtls_server },
+   { "openssl-listen",		&xioaddr_openssl_listen },
 #endif
 #endif
 #if WITH_PIPE
@@ -186,9 +201,9 @@ const struct addrname addressnames[] = {
    { "socks4a",	&addr_socks4a_connect },
 #endif
 #if WITH_OPENSSL
-   { "ssl",		&addr_openssl },
+   { "ssl",		&xioaddr_openssl },
 #if WITH_LISTEN
-   { "ssl-l",		&addr_openssl_listen },
+   { "ssl-l",		&xioaddr_openssl_listen },
 #endif
 #endif
 #if WITH_STDIO
@@ -292,6 +307,12 @@ const struct addrname addressnames[] = {
    { "unix-send",	&xioaddr_unix_sendto },
    { "unix-sendto",	&xioaddr_unix_sendto },
 #endif
+#if WITH_VSOCK
+   { "vsock-connect",	&addr_vsock_connect },
+#endif
+#if WITH_VSOCK && WITH_LISTEN
+   { "vsock-listen",	&addr_vsock_listen },
+#endif
 #else /* !0 */
 #  if WITH_INTEGRATE
 #    include "xiointegrate.c"
@@ -367,6 +388,8 @@ xiofile_t *xioopen(const char *addr,	/* address specification */
       return NULL;
    }
 
+   Debug1("xioopen(\"%s\")", addr);
+
    if ((xfd = xioparse_dual(&addr)) == NULL) {
       return NULL;
    }
@@ -384,6 +407,8 @@ xiofile_t *xioopen(const char *addr,	/* address specification */
    return xfd;
 }
 
+/* parse an address string that might contain !!
+   return NULL on error */
 static xiofile_t *xioparse_dual(const char **addr) {
    xiofile_t *xfd;
    xiosingle_t *sfd1;
@@ -445,6 +470,7 @@ static int xioopen_dual(xiofile_t *xfd, int xioflags) {
 
 
 static xiosingle_t *xioparse_single(const char **addr) {
+   const char *addr0 = *addr; 	/* save for error messages */
    xiofile_t *xfd;
    xiosingle_t *sfd;
    struct addrname *ae;
@@ -540,7 +566,7 @@ static xiosingle_t *xioparse_single(const char **addr) {
       len = sizeof(token);  tokp = token;
       if (nestlex(addr, &tokp, &len, ends, hquotes, squotes, nests,
 		  true, true, false) != 0) {
-	 Error2("syntax error in address \"%s%s\"", token, *addr);
+	 Error1("syntax error in address \"%s\"", addr0);
       }
       *tokp = '\0';
       if ((sfd->argv[sfd->argc++] = strdup(token)) == NULL) {

@@ -3,3 +3,4 @@
 03-Truncate
 06-socat.1.patch
 07-compat-define-PATH_MAX.patch
+08-test.sh-fixes.patch

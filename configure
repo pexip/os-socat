@@ -661,6 +661,7 @@ infodir
 docdir
 oldincludedir
 includedir
+runstatedir
 localstatedir
 sharedstatedir
 sysconfdir
@@ -701,6 +702,7 @@ enable_interface
 enable_tcp
 enable_udp
 enable_sctp
+enable_vsock
 enable_listen
 enable_socks4
 enable_socks4a
@@ -708,9 +710,12 @@ enable_proxy
 enable_exec
 enable_system
 enable_pty
-enable_ext2
+enable_fs
 enable_readline
 enable_openssl
+enable_openssl_base
+enable_openssl_method
+enable_res_deprecated
 enable_fips
 enable_tun
 enable_sycls
@@ -766,6 +771,7 @@ datadir='${datarootdir}'
 sysconfdir='${prefix}/etc'
 sharedstatedir='${prefix}/com'
 localstatedir='${prefix}/var'
+runstatedir='${localstatedir}/run'
 includedir='${prefix}/include'
 oldincludedir='/usr/include'
 docdir='${datarootdir}/doc/${PACKAGE}'
@@ -1018,6 +1024,15 @@ do
   | -silent | --silent | --silen | --sile | --sil)
     silent=yes ;;
 
+  -runstatedir | --runstatedir | --runstatedi | --runstated \
+  | --runstate | --runstat | --runsta | --runst | --runs \
+  | --run | --ru | --r)
+    ac_prev=runstatedir ;;
+  -runstatedir=* | --runstatedir=* | --runstatedi=* | --runstated=* \
+  | --runstate=* | --runstat=* | --runsta=* | --runst=* | --runs=* \
+  | --run=* | --ru=* | --r=*)
+    runstatedir=$ac_optarg ;;
+
   -sbindir | --sbindir | --sbindi | --sbind | --sbin | --sbi | --sb)
     ac_prev=sbindir ;;
   -sbindir=* | --sbindir=* | --sbindi=* | --sbind=* | --sbin=* \
@@ -1155,7 +1170,7 @@ fi
 for ac_var in	exec_prefix prefix bindir sbindir libexecdir datarootdir \
 		datadir sysconfdir sharedstatedir localstatedir includedir \
 		oldincludedir docdir infodir htmldir dvidir pdfdir psdir \
-		libdir localedir mandir
+		libdir localedir mandir runstatedir
 do
   eval ac_val=\$$ac_var
   # Remove trailing slashes.
@@ -1308,6 +1323,7 @@ Fine tuning of the installation directories:
   --sysconfdir=DIR        read-only single-machine data [PREFIX/etc]
   --sharedstatedir=DIR    modifiable architecture-independent data [PREFIX/com]
   --localstatedir=DIR     modifiable single-machine data [PREFIX/var]
+  --runstatedir=DIR       modifiable per-process data [LOCALSTATEDIR/run]
   --libdir=DIR            object code libraries [EPREFIX/lib]
   --includedir=DIR        C header files [PREFIX/include]
   --oldincludedir=DIR     C header files for non-gcc [/usr/include]
@@ -1353,6 +1369,7 @@ Optional Features:
   --disable-tcp           disable TCP support
   --disable-udp           disable UDP support
   --disable-sctp           disable SCTP support
+  --disable-vsock         disable vsock support
   --disable-listen        disable listen support
   --disable-socks4        disable socks4 support
   --disable-socks4a       disable socks4a support
@@ -1360,9 +1377,12 @@ Optional Features:
   --disable-exec          disable exec support
   --disable-system        disable system (shell) support
   --disable-pty           disable pty support
-  --disable-ext2          disable ext2 fs attributes support
+  --disable-fs            disable fs attributes support
   --disable-readline      disable readline support
   --disable-openssl       disable OpenSSL support
+  --enable-openssl-base   specify directory with include/ and lib/
+  --enable-openssl-method       enable OpenSSL method option
+  --enable-res-deprecated       enable deprecated resolver options
   --enable-fips          enable OpenSSL FIPS support
   --disable-tun           disable TUN/TAP support
   --disable-sycls         disable system call tracing
@@ -4805,6 +4825,45 @@ $as_echo "$as_me: WARNING: IPPROTO_SCTP undefined, disabling SCTP support" >&2;}
 fi
 fi
 
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking whether to include vsock support" >&5
+$as_echo_n "checking whether to include vsock support... " >&6; }
+# Check whether --enable-vsock was given.
+if test "${enable_vsock+set}" = set; then :
+  enableval=$enable_vsock; case "$enableval" in
+	       no) { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }; WITH_VSOCK= ;;
+	       *) { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }; WITH_VSOCK=1 ;;
+	       esac
+else
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; };  WITH_VSOCK=1
+fi
+
+if test "$WITH_VSOCK"; then
+  ac_fn_c_check_header_compile "$LINENO" "linux/vm_sockets.h" "ac_cv_header_linux_vm_sockets_h" "$ac_includes_default
+    #if HAVE_SYS_SOCKET_H
+    #include <sys/socket.h>
+    #endif
+
+
+"
+if test "x$ac_cv_header_linux_vm_sockets_h" = xyes; then :
+  $as_echo "#define HAVE_LINUX_VM_SOCKETS_H 1" >>confdefs.h
+
+else
+  WITH_VSOCK=;
+     { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: include file linux/vm_sockets.h not found, disabling vsock" >&5
+$as_echo "$as_me: WARNING: include file linux/vm_sockets.h not found, disabling vsock" >&2;}
+fi
+
+
+fi
+if test "$WITH_VSOCK"; then
+   $as_echo "#define WITH_VSOCK 1" >>confdefs.h
+
+fi
+
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether to include listen support" >&5
 $as_echo_n "checking whether to include listen support... " >&6; }
 # Check whether --enable-listen was given.
@@ -4931,19 +4990,19 @@ $as_echo "yes" >&6; }
 fi
 
 
-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking whether to include ext2 fs attributes support" >&5
-$as_echo_n "checking whether to include ext2 fs attributes support... " >&6; }
-# Check whether --enable-ext2 was given.
-if test "${enable_ext2+set}" = set; then :
-  enableval=$enable_ext2; case "$enableval" in
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking whether to include fs attributes support" >&5
+$as_echo_n "checking whether to include fs attributes support... " >&6; }
+# Check whether --enable-fs was given.
+if test "${enable_fs+set}" = set; then :
+  enableval=$enable_fs; case "$enableval" in
 	       no) { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
 $as_echo "no" >&6; };;
-	       *) $as_echo "#define WITH_EXT2 1" >>confdefs.h
+	       *) $as_echo "#define WITH_FS 1" >>confdefs.h
  { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; };;
 	       esac
 else
-  $as_echo "#define WITH_EXT2 1" >>confdefs.h
+  $as_echo "#define WITH_FS 1" >>confdefs.h
  { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
 fi
@@ -5053,8 +5112,18 @@ else
 $as_echo "yes" >&6; };   WITH_OPENSSL=1
 fi
 
+# Check whether --enable-openssl_base was given.
+if test "${enable_openssl_base+set}" = set; then :
+  enableval=$enable_openssl_base;  OPENSSL_BASE="$enableval"
+else
+   unset OPENSSL_BASE
+fi
+
 #
 if test -n "$WITH_OPENSSL"; then
+ if test -n "$OPENSSL_BASE"; then
+    sc_cv_have_openssl_ssl_h=yes; OPENSSL_BASE="$D"
+ else
   { $as_echo "$as_me:${as_lineno-$LINENO}: checking for components of OpenSSL" >&5
 $as_echo "$as_me: checking for components of OpenSSL" >&6;}
   # first, we need to find the include file <openssl/ssl.h>
@@ -5073,10 +5142,15 @@ main ()
 }
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"; then :
-  sc_cv_have_openssl_ssl_h=yes; OPENSSL_ROOT="";
+  sc_cv_have_openssl_ssl_h=yes; OPENSSL_BASE="";
 else
   sc_cv_have_openssl_ssl_h=no
-       for D in "/sw" "/usr/local" "/opt/freeware" "/usr/sfw" "/usr/local/ssl"; do
+       if  "$OPENSSL_BASE" ; then
+	  s="$OPENSSL_BASE"
+       else
+          Ds="/sw /usr/local /opt/freeware /usr/sfw /usr/local/ssl"
+       fi
+       for D in $Ds; do
 	I="$D/include"
 	i="$I/openssl/ssl.h"
 	if test -r "$i"; then
@@ -5084,7 +5158,7 @@ else
 	  CPPFLAGS="$CPPFLAGS -I$I"
 	  { $as_echo "$as_me:${as_lineno-$LINENO}: found $i" >&5
 $as_echo "$as_me: found $i" >&6;}
-	  sc_cv_have_openssl_ssl_h=yes; OPENSSL_ROOT="$D"
+	  sc_cv_have_openssl_ssl_h=yes; OPENSSL_BASE="$D"
 	  break;
 	fi
       done
@@ -5099,22 +5173,28 @@ fi
   fi
   { $as_echo "$as_me:${as_lineno-$LINENO}: checked for openssl/ssl.h... $sc_cv_have_openssl_ssl_h" >&5
 $as_echo "$as_me: checked for openssl/ssl.h... $sc_cv_have_openssl_ssl_h" >&6;}
+ fi
 fi	# end checking for openssl/ssl.h
 #
+
+#if test -n "$WITH_OPENSSL"; then
+#  AC_CHECK_FUNCS(OPENSSL_init_ssl, SSL_library_init)
+#fi
+
 if test -n "$WITH_OPENSSL" -a "$sc_cv_have_openssl_ssl_h" = 'yes'; then
   # next, we search for the openssl library (libssl.*)
   # interesting: Linux only requires -lssl, FreeBSD requires -lssl -lcrypto
-  # Note, version OpenSSL 0.9.7j requires -lcrypto even on Linux.
+  # Note, version OpenSSL 0.9.7j and higher requires -lcrypto even on Linux.
   { $as_echo "$as_me:${as_lineno-$LINENO}: checking for libssl" >&5
 $as_echo_n "checking for libssl... " >&6; }
   if ${sc_cv_have_libssl+:} false; then :
   $as_echo_n "(cached) " >&6
 else
    LIBS0="$LIBS"
-      if test -n "$OPENSSL_ROOT"; then
-	L="$OPENSSL_ROOT/lib"; LIBS="$LIBS -L$L -lssl"
+      if test -n "$OPENSSL_BASE"; then
+	L="$OPENSSL_BASE/lib"; LIBS="$LIBS -L$L -lssl -lcrypto"
       else
-	LIBS="$LIBS -lssl"
+	LIBS="$LIBS -lssl -lcrypto"
       fi
       cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
@@ -5131,7 +5211,7 @@ if ac_fn_c_try_link "$LINENO"; then :
   sc_cv_have_libssl='yes'
 else
    LIBS="$LIBS -lcrypto"
-	  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+       cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 #include <openssl/ssl.h>
 int
@@ -5198,6 +5278,65 @@ if test -n "$WITH_OPENSSL"; then
 $as_echo "$as_me: WARNING: not all components of OpenSSL found, disabling it" >&2;};
   fi
 fi
+
+for ac_func in OPENSSL_init_ssl SSL_library_init
+do :
+  as_ac_var=`$as_echo "ac_cv_func_$ac_func" | $as_tr_sh`
+ac_fn_c_check_func "$LINENO" "$ac_func" "$as_ac_var"
+if eval test \"x\$"$as_ac_var"\" = x"yes"; then :
+  cat >>confdefs.h <<_ACEOF
+#define `$as_echo "HAVE_$ac_func" | $as_tr_cpp` 1
+_ACEOF
+
+fi
+done
+
+
+#; sc_cv_have_SSL_library_init='yes'; AC_DEFINE(HAVE_SSL_library_init)
+#if test -n "$WITH_OPENSSL"; then
+#     AC_CHECK_LIB(crypto, CRYPTO_new_ex_data, [], [AC_MSG_ERROR([library 'crypto' is required for OpenSSL])])
+#     FOUND_SSL_LIB="no"
+#     AC_CHECK_LIB(ssl, OPENSSL_init_ssl, [FOUND_SSL_LIB="yes"])
+#     AC_CHECK_LIB(ssl, SSL_library_init, [FOUND_SSL_LIB="yes"])
+#     AS_IF([test "x$FOUND_SSL_LIB" = xno], [AC_MSG_ERROR([library 'ssl' is required for OpenSSL; WITH_OPENSSL=])])
+#     AS_IF([test "x$FOUND_SSL_LIB" = xyes], [LIBS="$LIBS -L$L -lssl -lcrypto"])
+#fi
+
+if test -n "$WITH_OPENSSL"; then
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking whether to include OpenSSL method option" >&5
+$as_echo_n "checking whether to include OpenSSL method option... " >&6; }
+# Check whether --enable-openssl-method was given.
+if test "${enable_openssl_method+set}" = set; then :
+  enableval=$enable_openssl_method; case "$enableval" in
+	       no) { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; };;
+	       *) $as_echo "#define WITH_OPENSSL_METHOD 1" >>confdefs.h
+ WITH_OPENSSL_METHOD=1; { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; };;
+	       esac
+else
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+fi
+
+fi
+
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking whether to include deprecated resolver option" >&5
+$as_echo_n "checking whether to include deprecated resolver option... " >&6; }
+# Check whether --enable-res-deprecated was given.
+if test "${enable_res_deprecated+set}" = set; then :
+  enableval=$enable_res_deprecated; case "$enableval" in
+	       no) { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; };;
+	       *) $as_echo "#define WITH_RES_DEPRECATED 1" >>confdefs.h
+ WITH_RES_DEPRECATED=1; { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; };;
+	       esac
+else
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+fi
+
 
 # check for fips support
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether to include openssl fips support" >&5
@@ -5291,8 +5430,8 @@ if ac_fn_c_try_compile "$LINENO"; then :
   sc_cv_have_openssl_fips_h=yes;
 else
   sv_cv_have_openssl_fips_h=no
-        if test -n "$OPENSSL_ROOT"; then
-          I="$OPENSSL_ROOT/include"
+        if test -n "$OPENSSL_BASE"; then
+          I="$OPENSSL_BASE/include"
           i="$I/openssl/fips.h"
           if test -r "$i"; then
             { $as_echo "$as_me:${as_lineno-$LINENO}: found $i" >&5
@@ -5325,8 +5464,8 @@ else
    LIBS0="$LIBS"
       echo $LIBS | grep -q "\-lcrypto"
       if test $? -ne 0; then
-        if test -n "$OPENSSL_ROOT"; then
-          L="$OPENSSL_ROOT/lib"; LIBS="$LIBS -L$L -lcrypto"
+        if test -n "$OPENSSL_BASE"; then
+          L="$OPENSSL_BASE/lib"; LIBS="$LIBS -L$L -lcrypto"
         else
           LIBS="$LIBS -lcrypto"
         fi
@@ -5471,22 +5610,22 @@ $as_echo_n "checking included message level... " >&6; }
 # Check whether --enable-msglevel was given.
 if test "${enable_msglevel+set}" = set; then :
   enableval=$enable_msglevel; case "$enableval" in
-	       debug) $as_echo "#define WITH_MSGLEVEL 0" >>confdefs.h
+	       0|DEBUG|Debug|debug) $as_echo "#define WITH_MSGLEVEL 0" >>confdefs.h
  { $as_echo "$as_me:${as_lineno-$LINENO}: result: debug" >&5
 $as_echo "debug" >&6; };;
-	       info)  $as_echo "#define WITH_MSGLEVEL 1" >>confdefs.h
+	       1|INFO|Info|info)  $as_echo "#define WITH_MSGLEVEL 1" >>confdefs.h
  { $as_echo "$as_me:${as_lineno-$LINENO}: result: info" >&5
 $as_echo "info" >&6; };;
-	       notice) $as_echo "#define WITH_MSGLEVEL 2" >>confdefs.h
+	       2|NOTICE|Notice|notice) $as_echo "#define WITH_MSGLEVEL 2" >>confdefs.h
  { $as_echo "$as_me:${as_lineno-$LINENO}: result: notice" >&5
 $as_echo "notice" >&6; };;
-	       warn) $as_echo "#define WITH_MSGLEVEL 3" >>confdefs.h
+	       3|WARN|Warn|warn) $as_echo "#define WITH_MSGLEVEL 3" >>confdefs.h
  { $as_echo "$as_me:${as_lineno-$LINENO}: result: warn" >&5
 $as_echo "warn" >&6; };;
-	       error) $as_echo "#define WITH_MSGLEVEL 4" >>confdefs.h
+	       4|ERROR|Error|error) $as_echo "#define WITH_MSGLEVEL 4" >>confdefs.h
  { $as_echo "$as_me:${as_lineno-$LINENO}: result: error" >&5
 $as_echo "error" >&6; };;
-	       fatal) $as_echo "#define WITH_MSGLEVEL 5" >>confdefs.h
+	       5|FATAL|Fatal|fatal) $as_echo "#define WITH_MSGLEVEL 5" >>confdefs.h
  { $as_echo "$as_me:${as_lineno-$LINENO}: result: fatal" >&5
 $as_echo "fatal" >&6; };;
 	       *) $as_echo "#define WITH_MSGLEVEL 0" >>confdefs.h
@@ -5981,7 +6120,7 @@ fi
 fi
 done
 
-for ac_func in putenv select poll socket strtod strtol
+for ac_func in putenv select pselect poll socket strtod strtol
 do :
   as_ac_var=`$as_echo "ac_cv_func_$ac_func" | $as_tr_sh`
 ac_fn_c_check_func "$LINENO" "$ac_func" "$as_ac_var"
@@ -5993,7 +6132,19 @@ _ACEOF
 fi
 done
 
-for ac_func in strtoul uname getpgid getsid getaddrinfo
+for ac_func in strtoul uname getpgid getsid gethostbyname getaddrinfo
+do :
+  as_ac_var=`$as_echo "ac_cv_func_$ac_func" | $as_tr_sh`
+ac_fn_c_check_func "$LINENO" "$ac_func" "$as_ac_var"
+if eval test \"x\$"$as_ac_var"\" = x"yes"; then :
+  cat >>confdefs.h <<_ACEOF
+#define `$as_echo "HAVE_$ac_func" | $as_tr_cpp` 1
+_ACEOF
+
+fi
+done
+
+for ac_func in getprotobynumber getprotobynumber_r
 do :
   as_ac_var=`$as_echo "ac_cv_func_$ac_func" | $as_tr_sh`
 ac_fn_c_check_func "$LINENO" "$ac_func" "$as_ac_var"
@@ -6006,18 +6157,6 @@ fi
 done
 
 for ac_func in setgroups inet_aton
-do :
-  as_ac_var=`$as_echo "ac_cv_func_$ac_func" | $as_tr_sh`
-ac_fn_c_check_func "$LINENO" "$ac_func" "$as_ac_var"
-if eval test \"x\$"$as_ac_var"\" = x"yes"; then :
-  cat >>confdefs.h <<_ACEOF
-#define `$as_echo "HAVE_$ac_func" | $as_tr_cpp` 1
-_ACEOF
-
-fi
-done
-
-for ac_func
 do :
   as_ac_var=`$as_echo "ac_cv_func_$ac_func" | $as_tr_sh`
 ac_fn_c_check_func "$LINENO" "$ac_func" "$as_ac_var"
@@ -6046,9 +6185,58 @@ done
 # GR AC_CHECK_FUNCS only checks linking, not prototype. This may lead to implicit
 # function declarations and to SIGSEGV on systems with 32bit int and 64bit pointer
 
+for ac_func in cfsetispeed cfgetispeed cfsetospeed cfgetospeed
+do :
+  as_ac_var=`$as_echo "ac_cv_func_$ac_func" | $as_tr_sh`
+ac_fn_c_check_func "$LINENO" "$ac_func" "$as_ac_var"
+if eval test \"x\$"$as_ac_var"\" = x"yes"; then :
+  cat >>confdefs.h <<_ACEOF
+#define `$as_echo "HAVE_$ac_func" | $as_tr_cpp` 1
+_ACEOF
+
+fi
+done
+
+
 ###################################
 # check for prototype and existence of functions that return a pointer
 # defines in config.h: HAVE_PROTOTYPE_LIB_$1
+
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for posix_memalign prototype" >&5
+$as_echo_n "checking for posix_memalign prototype... " >&6; }
+if ${sc_cv_have_prototype_lib_posix_memalign+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  CFLAGS1="$CFLAGS"; CFLAGS="$ERRONWARN -Wall $CFLAGS1";
+ cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+#include "sysincludes.h"
+
+int
+main ()
+{
+return(&posix_memalign==(void *)&posix_memalign);
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+  sc_cv_have_prototype_lib_posix_memalign=yes
+else
+  sc_cv_have_prototype_lib_posix_memalign=no
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext;
+ CFLAGS="$CFLAGS1"
+fi
+
+if test $sc_cv_have_prototype_lib_posix_memalign = yes; then
+   $as_echo "#define HAVE_PROTOTYPE_LIB_posix_memalign 1" >>confdefs.h
+
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $sc_cv_have_prototype_lib_posix_memalign" >&5
+$as_echo "$sc_cv_have_prototype_lib_posix_memalign" >&6; }
+
 
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for strdup prototype" >&5
 $as_echo_n "checking for strdup prototype... " >&6; }
@@ -6194,6 +6382,42 @@ fi
 $as_echo "$sc_cv_have_prototype_lib_getipnodebyname" >&6; }
 
 
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for strndup prototype" >&5
+$as_echo_n "checking for strndup prototype... " >&6; }
+if ${sc_cv_have_prototype_lib_strndup+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  CFLAGS1="$CFLAGS"; CFLAGS="$ERRONWARN -Wall $CFLAGS1";
+ cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+#include "sysincludes.h"
+
+int
+main ()
+{
+return(&strndup==(void *)&strndup);
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+  sc_cv_have_prototype_lib_strndup=yes
+else
+  sc_cv_have_prototype_lib_strndup=no
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext;
+ CFLAGS="$CFLAGS1"
+fi
+
+if test $sc_cv_have_prototype_lib_strndup = yes; then
+   $as_echo "#define HAVE_PROTOTYPE_LIB_strndup 1" >>confdefs.h
+
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $sc_cv_have_prototype_lib_strndup" >&5
+$as_echo "$sc_cv_have_prototype_lib_strndup" >&6; }
+
+
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for memrchr prototype" >&5
 $as_echo_n "checking for memrchr prototype... " >&6; }
 if ${sc_cv_have_prototype_lib_memrchr+:} false; then :
@@ -6300,7 +6524,6 @@ if test $sc_cv_have_prototype_lib_ptsname = yes; then
 fi
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: $sc_cv_have_prototype_lib_ptsname" >&5
 $as_echo "$sc_cv_have_prototype_lib_ptsname" >&6; }
-
 
 
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for long long" >&5
@@ -6672,7 +6895,6 @@ $as_echo "$sc_cv_type_uint64" >&6; }
 
 
 ### fds_bits
-
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for fdset->fds_bits" >&5
 $as_echo_n "checking for fdset->fds_bits... " >&6; }
 cat confdefs.h - <<_ACEOF >conftest.$ac_ext
@@ -6692,6 +6914,58 @@ _ACEOF
 if ac_fn_c_try_compile "$LINENO"; then :
   { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }; $as_echo "#define HAVE_FDS_BITS 1" >>confdefs.h
+
+else
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; };
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for struct termios . c_ispeed" >&5
+$as_echo_n "checking for struct termios . c_ispeed... " >&6; }
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+#include <unistd.h>
+#if HAVE_TERMIOS_H
+#include <termios.h>
+#endif
+int
+main ()
+{
+struct termios s; s.c_ispeed=0;
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }; $as_echo "#define HAVE_STRUCT_TERMIOS_C_ISPEED 1" >>confdefs.h
+
+else
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; };
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for struct termios . c_ospeed" >&5
+$as_echo_n "checking for struct termios . c_ospeed... " >&6; }
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+#include <unistd.h>
+#if HAVE_TERMIOS_H
+#include <termios.h>
+#endif
+int
+main ()
+{
+struct termios s; s.c_ospeed=0;
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }; $as_echo "#define HAVE_STRUCT_TERMIOS_C_OSPEED 1" >>confdefs.h
 
 else
   { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
@@ -6799,91 +7073,6 @@ if test $sc_cv_struct_sigaction_sa_sigaction = yes; then
 fi
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: $sc_cv_struct_sigaction_sa_sigaction" >&5
 $as_echo "$sc_cv_struct_sigaction_sa_sigaction" >&6; }
-
-### struct termios .c_ispeed
-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for termios.c_ispeed" >&5
-$as_echo_n "checking for termios.c_ispeed... " >&6; }
-if ${sc_cv_termios_ispeed+:} false; then :
-  $as_echo_n "(cached) " >&6
-else
-  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-#include <termios.h>
-int
-main ()
-{
-struct termios t; t.c_ispeed=0;
-  ;
-  return 0;
-}
-_ACEOF
-if ac_fn_c_try_compile "$LINENO"; then :
-  sc_cv_termios_ispeed=yes
-else
-  sc_cv_termios_ispeed=no
-fi
-rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
-fi
-
-if test $sc_cv_termios_ispeed = yes; then
-   $as_echo "#define HAVE_TERMIOS_ISPEED 1" >>confdefs.h
-
-fi
-{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $sc_cv_termios_ispeed" >&5
-$as_echo "$sc_cv_termios_ispeed" >&6; }
-
-if test $sc_cv_termios_ispeed = yes; then
-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for offset of c_ispeed in struct termios" >&5
-$as_echo_n "checking for offset of c_ispeed in struct termios... " >&6; }
-LIBS1="$LIBS"; LIBS=""	# avoid libwrap allow_severity undefined
-if ${ac_cv_ispeed_offset+:} false; then :
-  $as_echo_n "(cached) " >&6
-else
-  conftestspeedoff="conftestspeedoff.out"
- if test "$cross_compiling" = yes; then :
-  ac_cv_ispeed_offset=-1	#!
-
-else
-  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-
-  #include <errno.h>
-  #include <stdlib.h>
-  #include <stdio.h>
-  #include <termios.h>
-  #include <string.h>
-  int main(){
-    struct termios t;
-    FILE *f;
-    if ((f=fopen("$conftestspeedoff","w"))==NULL){
-       fprintf(stderr,"\\"$conftestspeedoff\\": %s\n",strerror(errno)); exit(-1);
-    }
-    fprintf(f, "%d", ((char*)&t.c_ispeed-(char*)&t)/sizeof(speed_t));
-    exit(0);
- }
-
-_ACEOF
-if ac_fn_c_try_run "$LINENO"; then :
-  ac_cv_ispeed_offset=`cat $conftestspeedoff`
-else
-  ac_cv_ispeed_offset=-1
-fi
-rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
-  conftest.$ac_objext conftest.beam conftest.$ac_ext
-fi
-
-fi
-
-LIBS="$LIBS1"
-{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_ispeed_offset" >&5
-$as_echo "$ac_cv_ispeed_offset" >&6; }
- if test $ac_cv_ispeed_offset -ge 0; then
-   cat >>confdefs.h <<_ACEOF
-#define ISPEED_OFFSET $ac_cv_ispeed_offset
-_ACEOF
-
- fi
-fi
 
 # there is another issue with termios: OSR requires "#define _SVID3 ..."
 # for reasonable termios support. We check this situation using IMAXBEL
@@ -7180,6 +7369,7 @@ if ${sc_cv_struct_ip+:} false; then :
 else
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
+#include <netinet/in.h>
 #include <netinet/ip.h>
 int
 main ()
@@ -7248,6 +7438,7 @@ else
 /* end confdefs.h.  */
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <netinet/in.h>
 #include <netinet/ip.h>
 int
 main ()
@@ -7305,6 +7496,41 @@ if test $sc_cv_struct_ipv6_mreq = yes; then
 fi
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: $sc_cv_struct_ipv6_mreq" >&5
 $as_echo "$sc_cv_struct_ipv6_mreq" >&6; }
+
+# struct ip_mreq_source (for multicasting options)
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for struct ip_mreq_source" >&5
+$as_echo_n "checking for struct ip_mreq_source... " >&6; }
+if ${sc_cv_struct_ip_mreq_source+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <netinet/ip.h>
+int
+main ()
+{
+struct ip_mreq_source s;
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+  sc_cv_struct_ip_mreq_source=yes
+else
+  sc_cv_struct_ip_mreq_source=no
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+fi
+
+if test $sc_cv_struct_ip_mreq_source = yes; then
+   $as_echo "#define HAVE_STRUCT_IP_MREQ_SOURCE 1" >>confdefs.h
+
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $sc_cv_struct_ip_mreqn" >&5
+$as_echo "$sc_cv_struct_ip_mreqn" >&6; }
 
 
 # struct ifreq (for network interfaces)
@@ -8188,6 +8414,195 @@ if test "x$ac_cv_func_unsetenv" = xyes; then :
 fi
 
 
+ac_fn_c_check_func "$LINENO" "TLS_client_method" "ac_cv_func_TLS_client_method"
+if test "x$ac_cv_func_TLS_client_method" = xyes; then :
+  $as_echo "#define HAVE_TLS_client_method 1" >>confdefs.h
+ ac_cv_have_tls_client_method=yes
+else
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for TLS_client_method in -lcrypt" >&5
+$as_echo_n "checking for TLS_client_method in -lcrypt... " >&6; }
+if ${ac_cv_lib_crypt_TLS_client_method+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  ac_check_lib_save_LIBS=$LIBS
+LIBS="-lcrypt  $LIBS"
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+/* Override any GCC internal prototype to avoid an error.
+   Use char because int might match the return type of a GCC
+   builtin and then its argument prototype would still apply.  */
+#ifdef __cplusplus
+extern "C"
+#endif
+char TLS_client_method ();
+int
+main ()
+{
+return TLS_client_method ();
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+  ac_cv_lib_crypt_TLS_client_method=yes
+else
+  ac_cv_lib_crypt_TLS_client_method=no
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+LIBS=$ac_check_lib_save_LIBS
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_crypt_TLS_client_method" >&5
+$as_echo "$ac_cv_lib_crypt_TLS_client_method" >&6; }
+if test "x$ac_cv_lib_crypt_TLS_client_method" = xyes; then :
+  LIBS=-lcrypt $LIBS
+fi
+
+fi
+
+ac_fn_c_check_func "$LINENO" "TLS_server_method" "ac_cv_func_TLS_server_method"
+if test "x$ac_cv_func_TLS_server_method" = xyes; then :
+  $as_echo "#define HAVE_TLS_server_method 1" >>confdefs.h
+ ac_cv_have_tls_server_method=yes
+else
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for TLS_server_method in -lcrypt" >&5
+$as_echo_n "checking for TLS_server_method in -lcrypt... " >&6; }
+if ${ac_cv_lib_crypt_TLS_server_method+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  ac_check_lib_save_LIBS=$LIBS
+LIBS="-lcrypt  $LIBS"
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+/* Override any GCC internal prototype to avoid an error.
+   Use char because int might match the return type of a GCC
+   builtin and then its argument prototype would still apply.  */
+#ifdef __cplusplus
+extern "C"
+#endif
+char TLS_server_method ();
+int
+main ()
+{
+return TLS_server_method ();
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+  ac_cv_lib_crypt_TLS_server_method=yes
+else
+  ac_cv_lib_crypt_TLS_server_method=no
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+LIBS=$ac_check_lib_save_LIBS
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_crypt_TLS_server_method" >&5
+$as_echo "$ac_cv_lib_crypt_TLS_server_method" >&6; }
+if test "x$ac_cv_lib_crypt_TLS_server_method" = xyes; then :
+  LIBS=-lcrypt $LIBS
+fi
+
+fi
+
+ac_fn_c_check_func "$LINENO" "DTLS_client_method" "ac_cv_func_DTLS_client_method"
+if test "x$ac_cv_func_DTLS_client_method" = xyes; then :
+  $as_echo "#define HAVE_DTLS_client_method 1" >>confdefs.h
+
+else
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for DTLS_client_method in -lcrypt" >&5
+$as_echo_n "checking for DTLS_client_method in -lcrypt... " >&6; }
+if ${ac_cv_lib_crypt_DTLS_client_method+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  ac_check_lib_save_LIBS=$LIBS
+LIBS="-lcrypt  $LIBS"
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+/* Override any GCC internal prototype to avoid an error.
+   Use char because int might match the return type of a GCC
+   builtin and then its argument prototype would still apply.  */
+#ifdef __cplusplus
+extern "C"
+#endif
+char DTLS_client_method ();
+int
+main ()
+{
+return DTLS_client_method ();
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+  ac_cv_lib_crypt_DTLS_client_method=yes
+else
+  ac_cv_lib_crypt_DTLS_client_method=no
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+LIBS=$ac_check_lib_save_LIBS
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_crypt_DTLS_client_method" >&5
+$as_echo "$ac_cv_lib_crypt_DTLS_client_method" >&6; }
+if test "x$ac_cv_lib_crypt_DTLS_client_method" = xyes; then :
+  LIBS=-lcrypt $LIBS
+fi
+
+fi
+
+ac_fn_c_check_func "$LINENO" "DTLS_server_method" "ac_cv_func_DTLS_server_method"
+if test "x$ac_cv_func_DTLS_server_method" = xyes; then :
+  $as_echo "#define HAVE_DTLS_server_method 1" >>confdefs.h
+
+else
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for DTLS_server_method in -lcrypt" >&5
+$as_echo_n "checking for DTLS_server_method in -lcrypt... " >&6; }
+if ${ac_cv_lib_crypt_DTLS_server_method+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  ac_check_lib_save_LIBS=$LIBS
+LIBS="-lcrypt  $LIBS"
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+/* Override any GCC internal prototype to avoid an error.
+   Use char because int might match the return type of a GCC
+   builtin and then its argument prototype would still apply.  */
+#ifdef __cplusplus
+extern "C"
+#endif
+char DTLS_server_method ();
+int
+main ()
+{
+return DTLS_server_method ();
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+  ac_cv_lib_crypt_DTLS_server_method=yes
+else
+  ac_cv_lib_crypt_DTLS_server_method=no
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+LIBS=$ac_check_lib_save_LIBS
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_crypt_DTLS_server_method" >&5
+$as_echo "$ac_cv_lib_crypt_DTLS_server_method" >&6; }
+if test "x$ac_cv_lib_crypt_DTLS_server_method" = xyes; then :
+  LIBS=-lcrypt $LIBS
+fi
+
+fi
+
+if test -n "$WITH_OPENSSL_METHOD" -o -z "$ac_cv_have_tls_client_method" -o -z "$ac_cv_have_tls_server_method" ; then
 ac_fn_c_check_func "$LINENO" "SSLv2_client_method" "ac_cv_func_SSLv2_client_method"
 if test "x$ac_cv_func_SSLv2_client_method" = xyes; then :
   $as_echo "#define HAVE_SSLv2_client_method 1" >>confdefs.h
@@ -8281,13 +8696,6 @@ if test "x$ac_cv_lib_crypt_SSLv2_server_method" = xyes; then :
 fi
 
 fi
-
-ac_fn_c_check_func "$LINENO" "SSL_CTX_set_default_verify_paths" "ac_cv_func_SSL_CTX_set_default_verify_paths"
-if test "x$ac_cv_func_SSL_CTX_set_default_verify_paths" = xyes; then :
-  $as_echo "#define HAVE_SSL_CTX_set_default_verify_paths 1" >>confdefs.h
-
-fi
-
 
 ac_fn_c_check_func "$LINENO" "SSLv3_client_method" "ac_cv_func_SSLv3_client_method"
 if test "x$ac_cv_func_SSLv3_client_method" = xyes; then :
@@ -8853,6 +9261,108 @@ fi
 
 fi
 
+ac_fn_c_check_func "$LINENO" "DTLSv1_2_client_method" "ac_cv_func_DTLSv1_2_client_method"
+if test "x$ac_cv_func_DTLSv1_2_client_method" = xyes; then :
+  $as_echo "#define HAVE_DTLSv1_2_client_method 1" >>confdefs.h
+
+else
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for DTLSv1_2_client_method in -lcrypt" >&5
+$as_echo_n "checking for DTLSv1_2_client_method in -lcrypt... " >&6; }
+if ${ac_cv_lib_crypt_DTLSv1_2_client_method+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  ac_check_lib_save_LIBS=$LIBS
+LIBS="-lcrypt  $LIBS"
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+/* Override any GCC internal prototype to avoid an error.
+   Use char because int might match the return type of a GCC
+   builtin and then its argument prototype would still apply.  */
+#ifdef __cplusplus
+extern "C"
+#endif
+char DTLSv1_2_client_method ();
+int
+main ()
+{
+return DTLSv1_2_client_method ();
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+  ac_cv_lib_crypt_DTLSv1_2_client_method=yes
+else
+  ac_cv_lib_crypt_DTLSv1_2_client_method=no
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+LIBS=$ac_check_lib_save_LIBS
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_crypt_DTLSv1_2_client_method" >&5
+$as_echo "$ac_cv_lib_crypt_DTLSv1_2_client_method" >&6; }
+if test "x$ac_cv_lib_crypt_DTLSv1_2_client_method" = xyes; then :
+  LIBS=-lcrypt $LIBS
+fi
+
+fi
+
+ac_fn_c_check_func "$LINENO" "DTLSv1_2_server_method" "ac_cv_func_DTLSv1_2_server_method"
+if test "x$ac_cv_func_DTLSv1_2_server_method" = xyes; then :
+  $as_echo "#define HAVE_DTLSv1_2_server_method 1" >>confdefs.h
+
+else
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for DTLSv1_2_server_method in -lcrypt" >&5
+$as_echo_n "checking for DTLSv1_2_server_method in -lcrypt... " >&6; }
+if ${ac_cv_lib_crypt_DTLSv1_2_server_method+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  ac_check_lib_save_LIBS=$LIBS
+LIBS="-lcrypt  $LIBS"
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+/* Override any GCC internal prototype to avoid an error.
+   Use char because int might match the return type of a GCC
+   builtin and then its argument prototype would still apply.  */
+#ifdef __cplusplus
+extern "C"
+#endif
+char DTLSv1_2_server_method ();
+int
+main ()
+{
+return DTLSv1_2_server_method ();
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+  ac_cv_lib_crypt_DTLSv1_2_server_method=yes
+else
+  ac_cv_lib_crypt_DTLSv1_2_server_method=no
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+LIBS=$ac_check_lib_save_LIBS
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_crypt_DTLSv1_2_server_method" >&5
+$as_echo "$ac_cv_lib_crypt_DTLSv1_2_server_method" >&6; }
+if test "x$ac_cv_lib_crypt_DTLSv1_2_server_method" = xyes; then :
+  LIBS=-lcrypt $LIBS
+fi
+
+fi
+
+fi # $WITH_OPENSSL_METHOD
+
+ac_fn_c_check_func "$LINENO" "SSL_CTX_set_default_verify_paths" "ac_cv_func_SSL_CTX_set_default_verify_paths"
+if test "x$ac_cv_func_SSL_CTX_set_default_verify_paths" = xyes; then :
+  $as_echo "#define HAVE_SSL_CTX_set_default_verify_paths 1" >>confdefs.h
+
+fi
+
 ac_fn_c_check_func "$LINENO" "RAND_egd" "ac_cv_func_RAND_egd"
 if test "x$ac_cv_func_RAND_egd" = xyes; then :
   $as_echo "#define HAVE_RAND_egd 1" >>confdefs.h
@@ -8997,6 +9507,30 @@ fi
 ac_fn_c_check_func "$LINENO" "RAND_status" "ac_cv_func_RAND_status"
 if test "x$ac_cv_func_RAND_status" = xyes; then :
   $as_echo "#define HAVE_RAND_status 1" >>confdefs.h
+
+fi
+
+ac_fn_c_check_func "$LINENO" "SSL_CTX_clear_mode" "ac_cv_func_SSL_CTX_clear_mode"
+if test "x$ac_cv_func_SSL_CTX_clear_mode" = xyes; then :
+  $as_echo "#define HAVE_SSL_CTX_clear_mode 1" >>confdefs.h
+
+fi
+
+ac_fn_c_check_func "$LINENO" "SSL_set_tlsext_host_name" "ac_cv_func_SSL_set_tlsext_host_name"
+if test "x$ac_cv_func_SSL_set_tlsext_host_name" = xyes; then :
+  $as_echo "#define HAVE_SSL_set_tlsext_host_name 1" >>confdefs.h
+
+fi
+
+ac_fn_c_check_func "$LINENO" "SSL_library_init" "ac_cv_func_SSL_library_init"
+if test "x$ac_cv_func_SSL_library_init" = xyes; then :
+  $as_echo "#define HAVE_SSL_library_init 1" >>confdefs.h
+
+fi
+
+ac_fn_c_check_func "$LINENO" "ERR_error_string" "ac_cv_func_ERR_error_string"
+if test "x$ac_cv_func_ERR_error_string" = xyes; then :
+  $as_echo "#define HAVE_ERR_error_string 1" >>confdefs.h
 
 fi
 
@@ -9383,6 +9917,2034 @@ fi
 
 
 
+
+
+   if test "$CHANCE_TO_TYPECHECK" -ne 0; then
+
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for equivalent simple type of uint16_t" >&5
+$as_echo_n "checking for equivalent simple type of uint16_t... " >&6; }
+if ${sc_cv_type_uint16_basic+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  CFLAGS1="$CFLAGS"; CFLAGS="$ERRONWARN $(echo "$CFLAGS1" | sed -e 's@-Wall@@g')"
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+#include <stdint.h>
+int
+main ()
+{
+uint16_t u; short v; return(&u==&v);
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+  sc_cv_type_uint16_basic="1 /* short */"
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+#include <stdint.h>
+int
+main ()
+{
+uint16_t u; unsigned short v; return(&u==&v);
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+  sc_cv_type_uint16_basic="2 /* unsigned short */"
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+#include <stdint.h>
+int
+main ()
+{
+uint16_t u; int v; return(&u==&v);
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+  sc_cv_type_uint16_basic="3 /* int */"
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+#include <stdint.h>
+int
+main ()
+{
+uint16_t u; unsigned int v; return(&u==&v);
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+  sc_cv_type_uint16_basic="4 /* unsigned int */"
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+#include <stdint.h>
+int
+main ()
+{
+uint16_t u; long v; return(&u==&v);
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+  sc_cv_type_uint16_basic="5 /* long */"
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+#include <stdint.h>
+int
+main ()
+{
+uint16_t u; unsigned long v; return(&u==&v);
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+  sc_cv_type_uint16_basic="6 /* unsigned long */"
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+#include <stdint.h>
+int
+main ()
+{
+uint16_t u; long long v; return(&u==&v);
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+  sc_cv_type_uint16_basic="7 /* long long */"
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+#include <stdint.h>
+int
+main ()
+{
+uint16_t u; unsigned long long v; return(&u==&v);
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+  sc_cv_type_uint16_basic="8 /* unsigned long long */"
+else
+  sc_cv_type_uint16_basic="0 /* unknown, taking default */"
+
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+ CFLAGS="$CFLAGS1"
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $sc_cv_type_uint16_basic" >&5
+$as_echo "$sc_cv_type_uint16_basic" >&6; }
+cat >>confdefs.h <<_ACEOF
+#define HAVE_BASIC_UINT16_T ${sc_cv_type_uint16_basic}
+_ACEOF
+
+
+   else
+
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for equivalent simple type of uint16_t" >&5
+$as_echo_n "checking for equivalent simple type of uint16_t... " >&6; }
+if ${sc_cv_type_uint16_basic+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  if test "$cross_compiling" = yes; then :
+  { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
+$as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
+as_fn_error $? "cannot run test program while cross compiling
+See \`config.log' for more details" "$LINENO" 5; }
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+#include <stdint.h>
+int main() { return!(sizeof(uint16_t)==sizeof(short));}
+_ACEOF
+if ac_fn_c_try_run "$LINENO"; then :
+  # same length as short
+ if test "$cross_compiling" = yes; then :
+  { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
+$as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
+as_fn_error $? "cannot run test program while cross compiling
+See \`config.log' for more details" "$LINENO" 5; }
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+#include <stdint.h>
+int main() { uint16_t x=-1; return !(x<0);}
+_ACEOF
+if ac_fn_c_try_run "$LINENO"; then :
+  sc_cv_type_uint16_basic="1 /* short */"
+else
+  sc_cv_type_uint16_basic="2 /* unsigned short */"
+fi
+rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
+  conftest.$ac_objext conftest.beam conftest.$ac_ext
+fi
+
+else
+  # length differs from short, try others
+ if test "$cross_compiling" = yes; then :
+  { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
+$as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
+as_fn_error $? "cannot run test program while cross compiling
+See \`config.log' for more details" "$LINENO" 5; }
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+#include <stdint.h>
+int main() { return!(sizeof(uint16_t)==sizeof(int));}
+_ACEOF
+if ac_fn_c_try_run "$LINENO"; then :
+  # same length as int
+  if test "$cross_compiling" = yes; then :
+  { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
+$as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
+as_fn_error $? "cannot run test program while cross compiling
+See \`config.log' for more details" "$LINENO" 5; }
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+#include <stdint.h>
+int main() { uint16_t x=-1; return !(x<0);}
+_ACEOF
+if ac_fn_c_try_run "$LINENO"; then :
+  sc_cv_type_uint16_basic="3 /* int */"
+else
+  sc_cv_type_uint16_basic="4 /* unsigned int */"
+fi
+rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
+  conftest.$ac_objext conftest.beam conftest.$ac_ext
+fi
+
+else
+  # length differs from int, try others
+  if test "$cross_compiling" = yes; then :
+  { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
+$as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
+as_fn_error $? "cannot run test program while cross compiling
+See \`config.log' for more details" "$LINENO" 5; }
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+#include <stdint.h>
+int main() { return !(sizeof(uint16_t)==sizeof(long));}
+_ACEOF
+if ac_fn_c_try_run "$LINENO"; then :
+  # same length as long
+   if test "$cross_compiling" = yes; then :
+  { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
+$as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
+as_fn_error $? "cannot run test program while cross compiling
+See \`config.log' for more details" "$LINENO" 5; }
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+#include <stdint.h>
+int main() { uint16_t x=-1; return !(x<0);}
+_ACEOF
+if ac_fn_c_try_run "$LINENO"; then :
+  sc_cv_type_uint16_basic="5 /* long */"
+else
+  sc_cv_type_uint16_basic="6 /* unsigned long */"
+fi
+rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
+  conftest.$ac_objext conftest.beam conftest.$ac_ext
+fi
+
+else
+  # length differs from long, try others
+   if test "$cross_compiling" = yes; then :
+  { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
+$as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
+as_fn_error $? "cannot run test program while cross compiling
+See \`config.log' for more details" "$LINENO" 5; }
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+#include <stdint.h>
+int main() { return !(sizeof(uint16_t)==sizeof(long long));}
+_ACEOF
+if ac_fn_c_try_run "$LINENO"; then :
+  # same length as long long
+     if test "$cross_compiling" = yes; then :
+  { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
+$as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
+as_fn_error $? "cannot run test program while cross compiling
+See \`config.log' for more details" "$LINENO" 5; }
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+#include <stdint.h>
+int main() { uint16_t x=-1; return !(x<0);}
+_ACEOF
+if ac_fn_c_try_run "$LINENO"; then :
+  sc_cv_type_uint16_basic="7 /* long long */"
+else
+  sc_cv_type_uint16_basic="8 /* unsigned long long */"
+fi
+rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
+  conftest.$ac_objext conftest.beam conftest.$ac_ext
+fi
+
+else
+  sc_cv_type_uint16_basic="0 /* unknown */"
+
+fi
+rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
+  conftest.$ac_objext conftest.beam conftest.$ac_ext
+fi
+
+
+fi
+rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
+  conftest.$ac_objext conftest.beam conftest.$ac_ext
+fi
+
+
+fi
+rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
+  conftest.$ac_objext conftest.beam conftest.$ac_ext
+fi
+
+
+fi
+rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
+  conftest.$ac_objext conftest.beam conftest.$ac_ext
+fi
+
+
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $sc_cv_type_uint16_basic" >&5
+$as_echo "$sc_cv_type_uint16_basic" >&6; }
+cat >>confdefs.h <<_ACEOF
+#define HAVE_BASIC_UINT16_T ${sc_cv_type_uint16_basic}
+_ACEOF
+
+
+   fi
+
+
+   if test "$CHANCE_TO_TYPECHECK" -ne 0; then
+
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for equivalent simple type of uint32_t" >&5
+$as_echo_n "checking for equivalent simple type of uint32_t... " >&6; }
+if ${sc_cv_type_uint32_basic+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  CFLAGS1="$CFLAGS"; CFLAGS="$ERRONWARN $(echo "$CFLAGS1" | sed -e 's@-Wall@@g')"
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+#include <stdint.h>
+int
+main ()
+{
+uint32_t u; short v; return(&u==&v);
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+  sc_cv_type_uint32_basic="1 /* short */"
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+#include <stdint.h>
+int
+main ()
+{
+uint32_t u; unsigned short v; return(&u==&v);
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+  sc_cv_type_uint32_basic="2 /* unsigned short */"
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+#include <stdint.h>
+int
+main ()
+{
+uint32_t u; int v; return(&u==&v);
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+  sc_cv_type_uint32_basic="3 /* int */"
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+#include <stdint.h>
+int
+main ()
+{
+uint32_t u; unsigned int v; return(&u==&v);
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+  sc_cv_type_uint32_basic="4 /* unsigned int */"
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+#include <stdint.h>
+int
+main ()
+{
+uint32_t u; long v; return(&u==&v);
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+  sc_cv_type_uint32_basic="5 /* long */"
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+#include <stdint.h>
+int
+main ()
+{
+uint32_t u; unsigned long v; return(&u==&v);
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+  sc_cv_type_uint32_basic="6 /* unsigned long */"
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+#include <stdint.h>
+int
+main ()
+{
+uint32_t u; long long v; return(&u==&v);
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+  sc_cv_type_uint32_basic="7 /* long long */"
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+#include <stdint.h>
+int
+main ()
+{
+uint32_t u; unsigned long long v; return(&u==&v);
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+  sc_cv_type_uint32_basic="8 /* unsigned long long */"
+else
+  sc_cv_type_uint32_basic="0 /* unknown, taking default */"
+
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+ CFLAGS="$CFLAGS1"
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $sc_cv_type_uint32_basic" >&5
+$as_echo "$sc_cv_type_uint32_basic" >&6; }
+cat >>confdefs.h <<_ACEOF
+#define HAVE_BASIC_UINT32_T ${sc_cv_type_uint32_basic}
+_ACEOF
+
+
+   else
+
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for equivalent simple type of uint32_t" >&5
+$as_echo_n "checking for equivalent simple type of uint32_t... " >&6; }
+if ${sc_cv_type_uint32_basic+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  if test "$cross_compiling" = yes; then :
+  { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
+$as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
+as_fn_error $? "cannot run test program while cross compiling
+See \`config.log' for more details" "$LINENO" 5; }
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+#include <stdint.h>
+int main() { return!(sizeof(uint32_t)==sizeof(short));}
+_ACEOF
+if ac_fn_c_try_run "$LINENO"; then :
+  # same length as short
+ if test "$cross_compiling" = yes; then :
+  { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
+$as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
+as_fn_error $? "cannot run test program while cross compiling
+See \`config.log' for more details" "$LINENO" 5; }
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+#include <stdint.h>
+int main() { uint32_t x=-1; return !(x<0);}
+_ACEOF
+if ac_fn_c_try_run "$LINENO"; then :
+  sc_cv_type_uint32_basic="1 /* short */"
+else
+  sc_cv_type_uint32_basic="2 /* unsigned short */"
+fi
+rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
+  conftest.$ac_objext conftest.beam conftest.$ac_ext
+fi
+
+else
+  # length differs from short, try others
+ if test "$cross_compiling" = yes; then :
+  { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
+$as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
+as_fn_error $? "cannot run test program while cross compiling
+See \`config.log' for more details" "$LINENO" 5; }
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+#include <stdint.h>
+int main() { return!(sizeof(uint32_t)==sizeof(int));}
+_ACEOF
+if ac_fn_c_try_run "$LINENO"; then :
+  # same length as int
+  if test "$cross_compiling" = yes; then :
+  { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
+$as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
+as_fn_error $? "cannot run test program while cross compiling
+See \`config.log' for more details" "$LINENO" 5; }
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+#include <stdint.h>
+int main() { uint32_t x=-1; return !(x<0);}
+_ACEOF
+if ac_fn_c_try_run "$LINENO"; then :
+  sc_cv_type_uint32_basic="3 /* int */"
+else
+  sc_cv_type_uint32_basic="4 /* unsigned int */"
+fi
+rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
+  conftest.$ac_objext conftest.beam conftest.$ac_ext
+fi
+
+else
+  # length differs from int, try others
+  if test "$cross_compiling" = yes; then :
+  { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
+$as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
+as_fn_error $? "cannot run test program while cross compiling
+See \`config.log' for more details" "$LINENO" 5; }
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+#include <stdint.h>
+int main() { return !(sizeof(uint32_t)==sizeof(long));}
+_ACEOF
+if ac_fn_c_try_run "$LINENO"; then :
+  # same length as long
+   if test "$cross_compiling" = yes; then :
+  { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
+$as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
+as_fn_error $? "cannot run test program while cross compiling
+See \`config.log' for more details" "$LINENO" 5; }
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+#include <stdint.h>
+int main() { uint32_t x=-1; return !(x<0);}
+_ACEOF
+if ac_fn_c_try_run "$LINENO"; then :
+  sc_cv_type_uint32_basic="5 /* long */"
+else
+  sc_cv_type_uint32_basic="6 /* unsigned long */"
+fi
+rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
+  conftest.$ac_objext conftest.beam conftest.$ac_ext
+fi
+
+else
+  # length differs from long, try others
+   if test "$cross_compiling" = yes; then :
+  { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
+$as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
+as_fn_error $? "cannot run test program while cross compiling
+See \`config.log' for more details" "$LINENO" 5; }
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+#include <stdint.h>
+int main() { return !(sizeof(uint32_t)==sizeof(long long));}
+_ACEOF
+if ac_fn_c_try_run "$LINENO"; then :
+  # same length as long long
+     if test "$cross_compiling" = yes; then :
+  { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
+$as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
+as_fn_error $? "cannot run test program while cross compiling
+See \`config.log' for more details" "$LINENO" 5; }
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+#include <stdint.h>
+int main() { uint32_t x=-1; return !(x<0);}
+_ACEOF
+if ac_fn_c_try_run "$LINENO"; then :
+  sc_cv_type_uint32_basic="7 /* long long */"
+else
+  sc_cv_type_uint32_basic="8 /* unsigned long long */"
+fi
+rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
+  conftest.$ac_objext conftest.beam conftest.$ac_ext
+fi
+
+else
+  sc_cv_type_uint32_basic="0 /* unknown */"
+
+fi
+rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
+  conftest.$ac_objext conftest.beam conftest.$ac_ext
+fi
+
+
+fi
+rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
+  conftest.$ac_objext conftest.beam conftest.$ac_ext
+fi
+
+
+fi
+rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
+  conftest.$ac_objext conftest.beam conftest.$ac_ext
+fi
+
+
+fi
+rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
+  conftest.$ac_objext conftest.beam conftest.$ac_ext
+fi
+
+
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $sc_cv_type_uint32_basic" >&5
+$as_echo "$sc_cv_type_uint32_basic" >&6; }
+cat >>confdefs.h <<_ACEOF
+#define HAVE_BASIC_UINT32_T ${sc_cv_type_uint32_basic}
+_ACEOF
+
+
+   fi
+
+
+   if test "$CHANCE_TO_TYPECHECK" -ne 0; then
+
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for equivalent simple type of uint64_t" >&5
+$as_echo_n "checking for equivalent simple type of uint64_t... " >&6; }
+if ${sc_cv_type_uint64_basic+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  CFLAGS1="$CFLAGS"; CFLAGS="$ERRONWARN $(echo "$CFLAGS1" | sed -e 's@-Wall@@g')"
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+#include <stdint.h>
+int
+main ()
+{
+uint64_t u; short v; return(&u==&v);
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+  sc_cv_type_uint64_basic="1 /* short */"
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+#include <stdint.h>
+int
+main ()
+{
+uint64_t u; unsigned short v; return(&u==&v);
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+  sc_cv_type_uint64_basic="2 /* unsigned short */"
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+#include <stdint.h>
+int
+main ()
+{
+uint64_t u; int v; return(&u==&v);
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+  sc_cv_type_uint64_basic="3 /* int */"
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+#include <stdint.h>
+int
+main ()
+{
+uint64_t u; unsigned int v; return(&u==&v);
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+  sc_cv_type_uint64_basic="4 /* unsigned int */"
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+#include <stdint.h>
+int
+main ()
+{
+uint64_t u; long v; return(&u==&v);
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+  sc_cv_type_uint64_basic="5 /* long */"
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+#include <stdint.h>
+int
+main ()
+{
+uint64_t u; unsigned long v; return(&u==&v);
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+  sc_cv_type_uint64_basic="6 /* unsigned long */"
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+#include <stdint.h>
+int
+main ()
+{
+uint64_t u; long long v; return(&u==&v);
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+  sc_cv_type_uint64_basic="7 /* long long */"
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+#include <stdint.h>
+int
+main ()
+{
+uint64_t u; unsigned long long v; return(&u==&v);
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+  sc_cv_type_uint64_basic="8 /* unsigned long long */"
+else
+  sc_cv_type_uint64_basic="0 /* unknown, taking default */"
+
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+ CFLAGS="$CFLAGS1"
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $sc_cv_type_uint64_basic" >&5
+$as_echo "$sc_cv_type_uint64_basic" >&6; }
+cat >>confdefs.h <<_ACEOF
+#define HAVE_BASIC_UINT64_T ${sc_cv_type_uint64_basic}
+_ACEOF
+
+
+   else
+
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for equivalent simple type of uint64_t" >&5
+$as_echo_n "checking for equivalent simple type of uint64_t... " >&6; }
+if ${sc_cv_type_uint64_basic+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  if test "$cross_compiling" = yes; then :
+  { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
+$as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
+as_fn_error $? "cannot run test program while cross compiling
+See \`config.log' for more details" "$LINENO" 5; }
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+#include <stdint.h>
+int main() { return!(sizeof(uint64_t)==sizeof(short));}
+_ACEOF
+if ac_fn_c_try_run "$LINENO"; then :
+  # same length as short
+ if test "$cross_compiling" = yes; then :
+  { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
+$as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
+as_fn_error $? "cannot run test program while cross compiling
+See \`config.log' for more details" "$LINENO" 5; }
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+#include <stdint.h>
+int main() { uint64_t x=-1; return !(x<0);}
+_ACEOF
+if ac_fn_c_try_run "$LINENO"; then :
+  sc_cv_type_uint64_basic="1 /* short */"
+else
+  sc_cv_type_uint64_basic="2 /* unsigned short */"
+fi
+rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
+  conftest.$ac_objext conftest.beam conftest.$ac_ext
+fi
+
+else
+  # length differs from short, try others
+ if test "$cross_compiling" = yes; then :
+  { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
+$as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
+as_fn_error $? "cannot run test program while cross compiling
+See \`config.log' for more details" "$LINENO" 5; }
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+#include <stdint.h>
+int main() { return!(sizeof(uint64_t)==sizeof(int));}
+_ACEOF
+if ac_fn_c_try_run "$LINENO"; then :
+  # same length as int
+  if test "$cross_compiling" = yes; then :
+  { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
+$as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
+as_fn_error $? "cannot run test program while cross compiling
+See \`config.log' for more details" "$LINENO" 5; }
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+#include <stdint.h>
+int main() { uint64_t x=-1; return !(x<0);}
+_ACEOF
+if ac_fn_c_try_run "$LINENO"; then :
+  sc_cv_type_uint64_basic="3 /* int */"
+else
+  sc_cv_type_uint64_basic="4 /* unsigned int */"
+fi
+rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
+  conftest.$ac_objext conftest.beam conftest.$ac_ext
+fi
+
+else
+  # length differs from int, try others
+  if test "$cross_compiling" = yes; then :
+  { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
+$as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
+as_fn_error $? "cannot run test program while cross compiling
+See \`config.log' for more details" "$LINENO" 5; }
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+#include <stdint.h>
+int main() { return !(sizeof(uint64_t)==sizeof(long));}
+_ACEOF
+if ac_fn_c_try_run "$LINENO"; then :
+  # same length as long
+   if test "$cross_compiling" = yes; then :
+  { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
+$as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
+as_fn_error $? "cannot run test program while cross compiling
+See \`config.log' for more details" "$LINENO" 5; }
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+#include <stdint.h>
+int main() { uint64_t x=-1; return !(x<0);}
+_ACEOF
+if ac_fn_c_try_run "$LINENO"; then :
+  sc_cv_type_uint64_basic="5 /* long */"
+else
+  sc_cv_type_uint64_basic="6 /* unsigned long */"
+fi
+rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
+  conftest.$ac_objext conftest.beam conftest.$ac_ext
+fi
+
+else
+  # length differs from long, try others
+   if test "$cross_compiling" = yes; then :
+  { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
+$as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
+as_fn_error $? "cannot run test program while cross compiling
+See \`config.log' for more details" "$LINENO" 5; }
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+#include <stdint.h>
+int main() { return !(sizeof(uint64_t)==sizeof(long long));}
+_ACEOF
+if ac_fn_c_try_run "$LINENO"; then :
+  # same length as long long
+     if test "$cross_compiling" = yes; then :
+  { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
+$as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
+as_fn_error $? "cannot run test program while cross compiling
+See \`config.log' for more details" "$LINENO" 5; }
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+#include <stdint.h>
+int main() { uint64_t x=-1; return !(x<0);}
+_ACEOF
+if ac_fn_c_try_run "$LINENO"; then :
+  sc_cv_type_uint64_basic="7 /* long long */"
+else
+  sc_cv_type_uint64_basic="8 /* unsigned long long */"
+fi
+rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
+  conftest.$ac_objext conftest.beam conftest.$ac_ext
+fi
+
+else
+  sc_cv_type_uint64_basic="0 /* unknown */"
+
+fi
+rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
+  conftest.$ac_objext conftest.beam conftest.$ac_ext
+fi
+
+
+fi
+rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
+  conftest.$ac_objext conftest.beam conftest.$ac_ext
+fi
+
+
+fi
+rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
+  conftest.$ac_objext conftest.beam conftest.$ac_ext
+fi
+
+
+fi
+rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
+  conftest.$ac_objext conftest.beam conftest.$ac_ext
+fi
+
+
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $sc_cv_type_uint64_basic" >&5
+$as_echo "$sc_cv_type_uint64_basic" >&6; }
+cat >>confdefs.h <<_ACEOF
+#define HAVE_BASIC_UINT64_T ${sc_cv_type_uint64_basic}
+_ACEOF
+
+
+   fi
+
+
+   if test "$CHANCE_TO_TYPECHECK" -ne 0; then
+
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for equivalent simple type of int16_t" >&5
+$as_echo_n "checking for equivalent simple type of int16_t... " >&6; }
+if ${sc_cv_type_int16_basic+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  CFLAGS1="$CFLAGS"; CFLAGS="$ERRONWARN $(echo "$CFLAGS1" | sed -e 's@-Wall@@g')"
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+#include <stdint.h>
+int
+main ()
+{
+int16_t u; short v; return(&u==&v);
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+  sc_cv_type_int16_basic="1 /* short */"
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+#include <stdint.h>
+int
+main ()
+{
+int16_t u; unsigned short v; return(&u==&v);
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+  sc_cv_type_int16_basic="2 /* unsigned short */"
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+#include <stdint.h>
+int
+main ()
+{
+int16_t u; int v; return(&u==&v);
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+  sc_cv_type_int16_basic="3 /* int */"
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+#include <stdint.h>
+int
+main ()
+{
+int16_t u; unsigned int v; return(&u==&v);
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+  sc_cv_type_int16_basic="4 /* unsigned int */"
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+#include <stdint.h>
+int
+main ()
+{
+int16_t u; long v; return(&u==&v);
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+  sc_cv_type_int16_basic="5 /* long */"
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+#include <stdint.h>
+int
+main ()
+{
+int16_t u; unsigned long v; return(&u==&v);
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+  sc_cv_type_int16_basic="6 /* unsigned long */"
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+#include <stdint.h>
+int
+main ()
+{
+int16_t u; long long v; return(&u==&v);
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+  sc_cv_type_int16_basic="7 /* long long */"
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+#include <stdint.h>
+int
+main ()
+{
+int16_t u; unsigned long long v; return(&u==&v);
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+  sc_cv_type_int16_basic="8 /* unsigned long long */"
+else
+  sc_cv_type_int16_basic="0 /* unknown, taking default */"
+
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+ CFLAGS="$CFLAGS1"
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $sc_cv_type_int16_basic" >&5
+$as_echo "$sc_cv_type_int16_basic" >&6; }
+cat >>confdefs.h <<_ACEOF
+#define HAVE_BASIC_INT16_T ${sc_cv_type_int16_basic}
+_ACEOF
+
+
+   else
+
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for equivalent simple type of int16_t" >&5
+$as_echo_n "checking for equivalent simple type of int16_t... " >&6; }
+if ${sc_cv_type_int16_basic+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  if test "$cross_compiling" = yes; then :
+  { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
+$as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
+as_fn_error $? "cannot run test program while cross compiling
+See \`config.log' for more details" "$LINENO" 5; }
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+#include <stdint.h>
+int main() { return!(sizeof(int16_t)==sizeof(short));}
+_ACEOF
+if ac_fn_c_try_run "$LINENO"; then :
+  # same length as short
+ if test "$cross_compiling" = yes; then :
+  { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
+$as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
+as_fn_error $? "cannot run test program while cross compiling
+See \`config.log' for more details" "$LINENO" 5; }
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+#include <stdint.h>
+int main() { int16_t x=-1; return !(x<0);}
+_ACEOF
+if ac_fn_c_try_run "$LINENO"; then :
+  sc_cv_type_int16_basic="1 /* short */"
+else
+  sc_cv_type_int16_basic="2 /* unsigned short */"
+fi
+rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
+  conftest.$ac_objext conftest.beam conftest.$ac_ext
+fi
+
+else
+  # length differs from short, try others
+ if test "$cross_compiling" = yes; then :
+  { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
+$as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
+as_fn_error $? "cannot run test program while cross compiling
+See \`config.log' for more details" "$LINENO" 5; }
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+#include <stdint.h>
+int main() { return!(sizeof(int16_t)==sizeof(int));}
+_ACEOF
+if ac_fn_c_try_run "$LINENO"; then :
+  # same length as int
+  if test "$cross_compiling" = yes; then :
+  { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
+$as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
+as_fn_error $? "cannot run test program while cross compiling
+See \`config.log' for more details" "$LINENO" 5; }
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+#include <stdint.h>
+int main() { int16_t x=-1; return !(x<0);}
+_ACEOF
+if ac_fn_c_try_run "$LINENO"; then :
+  sc_cv_type_int16_basic="3 /* int */"
+else
+  sc_cv_type_int16_basic="4 /* unsigned int */"
+fi
+rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
+  conftest.$ac_objext conftest.beam conftest.$ac_ext
+fi
+
+else
+  # length differs from int, try others
+  if test "$cross_compiling" = yes; then :
+  { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
+$as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
+as_fn_error $? "cannot run test program while cross compiling
+See \`config.log' for more details" "$LINENO" 5; }
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+#include <stdint.h>
+int main() { return !(sizeof(int16_t)==sizeof(long));}
+_ACEOF
+if ac_fn_c_try_run "$LINENO"; then :
+  # same length as long
+   if test "$cross_compiling" = yes; then :
+  { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
+$as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
+as_fn_error $? "cannot run test program while cross compiling
+See \`config.log' for more details" "$LINENO" 5; }
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+#include <stdint.h>
+int main() { int16_t x=-1; return !(x<0);}
+_ACEOF
+if ac_fn_c_try_run "$LINENO"; then :
+  sc_cv_type_int16_basic="5 /* long */"
+else
+  sc_cv_type_int16_basic="6 /* unsigned long */"
+fi
+rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
+  conftest.$ac_objext conftest.beam conftest.$ac_ext
+fi
+
+else
+  # length differs from long, try others
+   if test "$cross_compiling" = yes; then :
+  { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
+$as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
+as_fn_error $? "cannot run test program while cross compiling
+See \`config.log' for more details" "$LINENO" 5; }
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+#include <stdint.h>
+int main() { return !(sizeof(int16_t)==sizeof(long long));}
+_ACEOF
+if ac_fn_c_try_run "$LINENO"; then :
+  # same length as long long
+     if test "$cross_compiling" = yes; then :
+  { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
+$as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
+as_fn_error $? "cannot run test program while cross compiling
+See \`config.log' for more details" "$LINENO" 5; }
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+#include <stdint.h>
+int main() { int16_t x=-1; return !(x<0);}
+_ACEOF
+if ac_fn_c_try_run "$LINENO"; then :
+  sc_cv_type_int16_basic="7 /* long long */"
+else
+  sc_cv_type_int16_basic="8 /* unsigned long long */"
+fi
+rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
+  conftest.$ac_objext conftest.beam conftest.$ac_ext
+fi
+
+else
+  sc_cv_type_int16_basic="0 /* unknown */"
+
+fi
+rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
+  conftest.$ac_objext conftest.beam conftest.$ac_ext
+fi
+
+
+fi
+rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
+  conftest.$ac_objext conftest.beam conftest.$ac_ext
+fi
+
+
+fi
+rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
+  conftest.$ac_objext conftest.beam conftest.$ac_ext
+fi
+
+
+fi
+rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
+  conftest.$ac_objext conftest.beam conftest.$ac_ext
+fi
+
+
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $sc_cv_type_int16_basic" >&5
+$as_echo "$sc_cv_type_int16_basic" >&6; }
+cat >>confdefs.h <<_ACEOF
+#define HAVE_BASIC_INT16_T ${sc_cv_type_int16_basic}
+_ACEOF
+
+
+   fi
+
+
+   if test "$CHANCE_TO_TYPECHECK" -ne 0; then
+
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for equivalent simple type of int32_t" >&5
+$as_echo_n "checking for equivalent simple type of int32_t... " >&6; }
+if ${sc_cv_type_int32_basic+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  CFLAGS1="$CFLAGS"; CFLAGS="$ERRONWARN $(echo "$CFLAGS1" | sed -e 's@-Wall@@g')"
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+#include <stdint.h>
+int
+main ()
+{
+int32_t u; short v; return(&u==&v);
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+  sc_cv_type_int32_basic="1 /* short */"
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+#include <stdint.h>
+int
+main ()
+{
+int32_t u; unsigned short v; return(&u==&v);
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+  sc_cv_type_int32_basic="2 /* unsigned short */"
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+#include <stdint.h>
+int
+main ()
+{
+int32_t u; int v; return(&u==&v);
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+  sc_cv_type_int32_basic="3 /* int */"
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+#include <stdint.h>
+int
+main ()
+{
+int32_t u; unsigned int v; return(&u==&v);
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+  sc_cv_type_int32_basic="4 /* unsigned int */"
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+#include <stdint.h>
+int
+main ()
+{
+int32_t u; long v; return(&u==&v);
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+  sc_cv_type_int32_basic="5 /* long */"
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+#include <stdint.h>
+int
+main ()
+{
+int32_t u; unsigned long v; return(&u==&v);
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+  sc_cv_type_int32_basic="6 /* unsigned long */"
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+#include <stdint.h>
+int
+main ()
+{
+int32_t u; long long v; return(&u==&v);
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+  sc_cv_type_int32_basic="7 /* long long */"
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+#include <stdint.h>
+int
+main ()
+{
+int32_t u; unsigned long long v; return(&u==&v);
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+  sc_cv_type_int32_basic="8 /* unsigned long long */"
+else
+  sc_cv_type_int32_basic="0 /* unknown, taking default */"
+
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+ CFLAGS="$CFLAGS1"
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $sc_cv_type_int32_basic" >&5
+$as_echo "$sc_cv_type_int32_basic" >&6; }
+cat >>confdefs.h <<_ACEOF
+#define HAVE_BASIC_INT32_T ${sc_cv_type_int32_basic}
+_ACEOF
+
+
+   else
+
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for equivalent simple type of int32_t" >&5
+$as_echo_n "checking for equivalent simple type of int32_t... " >&6; }
+if ${sc_cv_type_int32_basic+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  if test "$cross_compiling" = yes; then :
+  { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
+$as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
+as_fn_error $? "cannot run test program while cross compiling
+See \`config.log' for more details" "$LINENO" 5; }
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+#include <stdint.h>
+int main() { return!(sizeof(int32_t)==sizeof(short));}
+_ACEOF
+if ac_fn_c_try_run "$LINENO"; then :
+  # same length as short
+ if test "$cross_compiling" = yes; then :
+  { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
+$as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
+as_fn_error $? "cannot run test program while cross compiling
+See \`config.log' for more details" "$LINENO" 5; }
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+#include <stdint.h>
+int main() { int32_t x=-1; return !(x<0);}
+_ACEOF
+if ac_fn_c_try_run "$LINENO"; then :
+  sc_cv_type_int32_basic="1 /* short */"
+else
+  sc_cv_type_int32_basic="2 /* unsigned short */"
+fi
+rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
+  conftest.$ac_objext conftest.beam conftest.$ac_ext
+fi
+
+else
+  # length differs from short, try others
+ if test "$cross_compiling" = yes; then :
+  { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
+$as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
+as_fn_error $? "cannot run test program while cross compiling
+See \`config.log' for more details" "$LINENO" 5; }
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+#include <stdint.h>
+int main() { return!(sizeof(int32_t)==sizeof(int));}
+_ACEOF
+if ac_fn_c_try_run "$LINENO"; then :
+  # same length as int
+  if test "$cross_compiling" = yes; then :
+  { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
+$as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
+as_fn_error $? "cannot run test program while cross compiling
+See \`config.log' for more details" "$LINENO" 5; }
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+#include <stdint.h>
+int main() { int32_t x=-1; return !(x<0);}
+_ACEOF
+if ac_fn_c_try_run "$LINENO"; then :
+  sc_cv_type_int32_basic="3 /* int */"
+else
+  sc_cv_type_int32_basic="4 /* unsigned int */"
+fi
+rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
+  conftest.$ac_objext conftest.beam conftest.$ac_ext
+fi
+
+else
+  # length differs from int, try others
+  if test "$cross_compiling" = yes; then :
+  { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
+$as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
+as_fn_error $? "cannot run test program while cross compiling
+See \`config.log' for more details" "$LINENO" 5; }
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+#include <stdint.h>
+int main() { return !(sizeof(int32_t)==sizeof(long));}
+_ACEOF
+if ac_fn_c_try_run "$LINENO"; then :
+  # same length as long
+   if test "$cross_compiling" = yes; then :
+  { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
+$as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
+as_fn_error $? "cannot run test program while cross compiling
+See \`config.log' for more details" "$LINENO" 5; }
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+#include <stdint.h>
+int main() { int32_t x=-1; return !(x<0);}
+_ACEOF
+if ac_fn_c_try_run "$LINENO"; then :
+  sc_cv_type_int32_basic="5 /* long */"
+else
+  sc_cv_type_int32_basic="6 /* unsigned long */"
+fi
+rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
+  conftest.$ac_objext conftest.beam conftest.$ac_ext
+fi
+
+else
+  # length differs from long, try others
+   if test "$cross_compiling" = yes; then :
+  { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
+$as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
+as_fn_error $? "cannot run test program while cross compiling
+See \`config.log' for more details" "$LINENO" 5; }
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+#include <stdint.h>
+int main() { return !(sizeof(int32_t)==sizeof(long long));}
+_ACEOF
+if ac_fn_c_try_run "$LINENO"; then :
+  # same length as long long
+     if test "$cross_compiling" = yes; then :
+  { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
+$as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
+as_fn_error $? "cannot run test program while cross compiling
+See \`config.log' for more details" "$LINENO" 5; }
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+#include <stdint.h>
+int main() { int32_t x=-1; return !(x<0);}
+_ACEOF
+if ac_fn_c_try_run "$LINENO"; then :
+  sc_cv_type_int32_basic="7 /* long long */"
+else
+  sc_cv_type_int32_basic="8 /* unsigned long long */"
+fi
+rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
+  conftest.$ac_objext conftest.beam conftest.$ac_ext
+fi
+
+else
+  sc_cv_type_int32_basic="0 /* unknown */"
+
+fi
+rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
+  conftest.$ac_objext conftest.beam conftest.$ac_ext
+fi
+
+
+fi
+rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
+  conftest.$ac_objext conftest.beam conftest.$ac_ext
+fi
+
+
+fi
+rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
+  conftest.$ac_objext conftest.beam conftest.$ac_ext
+fi
+
+
+fi
+rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
+  conftest.$ac_objext conftest.beam conftest.$ac_ext
+fi
+
+
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $sc_cv_type_int32_basic" >&5
+$as_echo "$sc_cv_type_int32_basic" >&6; }
+cat >>confdefs.h <<_ACEOF
+#define HAVE_BASIC_INT32_T ${sc_cv_type_int32_basic}
+_ACEOF
+
+
+   fi
+
+
+   if test "$CHANCE_TO_TYPECHECK" -ne 0; then
+
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for equivalent simple type of int64_t" >&5
+$as_echo_n "checking for equivalent simple type of int64_t... " >&6; }
+if ${sc_cv_type_int64_basic+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  CFLAGS1="$CFLAGS"; CFLAGS="$ERRONWARN $(echo "$CFLAGS1" | sed -e 's@-Wall@@g')"
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+#include <stdint.h>
+int
+main ()
+{
+int64_t u; short v; return(&u==&v);
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+  sc_cv_type_int64_basic="1 /* short */"
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+#include <stdint.h>
+int
+main ()
+{
+int64_t u; unsigned short v; return(&u==&v);
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+  sc_cv_type_int64_basic="2 /* unsigned short */"
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+#include <stdint.h>
+int
+main ()
+{
+int64_t u; int v; return(&u==&v);
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+  sc_cv_type_int64_basic="3 /* int */"
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+#include <stdint.h>
+int
+main ()
+{
+int64_t u; unsigned int v; return(&u==&v);
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+  sc_cv_type_int64_basic="4 /* unsigned int */"
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+#include <stdint.h>
+int
+main ()
+{
+int64_t u; long v; return(&u==&v);
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+  sc_cv_type_int64_basic="5 /* long */"
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+#include <stdint.h>
+int
+main ()
+{
+int64_t u; unsigned long v; return(&u==&v);
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+  sc_cv_type_int64_basic="6 /* unsigned long */"
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+#include <stdint.h>
+int
+main ()
+{
+int64_t u; long long v; return(&u==&v);
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+  sc_cv_type_int64_basic="7 /* long long */"
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+#include <stdint.h>
+int
+main ()
+{
+int64_t u; unsigned long long v; return(&u==&v);
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+  sc_cv_type_int64_basic="8 /* unsigned long long */"
+else
+  sc_cv_type_int64_basic="0 /* unknown, taking default */"
+
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+ CFLAGS="$CFLAGS1"
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $sc_cv_type_int64_basic" >&5
+$as_echo "$sc_cv_type_int64_basic" >&6; }
+cat >>confdefs.h <<_ACEOF
+#define HAVE_BASIC_INT64_T ${sc_cv_type_int64_basic}
+_ACEOF
+
+
+   else
+
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for equivalent simple type of int64_t" >&5
+$as_echo_n "checking for equivalent simple type of int64_t... " >&6; }
+if ${sc_cv_type_int64_basic+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  if test "$cross_compiling" = yes; then :
+  { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
+$as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
+as_fn_error $? "cannot run test program while cross compiling
+See \`config.log' for more details" "$LINENO" 5; }
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+#include <stdint.h>
+int main() { return!(sizeof(int64_t)==sizeof(short));}
+_ACEOF
+if ac_fn_c_try_run "$LINENO"; then :
+  # same length as short
+ if test "$cross_compiling" = yes; then :
+  { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
+$as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
+as_fn_error $? "cannot run test program while cross compiling
+See \`config.log' for more details" "$LINENO" 5; }
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+#include <stdint.h>
+int main() { int64_t x=-1; return !(x<0);}
+_ACEOF
+if ac_fn_c_try_run "$LINENO"; then :
+  sc_cv_type_int64_basic="1 /* short */"
+else
+  sc_cv_type_int64_basic="2 /* unsigned short */"
+fi
+rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
+  conftest.$ac_objext conftest.beam conftest.$ac_ext
+fi
+
+else
+  # length differs from short, try others
+ if test "$cross_compiling" = yes; then :
+  { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
+$as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
+as_fn_error $? "cannot run test program while cross compiling
+See \`config.log' for more details" "$LINENO" 5; }
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+#include <stdint.h>
+int main() { return!(sizeof(int64_t)==sizeof(int));}
+_ACEOF
+if ac_fn_c_try_run "$LINENO"; then :
+  # same length as int
+  if test "$cross_compiling" = yes; then :
+  { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
+$as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
+as_fn_error $? "cannot run test program while cross compiling
+See \`config.log' for more details" "$LINENO" 5; }
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+#include <stdint.h>
+int main() { int64_t x=-1; return !(x<0);}
+_ACEOF
+if ac_fn_c_try_run "$LINENO"; then :
+  sc_cv_type_int64_basic="3 /* int */"
+else
+  sc_cv_type_int64_basic="4 /* unsigned int */"
+fi
+rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
+  conftest.$ac_objext conftest.beam conftest.$ac_ext
+fi
+
+else
+  # length differs from int, try others
+  if test "$cross_compiling" = yes; then :
+  { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
+$as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
+as_fn_error $? "cannot run test program while cross compiling
+See \`config.log' for more details" "$LINENO" 5; }
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+#include <stdint.h>
+int main() { return !(sizeof(int64_t)==sizeof(long));}
+_ACEOF
+if ac_fn_c_try_run "$LINENO"; then :
+  # same length as long
+   if test "$cross_compiling" = yes; then :
+  { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
+$as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
+as_fn_error $? "cannot run test program while cross compiling
+See \`config.log' for more details" "$LINENO" 5; }
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+#include <stdint.h>
+int main() { int64_t x=-1; return !(x<0);}
+_ACEOF
+if ac_fn_c_try_run "$LINENO"; then :
+  sc_cv_type_int64_basic="5 /* long */"
+else
+  sc_cv_type_int64_basic="6 /* unsigned long */"
+fi
+rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
+  conftest.$ac_objext conftest.beam conftest.$ac_ext
+fi
+
+else
+  # length differs from long, try others
+   if test "$cross_compiling" = yes; then :
+  { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
+$as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
+as_fn_error $? "cannot run test program while cross compiling
+See \`config.log' for more details" "$LINENO" 5; }
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+#include <stdint.h>
+int main() { return !(sizeof(int64_t)==sizeof(long long));}
+_ACEOF
+if ac_fn_c_try_run "$LINENO"; then :
+  # same length as long long
+     if test "$cross_compiling" = yes; then :
+  { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
+$as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
+as_fn_error $? "cannot run test program while cross compiling
+See \`config.log' for more details" "$LINENO" 5; }
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+#include <stdint.h>
+int main() { int64_t x=-1; return !(x<0);}
+_ACEOF
+if ac_fn_c_try_run "$LINENO"; then :
+  sc_cv_type_int64_basic="7 /* long long */"
+else
+  sc_cv_type_int64_basic="8 /* unsigned long long */"
+fi
+rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
+  conftest.$ac_objext conftest.beam conftest.$ac_ext
+fi
+
+else
+  sc_cv_type_int64_basic="0 /* unknown */"
+
+fi
+rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
+  conftest.$ac_objext conftest.beam conftest.$ac_ext
+fi
+
+
+fi
+rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
+  conftest.$ac_objext conftest.beam conftest.$ac_ext
+fi
+
+
+fi
+rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
+  conftest.$ac_objext conftest.beam conftest.$ac_ext
+fi
+
+
+fi
+rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
+  conftest.$ac_objext conftest.beam conftest.$ac_ext
+fi
+
+
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $sc_cv_type_int64_basic" >&5
+$as_echo "$sc_cv_type_int64_basic" >&6; }
+cat >>confdefs.h <<_ACEOF
+#define HAVE_BASIC_INT64_T ${sc_cv_type_int64_basic}
+_ACEOF
+
+
+   fi
 
 
    if test "$CHANCE_TO_TYPECHECK" -ne 0; then
@@ -12910,6 +15472,361 @@ fi
 $as_echo "$sc_cv_type_dev_basic" >&6; }
 cat >>confdefs.h <<_ACEOF
 #define HAVE_BASIC_DEV_T ${sc_cv_type_dev_basic}
+_ACEOF
+
+
+   fi
+
+
+
+   if test "$CHANCE_TO_TYPECHECK" -ne 0; then
+
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for equivalent simple type of speed_t" >&5
+$as_echo_n "checking for equivalent simple type of speed_t... " >&6; }
+if ${sc_cv_type_spee_t+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  CFLAGS1="$CFLAGS"; CFLAGS="$ERRONWARN $(echo "$CFLAGS1" | sed -e 's@-Wall@@g')"
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+#include <unistd.h>
+#include <termios.h>
+int
+main ()
+{
+speed_t u; short v; return(&u==&v);
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+  sc_cv_type_spee_t="1 /* short */"
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+#include <unistd.h>
+#include <termios.h>
+int
+main ()
+{
+speed_t u; unsigned short v; return(&u==&v);
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+  sc_cv_type_spee_t="2 /* unsigned short */"
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+#include <unistd.h>
+#include <termios.h>
+int
+main ()
+{
+speed_t u; int v; return(&u==&v);
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+  sc_cv_type_spee_t="3 /* int */"
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+#include <unistd.h>
+#include <termios.h>
+int
+main ()
+{
+speed_t u; unsigned int v; return(&u==&v);
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+  sc_cv_type_spee_t="4 /* unsigned int */"
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+#include <unistd.h>
+#include <termios.h>
+int
+main ()
+{
+speed_t u; long v; return(&u==&v);
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+  sc_cv_type_spee_t="5 /* long */"
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+#include <unistd.h>
+#include <termios.h>
+int
+main ()
+{
+speed_t u; unsigned long v; return(&u==&v);
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+  sc_cv_type_spee_t="6 /* unsigned long */"
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+#include <unistd.h>
+#include <termios.h>
+int
+main ()
+{
+speed_t u; long long v; return(&u==&v);
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+  sc_cv_type_spee_t="7 /* long long */"
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+#include <unistd.h>
+#include <termios.h>
+int
+main ()
+{
+speed_t u; unsigned long long v; return(&u==&v);
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+  sc_cv_type_spee_t="8 /* unsigned long long */"
+else
+  sc_cv_type_spee_t="0 /* unknown, taking default */"
+
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+ CFLAGS="$CFLAGS1"
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $sc_cv_type_spee_t" >&5
+$as_echo "$sc_cv_type_spee_t" >&6; }
+cat >>confdefs.h <<_ACEOF
+#define HAVE_BASIC_SPEED_T ${sc_cv_type_spee_t}
+_ACEOF
+
+
+   else
+
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for equivalent simple type of speed_t" >&5
+$as_echo_n "checking for equivalent simple type of speed_t... " >&6; }
+if ${sc_cv_type_spee_t+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  if test "$cross_compiling" = yes; then :
+  { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
+$as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
+as_fn_error $? "cannot run test program while cross compiling
+See \`config.log' for more details" "$LINENO" 5; }
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+#include <unistd.h>
+#include <termios.h>
+int main() { return!(sizeof(speed_t)==sizeof(short));}
+_ACEOF
+if ac_fn_c_try_run "$LINENO"; then :
+  # same length as short
+ if test "$cross_compiling" = yes; then :
+  { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
+$as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
+as_fn_error $? "cannot run test program while cross compiling
+See \`config.log' for more details" "$LINENO" 5; }
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+#include <unistd.h>
+#include <termios.h>
+int main() { speed_t x=-1; return !(x<0);}
+_ACEOF
+if ac_fn_c_try_run "$LINENO"; then :
+  sc_cv_type_spee_t="1 /* short */"
+else
+  sc_cv_type_spee_t="2 /* unsigned short */"
+fi
+rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
+  conftest.$ac_objext conftest.beam conftest.$ac_ext
+fi
+
+else
+  # length differs from short, try others
+ if test "$cross_compiling" = yes; then :
+  { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
+$as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
+as_fn_error $? "cannot run test program while cross compiling
+See \`config.log' for more details" "$LINENO" 5; }
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+#include <unistd.h>
+#include <termios.h>
+int main() { return!(sizeof(speed_t)==sizeof(int));}
+_ACEOF
+if ac_fn_c_try_run "$LINENO"; then :
+  # same length as int
+  if test "$cross_compiling" = yes; then :
+  { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
+$as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
+as_fn_error $? "cannot run test program while cross compiling
+See \`config.log' for more details" "$LINENO" 5; }
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+#include <unistd.h>
+#include <termios.h>
+int main() { speed_t x=-1; return !(x<0);}
+_ACEOF
+if ac_fn_c_try_run "$LINENO"; then :
+  sc_cv_type_spee_t="3 /* int */"
+else
+  sc_cv_type_spee_t="4 /* unsigned int */"
+fi
+rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
+  conftest.$ac_objext conftest.beam conftest.$ac_ext
+fi
+
+else
+  # length differs from int, try others
+  if test "$cross_compiling" = yes; then :
+  { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
+$as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
+as_fn_error $? "cannot run test program while cross compiling
+See \`config.log' for more details" "$LINENO" 5; }
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+#include <unistd.h>
+#include <termios.h>
+int main() { return !(sizeof(speed_t)==sizeof(long));}
+_ACEOF
+if ac_fn_c_try_run "$LINENO"; then :
+  # same length as long
+   if test "$cross_compiling" = yes; then :
+  { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
+$as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
+as_fn_error $? "cannot run test program while cross compiling
+See \`config.log' for more details" "$LINENO" 5; }
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+#include <unistd.h>
+#include <termios.h>
+int main() { speed_t x=-1; return !(x<0);}
+_ACEOF
+if ac_fn_c_try_run "$LINENO"; then :
+  sc_cv_type_spee_t="5 /* long */"
+else
+  sc_cv_type_spee_t="6 /* unsigned long */"
+fi
+rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
+  conftest.$ac_objext conftest.beam conftest.$ac_ext
+fi
+
+else
+  # length differs from long, try others
+   if test "$cross_compiling" = yes; then :
+  { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
+$as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
+as_fn_error $? "cannot run test program while cross compiling
+See \`config.log' for more details" "$LINENO" 5; }
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+#include <unistd.h>
+#include <termios.h>
+int main() { return !(sizeof(speed_t)==sizeof(long long));}
+_ACEOF
+if ac_fn_c_try_run "$LINENO"; then :
+  # same length as long long
+     if test "$cross_compiling" = yes; then :
+  { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
+$as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
+as_fn_error $? "cannot run test program while cross compiling
+See \`config.log' for more details" "$LINENO" 5; }
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+#include <unistd.h>
+#include <termios.h>
+int main() { speed_t x=-1; return !(x<0);}
+_ACEOF
+if ac_fn_c_try_run "$LINENO"; then :
+  sc_cv_type_spee_t="7 /* long long */"
+else
+  sc_cv_type_spee_t="8 /* unsigned long long */"
+fi
+rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
+  conftest.$ac_objext conftest.beam conftest.$ac_ext
+fi
+
+else
+  sc_cv_type_spee_t="0 /* unknown */"
+
+fi
+rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
+  conftest.$ac_objext conftest.beam conftest.$ac_ext
+fi
+
+
+fi
+rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
+  conftest.$ac_objext conftest.beam conftest.$ac_ext
+fi
+
+
+fi
+rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
+  conftest.$ac_objext conftest.beam conftest.$ac_ext
+fi
+
+
+fi
+rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
+  conftest.$ac_objext conftest.beam conftest.$ac_ext
+fi
+
+
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $sc_cv_type_spee_t" >&5
+$as_echo "$sc_cv_type_spee_t" >&6; }
+cat >>confdefs.h <<_ACEOF
+#define HAVE_BASIC_SPEED_T ${sc_cv_type_spee_t}
 _ACEOF
 
 
@@ -16980,6 +19897,345 @@ _ACEOF
 
    if test "$CHANCE_TO_TYPECHECK" -ne 0; then
 
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for basic type of struct timespec.tv_nsec" >&5
+$as_echo_n "checking for basic type of struct timespec.tv_nsec... " >&6; }
+if ${sc_cv_type_struct_timespec_tv_nsec+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  CFLAGS1="$CFLAGS"; CFLAGS="$ERRONWARN $(echo "$CFLAGS1" | sed -e 's@-Wall@@g')"
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+#include <sys/time.h>
+int
+main ()
+{
+struct timespec u;short v; return(&u.tv_nsec==&v);
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+  sc_cv_type_struct_timespec_tv_nsec="1 /* short */"
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+#include <sys/time.h>
+int
+main ()
+{
+struct timespec u; unsigned short v; return(&u.tv_nsec==&v);
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+  sc_cv_type_struct_timespec_tv_nsec="2 /* unsigned short */"
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+#include <sys/time.h>
+int
+main ()
+{
+struct timespec u; int v; return(&u.tv_nsec==&v);
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+  sc_cv_type_struct_timespec_tv_nsec="3 /* int */"
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+#include <sys/time.h>
+int
+main ()
+{
+struct timespec u; unsigned int v; return(&u.tv_nsec==&v);
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+  sc_cv_type_struct_timespec_tv_nsec="4 /* unsigned int */"
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+#include <sys/time.h>
+int
+main ()
+{
+struct timespec u; long v; return(&u.tv_nsec==&v);
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+  sc_cv_type_struct_timespec_tv_nsec="5 /* long */"
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+#include <sys/time.h>
+int
+main ()
+{
+struct timespec u; unsigned long v; return(&u.tv_nsec==&v);
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+  sc_cv_type_struct_timespec_tv_nsec="6 /* unsigned long */"
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+#include <sys/time.h>
+int
+main ()
+{
+struct timespec u; long long v; return(&u.tv_nsec==&v);
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+  sc_cv_type_struct_timespec_tv_nsec="7 /* long long */"
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+#include <sys/time.h>
+int
+main ()
+{
+struct timespec u; unsigned long long v; return(&u.tv_nsec==&v);
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+  sc_cv_type_struct_timespec_tv_nsec="8 /* unsigned long long */"
+else
+  sc_cv_type_struct_timespec_tv_nsec="0 /* unknown, taking default */"
+
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+ CFLAGS="$CFLAGS1"
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $sc_cv_type_struct_timespec_tv_nsec" >&5
+$as_echo "$sc_cv_type_struct_timespec_tv_nsec" >&6; }
+cat >>confdefs.h <<_ACEOF
+#define HAVE_TYPEOF_STRUCT_TIMESPEC_TV_NSEC ${sc_cv_type_struct_timespec_tv_nsec}
+_ACEOF
+
+
+   else
+
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for basic type of struct timespec.tv_nsec" >&5
+$as_echo_n "checking for basic type of struct timespec.tv_nsec... " >&6; }
+if ${sc_cv_type_struct_timespec_tv_nsec+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  if test "$cross_compiling" = yes; then :
+  { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
+$as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
+as_fn_error $? "cannot run test program while cross compiling
+See \`config.log' for more details" "$LINENO" 5; }
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+#include <sys/time.h>
+int main() { struct timespec x; return!(sizeof(x.tv_nsec)==sizeof(short));}
+_ACEOF
+if ac_fn_c_try_run "$LINENO"; then :
+  # same length as short
+ if test "$cross_compiling" = yes; then :
+  { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
+$as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
+as_fn_error $? "cannot run test program while cross compiling
+See \`config.log' for more details" "$LINENO" 5; }
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+#include <sys/time.h>
+int main() { struct timespec x; x.tv_nsec=-1; return !(x.tv_nsec<0);}
+_ACEOF
+if ac_fn_c_try_run "$LINENO"; then :
+  sc_cv_type_struct_timespec_tv_nsec="1 /* short */"
+else
+  sc_cv_type_struct_timespec_tv_nsec="2 /* unsigned short */"
+fi
+rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
+  conftest.$ac_objext conftest.beam conftest.$ac_ext
+fi
+
+else
+  # length differs from short, try others
+ if test "$cross_compiling" = yes; then :
+  { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
+$as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
+as_fn_error $? "cannot run test program while cross compiling
+See \`config.log' for more details" "$LINENO" 5; }
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+#include <sys/time.h>
+int main() { struct timespec x; return!(sizeof(x.tv_nsec)==sizeof(int));}
+_ACEOF
+if ac_fn_c_try_run "$LINENO"; then :
+  # same length as int
+  if test "$cross_compiling" = yes; then :
+  { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
+$as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
+as_fn_error $? "cannot run test program while cross compiling
+See \`config.log' for more details" "$LINENO" 5; }
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+#include <sys/time.h>
+int main() { struct timespec x; x.tv_nsec=-1; return !(x.tv_nsec<0);}
+_ACEOF
+if ac_fn_c_try_run "$LINENO"; then :
+  sc_cv_type_struct_timespec_tv_nsec="3 /* int */"
+else
+  sc_cv_type_struct_timespec_tv_nsec="4 /* unsigned int */"
+fi
+rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
+  conftest.$ac_objext conftest.beam conftest.$ac_ext
+fi
+
+else
+  # length differs from int, try others
+  if test "$cross_compiling" = yes; then :
+  { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
+$as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
+as_fn_error $? "cannot run test program while cross compiling
+See \`config.log' for more details" "$LINENO" 5; }
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+#include <sys/time.h>
+int main() { struct timespec x; return !(sizeof(x.tv_nsec)==sizeof(long));}
+_ACEOF
+if ac_fn_c_try_run "$LINENO"; then :
+  # same length as long
+   if test "$cross_compiling" = yes; then :
+  { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
+$as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
+as_fn_error $? "cannot run test program while cross compiling
+See \`config.log' for more details" "$LINENO" 5; }
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+#include <sys/time.h>
+int main() { struct timespec x; x.tv_nsec=-1; return !(x.tv_nsec<0);}
+_ACEOF
+if ac_fn_c_try_run "$LINENO"; then :
+  sc_cv_type_struct_timespec_tv_nsec="5 /* long */"
+else
+  sc_cv_type_struct_timespec_tv_nsec="6 /* unsigned long */"
+fi
+rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
+  conftest.$ac_objext conftest.beam conftest.$ac_ext
+fi
+
+else
+  # length differs from long, try others
+   if test "$cross_compiling" = yes; then :
+  { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
+$as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
+as_fn_error $? "cannot run test program while cross compiling
+See \`config.log' for more details" "$LINENO" 5; }
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+#include <sys/time.h>
+int main() { struct timespec x; return !(sizeof(x.tv_nsec)==sizeof(long long));}
+_ACEOF
+if ac_fn_c_try_run "$LINENO"; then :
+  # same length as long long
+     if test "$cross_compiling" = yes; then :
+  { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
+$as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
+as_fn_error $? "cannot run test program while cross compiling
+See \`config.log' for more details" "$LINENO" 5; }
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+#include <sys/time.h>
+int main() { x struct timespec; x.tv_nsec=-1; return !(x.tv_nsec<0);}
+_ACEOF
+if ac_fn_c_try_run "$LINENO"; then :
+  sc_cv_type_struct_timespec_tv_nsec="7 /* long long */"
+else
+  sc_cv_type_struct_timespec_tv_nsec="8 /* unsigned long long */"
+fi
+rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
+  conftest.$ac_objext conftest.beam conftest.$ac_ext
+fi
+
+else
+  sc_cv_type_struct_timespec_tv_nsec="0 /* unknown */"
+
+fi
+rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
+  conftest.$ac_objext conftest.beam conftest.$ac_ext
+fi
+
+
+fi
+rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
+  conftest.$ac_objext conftest.beam conftest.$ac_ext
+fi
+
+
+fi
+rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
+  conftest.$ac_objext conftest.beam conftest.$ac_ext
+fi
+
+
+fi
+rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
+  conftest.$ac_objext conftest.beam conftest.$ac_ext
+fi
+
+
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $sc_cv_type_struct_timespec_tv_nsec" >&5
+$as_echo "$sc_cv_type_struct_timespec_tv_nsec" >&6; }
+cat >>confdefs.h <<_ACEOF
+#define HAVE_TYPEOF_STRUCT_TIMESPEC_TV_NSEC ${sc_cv_type_struct_timespec_tv_nsec}
+_ACEOF
+
+
+   fi
+
+
+
+   if test "$CHANCE_TO_TYPECHECK" -ne 0; then
+
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for basic type of struct rlimit.rlim_max" >&5
 $as_echo_n "checking for basic type of struct rlimit.rlim_max... " >&6; }
 if ${sc_cv_type_rlimit_rlimmax_basic+:} false; then :
@@ -17688,7 +20944,6 @@ _ACEOF
    fi
 
 ### snprintf, vsnprintf
-
 
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for /dev/ptmx" >&5
 $as_echo_n "checking for /dev/ptmx... " >&6; }
