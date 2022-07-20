@@ -1,3 +1,9 @@
+socat (1.7.4.1-3pexip3) pexip-bullseye; urgency=medium
+
+  * Build-Depend on libssl1.0-dev
+
+ -- John-Mark Bell <jmb@pexip.com>  Wed, 20 Jul 2022 17:03:01 +0100
+
 socat (1.7.4.1-3pexip2) pexip-bullseye; urgency=medium
 
   * Main bullseye build
