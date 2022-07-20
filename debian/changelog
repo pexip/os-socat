@@ -1,3 +1,12 @@
+socat (1.7.4.1-3pexip4) pexip-bullseye; urgency=medium
+
+  * debian/patches/08-test.sh-fixes.patch: Disable test 386 (OpenSSL ECDHE)
+    This does not work when using OpenSSL 1.0.2, as the test generates an RSA
+    key and then tries to do ECDHE-ECDSA with it, which results in no
+    compatible ciphersuites with this version of OpenSSL.
+
+ -- John-Mark Bell <jmb@pexip.com>  Wed, 20 Jul 2022 21:05:35 +0100
+
 socat (1.7.4.1-3pexip3) pexip-bullseye; urgency=medium
 
   * Build-Depend on libssl1.0-dev
