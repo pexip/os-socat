@@ -1,3 +1,9 @@
+socat (1.7.4.1-3pexip5) pexip-bullseye; urgency=medium
+
+  * Bullseye rebuild for ARM64 inclusion
+
+ -- Mark Hymers <mark.hymers@pexip.com>  Mon, 05 Sep 2022 10:36:00 +0100
+
 socat (1.7.4.1-3pexip4) pexip-bullseye; urgency=medium
 
   * debian/patches/08-test.sh-fixes.patch: Disable test 386 (OpenSSL ECDHE)
