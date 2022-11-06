@@ -75,7 +75,7 @@ install
 
 Get the tarball and extract it:
 	tar xzf socat.tar.gz
-	cd socat-1.7.4.0
+	cd socat-1.7.4.4
 	./configure
 	make
 	su
@@ -306,4 +306,4 @@ www.socat.org is an alternate site providing the same contents.
 
 public git repository:
 	git://repo.or.cz/socat.git
-	http://repo.or.cz/r/socat.git
+	http://repo.or.cz/socat.git

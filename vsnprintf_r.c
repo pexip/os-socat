@@ -374,7 +374,7 @@ int vsnprintf_r(char *str, size_t size, const char *format, va_list ap) {
 #if HAVE_TYPE_LONGLONG
 #	 define num_buff_len ((sizeof(unsigned long long)*8+2)/3+1)	/* hold up to u long long in octal w/ \0 */
 #else
-#	 define num_buff_len ((sizeof(unsigned long)*8+2)/3+1)];	/* hold up to u long in octal w/ \0 */
+#	 define num_buff_len ((sizeof(unsigned long)*8+2)/3+1)		/* hold up to u long in octal w/ \0 */
 #endif
 	 char lengthmod = '\0';	/* 'h' 'l' 'L' 'z' */
 	 int leading0 = 0;	/* or 1 */
@@ -404,7 +404,7 @@ int vsnprintf_r(char *str, size_t size, const char *format, va_list ap) {
 	    do {
 	       fsize = 10*fsize+(c-'0');
 	       c = *format++;
-	    } while (c && isdigit(c));
+	    } while (c && isdigit((unsigned char)c));
 	    break;
 	 }
 	 if (c == '\0')  { break; }

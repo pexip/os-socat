@@ -156,6 +156,9 @@
 /* Define if you have the ftruncate64 function */
 #undef HAVE_FTRUNCATE64
 
+/* Define if you have the gettimeofday function */
+#undef HAVE_PROTOTYPE_LIB_gettimeofday
+
 /* Define if you have the clock_gettime function */
 #undef HAVE_CLOCK_GETTIME
 
@@ -649,6 +652,7 @@
 
 /* Define if you have the /proc/$$/fd directories */
 #undef HAVE_PROC_DIR_FD
+#undef HAVE_PROC_DIR_PATH
 
 #undef HAVE_SETGRENT
 #undef HAVE_GETGRENT
