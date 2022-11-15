@@ -60,7 +60,7 @@ int fdname(const char *file, int fd, FILE *outfile, const char *numform,
    }
 }
 
-#if HAVE_PROC_DIR_FD
+#if HAVE_PROC_DIR_FD || HAVE_PROC_DIR_PATH
 static int procgetfdname(int fd, char *filepath, size_t pathsize) {
    static pid_t pid = -1;
    char procpath[PATH_MAX];
@@ -91,30 +91,36 @@ static int procgetfdname(int fd, char *filepath, size_t pathsize) {
 #endif /* !HAVE_STAT64 */
        
    if (pid < 0)  pid = Getpid();
-   snprintf(procpath, sizeof(procpath), "/proc/"F_pid"/fd/%d", pid, fd);
+   snprintf(procpath, sizeof(procpath), "/proc/"F_pid"/"
+#if HAVE_PROC_DIR_PATH
+	    "path"
+#else
+	    "fd"
+#endif
+	    "/%d", pid, fd);
    if ((len = Readlink(procpath, filepath, pathsize-1)) < 0) {
-      Error4("readlink(\"%s\", %p, "F_Zu"): %s",
+      Warn4("readlink(\"%s\", %p, "F_Zu"): %s",
 	     procpath, filepath, pathsize, strerror(errno));
-      return -1;
+      len = 0;
    }
    filepath[len] = '\0';
    return 0;
 }
-#endif /* HAVE_PROC_DIR_FD */
+#endif /* HAVE_PROC_DIR_FD || HAVE_PROC_DIR_PATH */
    
 int statname(const char *file, int fd, int filetype, FILE *outfile,
 	     char style) {
    char filepath[PATH_MAX];
 
    filepath[0] = '\0';
-#if HAVE_PROC_DIR_FD
+#if HAVE_PROC_DIR_FD || HAVE_PROC_DIR_PATH
    if (fd >= 0) {
       procgetfdname(fd, filepath, sizeof(filepath));
       if (filepath[0] == '/') {
 	 file = filepath;
       }
    }
-#endif /*  HAVE_PROC_DIR_FD */
+#endif /*  HAVE_PROC_DIR_FD || HAVE_PROC_DIR_PATH */
    /* now see for type specific infos */
    switch (filetype) {
    case (S_IFIFO>>12):	/* 1, FIFO */
@@ -156,6 +162,18 @@ int statname(const char *file, int fd, int filetype, FILE *outfile,
       return -1;
 #endif /* !_WITH_SOCKET */
       break;
+#ifdef S_IFDOOR
+   case (S_IFDOOR>>12):	/* 13, door (Solaris) */
+      fputs("door", outfile);
+      if (file) fprintf(outfile, " %s", file);
+      break;
+#endif /* HAVE_MACRO_S_IFDOOR */
+#ifdef S_IFPORT
+   case (S_IFPORT>>12):	/* 14, event port (Solaris) */
+      fputs("event_port", outfile);
+      if (file) fprintf(outfile, " %s", file);
+      break;
+#endif /* HAVE_MACRO_S_IFPORT */
    }
    /* ioctl() */
    fputc('\n', outfile);
@@ -212,7 +230,7 @@ int sockname(int fd, FILE *outfile, char style) {
    struct protoent protoent, *protoentp;
 #endif
 #define PROTONAMEMAX 1024 
-   char protoname[PROTONAMEMAX];
+   char protoname[PROTONAMEMAX] = "";
 #if defined(SO_PROTOCOL) || defined(SO_PROTOTYPE)
    int proto;
 #endif
@@ -237,12 +255,21 @@ int sockname(int fd, FILE *outfile, char style) {
 #if defined(SO_PROTOCOL) || defined(SO_PROTOTYPE)
    optlen = sizeof(proto);
 #ifdef SO_PROTOCOL
-   Getsockopt(fd, SOL_SOCKET, SO_PROTOCOL,   &proto,         &optlen);
+   rc = Getsockopt(fd, SOL_SOCKET, SO_PROTOCOL,   &proto,         &optlen);
 #elif defined(SO_PROTOTYPE)
-   Getsockopt(fd, SOL_SOCKET, SO_PROTOTYPE,  &proto,         &optlen);
+   rc = Getsockopt(fd, SOL_SOCKET, SO_PROTOTYPE,  &proto,         &optlen);
 #endif
+   if (rc < 0) {
+      Warn5("getsocktop(%d, SOL_SOCKET, "
+#ifdef SO_PROTOCOL
+	    "SO_PROTOCOL"
+#else
+	    "SO_PROTOTYPE"
+#endif
+	    ", &%p, {"F_socklen"}): errno=%d (%s)", fd, &proto, optlen, errno, strerror(errno));
+   }
+   proto = 0;
 #endif /* defined(SO_PROTOCOL) || defined(SO_PROTOTYPE) */
-
    optlen = sizeof(opttype);
    Getsockopt(fd, SOL_SOCKET, SO_TYPE,       &opttype,       &optlen);
    sockettype(opttype, typename, sizeof(typename));
@@ -253,16 +280,29 @@ int sockname(int fd, FILE *outfile, char style) {
 #endif
 
 #if defined(SO_PROTOCOL) || defined(SO_PROTOTYPE)
-#if HAVE_GETPROTOBYNUMBER_R
+#if HAVE_GETPROTOBYNUMBER_R==1 /* Linux */
    rc = getprotobynumber_r(proto, &protoent, protoname, sizeof(protoname), &protoentp);
    if (protoentp == NULL) {
       Warn2("sockname(): getprotobynumber_r(proto=%d, ...): %s",
 	    proto, strerror(rc));
    }
    strncpy(protoname, protoentp->p_name, sizeof(protoname));
-#elif HAVE_GETPROTOBYNUMBER
-   protoentp = getprotobynumber(proto);
-   strncpy(protoname, protoentp->p_name, sizeof(protoname));
+#elif HAVE_GETPROTOBYNUMBER_R==2 /* Solaris */
+   {
+#     define FILAN_GETPROTOBYNUMBER_R_BUFLEN 1024
+      char buffer[FILAN_GETPROTOBYNUMBER_R_BUFLEN];
+      protoentp = getprotobynumber_r(proto, &protoent, buffer, FILAN_GETPROTOBYNUMBER_R_BUFLEN);
+      strncpy(protoname, protoentp->p_name, sizeof(protoname));
+   }
+#elif HAVE_GETPROTOBYNUMBER_R==3 /* AIX */
+   {
+      struct protoent_data proto_data;
+      rc = getprotobynumber_r(proto, &protoent, &proto_data);
+      if (rc == 0) {
+	 strncpy(protoname, protoent.p_name, sizeof(protoname));
+	 endprotoent_r(&proto_data);
+      }
+   }
 #else
    switch (proto) {
    case IPPROTO_TCP:  strcpy(protoname, "tcp"); break; 

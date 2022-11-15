@@ -1,4 +1,4 @@
-dnl source: configure.in
+dnl source: configure.ac
 dnl Copyright Gerhard Rieger and contributors (see file CHANGES)
 dnl Published under the GNU General Public License V.2, see file COPYING
 
@@ -134,6 +134,26 @@ if test $sc_cv_have_prototype_hstrerror = yes; then
 fi
 AC_MSG_RESULT($sc_cv_have_prototype_hstrerror)
 
+# getprotobynumber_r() is not standardized
+AC_MSG_CHECKING(for getprotobynumber_r() variant)
+AC_CACHE_VAL(sc_cv_getprotobynumber_r,
+[AC_TRY_LINK([#include <stddef.h>
+#include <netdb.h>],[getprotobynumber_r(1,NULL,NULL,1024,NULL);],
+[sc_cv_getprotobynumber_r=1; tmp_bynum_variant=Linux],
+ [AC_TRY_LINK([#include <stddef.h>
+ #include <netdb.h>],[getprotobynumber_r(1,NULL,NULL,1024);],
+ [sc_cv_getprotobynumber_r=2; tmp_bynum_variant=Solaris],
+  [AC_TRY_LINK([#include <stddef.h>
+  #include <netdb.h>],[getprotobynumber_r(1,NULL,NULL);],
+  [sc_cv_getprotobynumber_r=3; tmp_bynum_variant=AIX],
+
+  [sc_cv_getprotobynumber_r=]
+)])])])
+if test "$sc_cv_getprotobynumber_r"; then
+   AC_DEFINE_UNQUOTED(HAVE_GETPROTOBYNUMBER_R, $sc_cv_getprotobynumber_r)
+fi
+AC_MSG_RESULT($sc_cv_getprotobynumber_r /* $tmp_bynum_variant */)
+
 
 AC_MSG_CHECKING(whether to include help)
 AC_ARG_ENABLE(help, [  --disable-help          disable help],
@@ -242,6 +262,9 @@ if test "$WITH_IP6"; then
     [AC_INCLUDES_DEFAULT
      #ifdef HAVE_NETINET_IN_H
      # include <netinet/in.h>
+     #endif
+     #ifdef HAVE_NETINET_IP_H
+     # include <netinet/ip.h>
      #endif])
   AC_CHECK_HEADERS(netinet6/in6.h)	# found on OpenBSD and Lion, used for IPV6_*
 
@@ -519,7 +542,7 @@ if test -n "$WITH_OPENSSL"; then
       [sc_cv_have_openssl_ssl_h=yes; OPENSSL_BASE=""; ],
       [sc_cv_have_openssl_ssl_h=no
        if [ "$OPENSSL_BASE" ]; then
-	  s="$OPENSSL_BASE"
+	  Ds="$OPENSSL_BASE"
        else
           Ds="/sw /usr/local /opt/freeware /usr/sfw /usr/local/ssl"
        fi
@@ -811,7 +834,7 @@ AC_TYPE_SIGNAL
 AC_FUNC_STRFTIME
 AC_CHECK_FUNCS(putenv select pselect poll socket strtod strtol)
 AC_CHECK_FUNCS(strtoul uname getpgid getsid gethostbyname getaddrinfo)
-AC_CHECK_FUNCS(getprotobynumber getprotobynumber_r)
+AC_CHECK_FUNCS(getprotobynumber)
 AC_CHECK_FUNCS(setgroups inet_aton)
 
 AC_CHECK_FUNCS(grantpt unlockpt)
@@ -1491,8 +1514,9 @@ AC_CHECK_LIB(bsd, openpty,
 AC_CHECK_LIB(util, openpty,
   [LIBS="-lutil $LIBS"; AC_DEFINE(HAVE_OPENPTY)])
 
-AC_CHECK_LIB(rt, clock_gettime,
-		 [LIBS="-lrt $LIBS"; AC_DEFINE(HAVE_CLOCK_GETTIME)])
+AC_CHECK_PROTOTYPE_LIB(gettimeofday)
+
+AC_CHECK_FUNC(clock_gettime, AC_DEFINE(HAVE_CLOCK_GETTIME), AC_CHECK_LIB(rt, clock_gettime, [LIBS="-lrt $LIBS"; AC_DEFINE(HAVE_CLOCK_GETTIME)]))
 
 dnl Search for flock()
 # with Linux it's in libc, with AIX in libbsd
@@ -1960,6 +1984,16 @@ else
   AC_MSG_RESULT(no)
 fi
 
+# On Solaris family, we have to use /proc/$$/path/N
+AC_MSG_CHECKING(for /proc/*/path)
+if test -d /proc/$$/path; then
+  AC_DEFINE(HAVE_PROC_DIR_PATH, 1)
+  AC_MSG_RESULT(yes)
+else
+  AC_MSG_RESULT(no)
+fi
+
+
 dnl "tcpd" "tcpwrappers"
 # on some platforms, raw linking with libwrap fails because allow_severity and
 # deny_severity are not explicitely defined. Thus we put the libwrap part to
@@ -2098,7 +2132,11 @@ fi
 AC_MSG_RESULT($sc_cv_var_environ)
 
 # allow BUILD_DATE to be externally set for build reproducibility
-if test "$BUILD_DATE"; then
+if test "$SOURCE_DATE_EPOCH"; then
+  DATE_FMT="%d %b %Y %H:%M:%S"
+  BUILD_DATE=$(LC_ALL=C date -u -d "@$SOURCE_DATE_EPOCH" "+$DATE_FMT")
+  AC_DEFINE_UNQUOTED(BUILD_DATE, ["$BUILD_DATE"])
+elif test "$BUILD_DATE"; then
   AC_DEFINE_UNQUOTED(BUILD_DATE, ["$BUILD_DATE"])
 else
   AC_DEFINE(BUILD_DATE, [__DATE__" "__TIME__])

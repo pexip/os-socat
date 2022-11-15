@@ -1,4 +1,3 @@
-
 <html><head>
 <title><strong>socat</strong></title>
 <link rev="made" href="mailto:socat@dest-unreach.org">
@@ -6,7 +5,6 @@
 <body>
 <hr>
 <h1><strong>socat</strong></h1>
-<h2> </h2>
 
 
 <p>
@@ -535,6 +533,7 @@ parameters, and semantics.
    certificate are supported.<br> 
    Option groups: <a href="socat.html#GROUP_FD">FD</a>,<a href="socat.html#GROUP_SOCKET">SOCKET</a>,<a href="socat.html#GROUP_IP4">IP4</a>,<a href="socat.html#GROUP_IP6">IP6</a>,<a href="socat.html#GROUP_TCP">TCP</a>,<a href="socat.html#GROUP_OPENSSL">OPENSSL</a>,<a href="socat.html#GROUP_RETRY">RETRY</a> <br>
    Useful options:
+   <a href="socat.html#OPTION_OPENSSL_MIN_PROTO_VERSION">min-proto-version</a>,
    <a href="socat.html#OPTION_OPENSSL_CIPHERLIST">cipher</a>,
    <a href="socat.html#OPTION_OPENSSL_VERIFY">verify</a>,
    <a href="socat.html#OPTION_OPENSSL_COMMONNAME">commonname</a>,
@@ -564,6 +563,7 @@ parameters, and semantics.
    Option groups: <a href="socat.html#GROUP_FD">FD</a>,<a href="socat.html#GROUP_SOCKET">SOCKET</a>,<a href="socat.html#GROUP_IP4">IP4</a>,<a href="socat.html#GROUP_IP6">IP6</a>,<a href="socat.html#GROUP_TCP">TCP</a>,<a href="socat.html#GROUP_LISTEN">LISTEN</a>,<a href="socat.html#GROUP_OPENSSL">OPENSSL</a>,<a href="socat.html#GROUP_CHILD">CHILD</a>,<a href="socat.html#GROUP_RANGE">RANGE</a>,<a href="socat.html#GROUP_RETRY">RETRY</a> <br>
    Useful options:
    <a href="socat.html#OPTION_PROTOCOL_FAMILY">pf</a>,
+   <a href="socat.html#OPTION_OPENSSL_MIN_PROTO_VERSION">min-proto-version</a>,
    <a href="socat.html#OPTION_OPENSSL_CIPHERLIST">cipher</a>,
    <a href="socat.html#OPTION_OPENSSL_VERIFY">verify</a>,
    <a href="socat.html#OPTION_OPENSSL_COMMONNAME">commonname</a>,
@@ -596,6 +596,7 @@ parameters, and semantics.
    on the network. Use option <a href="socat.html#option_T">-T</a> to prevent indefinite hanging when peer went down quietly.<br>
    Option groups: <a href="socat.html#GROUP_FD">FD</a>,<a href="socat.html#GROUP_SOCKET">SOCKET</a>,<a href="socat.html#GROUP_IP4">IP4</a>,<a href="socat.html#GROUP_IP6">IP6</a>,<a href="socat.html#GROUP_OPENSSL">OPENSSL</a>,<a href="socat.html#GROUP_RETRY">RETRY</a> <br>
    Useful options:
+   <a href="socat.html#OPTION_OPENSSL_MIN_PROTO_VERSION">min-proto-version</a>,
    <a href="socat.html#OPTION_OPENSSL_CIPHERLIST">cipher</a>,
    <a href="socat.html#OPTION_OPENSSL_VERIFY">verify</a>,
    <a href="socat.html#OPTION_OPENSSL_COMMONNAME">commonname</a>,
@@ -627,6 +628,7 @@ parameters, and semantics.
    Option groups: <a href="socat.html#GROUP_FD">FD</a>,<a href="socat.html#GROUP_SOCKET">SOCKET</a>,<a href="socat.html#GROUP_IP4">IP4</a>,<a href="socat.html#GROUP_IP6">IP6</a>,<a href="socat.html#GROUP_LISTEN">LISTEN</a>,<a href="socat.html#GROUP_OPENSSL">OPENSSL</a>,<a href="socat.html#GROUP_CHILD">CHILD</a>,<a href="socat.html#GROUP_RANGE">RANGE</a>,<a href="socat.html#GROUP_RETRY">RETRY</a> <br>
    Useful options:
    <a href="socat.html#OPTION_PROTOCOL_FAMILY">pf</a>,
+   <a href="socat.html#OPTION_OPENSSL_MIN_PROTO_VERSION">min-proto-version</a>,
    <a href="socat.html#OPTION_OPENSSL_CIPHERLIST">cipher</a>,
    <a href="socat.html#OPTION_OPENSSL_VERIFY">verify</a>,
    <a href="socat.html#OPTION_OPENSSL_COMMONNAME">commonname</a>,
@@ -2111,7 +2113,7 @@ These options are intended for all kinds of sockets, e.g. IP or UNIX domain. Mos
  calls.
    This option affects address resolution and the required syntax of bind and
    range options.
-<a name="OPTION_SO_TYPE"></a><p><dt><strong><strong><code>type=&lt;type&gt;</code></strong></strong><dd>
+<a name="OPTION_SO_TYPE"></a><p><dt><strong><strong><code>socktype=&lt;type&gt;</code></strong></strong><dd>
    Sets the type of the socket, specified as second argument to the
    
 <code>socket()</code>
@@ -2119,8 +2121,8 @@ These options are intended for all kinds of sockets, e.g. IP or UNIX domain. Mos
 <code>socketpair()</code>
  calls, to &lt;type&gt;
    [<a href="socat.html#TYPE_INT">int</a>]. Address resolution is not affected by this option.
-   Under Linux, 1 means stream oriented socket, 2 means datagram socket, and 3
-   means raw socket.
+   Under Linux, 1 means stream oriented socket, 2 means datagram socket, 3
+   means raw socket, and 5 seqpacket (stream keeping packet boundaries).
 <a name="OPTION_SO_PROTOCOL"></a><p><dt><strong><strong><code>protocol</code></strong></strong><dd>
    Sets the protocol of the socket, specified as third argument to the
    
@@ -2874,7 +2876,7 @@ These options apply to the <a href="socat.html#ADDRESS_OPENSSL_CONNECT">openssl<
 <p>
 <dl>
 <a name="OPTION_OPENSSL_CIPHERLIST"></a><p><dt><strong><strong><code>cipher=&lt;cipherlist&gt;</code></strong></strong><dd>
-   Selects the list of ciphers that may be used for the connection.
+   Specifies the list of ciphers that may be used for the connection.
    See the man page of 
 <code>ciphers</code>
 , section <strong>CIPHER LIST FORMAT</strong>, for
@@ -2893,6 +2895,9 @@ These options apply to the <a href="socat.html#ADDRESS_OPENSSL_CONNECT">openssl<
 <a name="OPTION_OPENSSL_METHOD"></a><p><dt><strong><strong><code>method=&lt;ssl-method&gt;</code></strong></strong><dd>
    This option is based on deprecated functions and is only available when
    <strong>socat</strong> was build with option <code>--with-openssl-method</code>.
+   Use option <a href="socat.html#OPTION_OPENSSL_MIN_PROTO_VERSION">min-proto-version</a>
+   and maybe <a href="socat.html#OPTION_OPENSSL_MAX_PROTO_VERSION">max-proto-version</a>
+   instead.
    Sets the protocol version to be used. Valid strings (not case sensitive)
    are:  
    <dl>
@@ -2905,6 +2910,21 @@ These options apply to the <a href="socat.html#ADDRESS_OPENSSL_CONNECT">openssl<
    When this option is not provided OpenSSL negotiates the mothod with its
    peer.
    </dl>
+<a name="OPTION_OPENSSL_MIN_PROTO_VERSION"></a><p><dt><strong><strong><code>min-proto-version</code></strong></strong><dd>
+   This option tells OpenSSL to use this or a later SSL/TLS protocol version
+   and refuses to accept a lower/older protocol. Valid syntax is:
+   <dl>
+   <p><dt><strong><code>SSL2</code></strong><dd> Select SSL protocol version 2.
+   <p><dt><strong><code>SSL3</code></strong><dd> Select SSL protocol version 3.
+   <p><dt><strong><code>TLS1</code></strong><dd> <p><dt><strong><code>TLS1.0</code></strong><dd> Select TLS protocol version 1.
+   <p><dt><strong><code>TLS1.1</code></strong><dd> Select TLS protocol version 1.1.
+   <p><dt><strong><code>TLS1.2</code></strong><dd> Select TLS protocol version 1.2.
+   <p><dt><strong><code>TLS1.3</code></strong><dd> Select TLS protocol version 1.3.
+   </dl>
+<a name="OPTION_OPENSSL_MAX_PROTO_VERSION"></a><p><dt><strong><strong><code>openssl-max-proto-version</code></strong></strong><dd>
+   This option is similar to <a href="socat.html#OPTION_OPENSSL_MIN_PROTO_VERSION">min-proto-version</a>,
+   however, it disallows use of a higher protocol version. Useful for testing
+   the peer.
 <a name="OPTION_OPENSSL_VERIFY"></a><p><dt><strong><strong><code>verify=&lt;bool&gt;</code></strong></strong><dd>
    Controls check of the peer's certificate. Default is 1 (true). Disabling
    verify might open your socket for everyone, making the encryption useless!
@@ -3629,7 +3649,7 @@ SOCAT_IP_DSTADDR: it contains the target address of the packet which may be a
 unicast, multicast, or broadcast address.
 <p>
 <a name="EXAMPLE_SSD"></a>
-<p><dt><strong><strong><code>echo -e "M-SEARCH * HTTP/1.1\nHOST: 239.255.255.250:1900\nMAN: \"ssdp:discover\"\nMX: 4\nST: \"ssdp:all\"\n" |./socat - UDP-DATAGRAM:239.255.255.250:1900,crlf</code></strong></strong><dd>
+<p><dt><strong><strong><code>echo -e "M-SEARCH * HTTP/1.1\nHOST: 239.255.255.250:1900\nMAN: \"ssdp:discover\"\nMX: 4\nST: \"ssdp:all\"\n" |socat - UDP-DATAGRAM:239.255.255.250:1900,crlf</code></strong></strong><dd>
 <p>
 sends an SSDP (Simple Service Discovery Protocol) query to the local network
 and collects and outputs the answers received.
@@ -3820,7 +3840,7 @@ given user.
 The work of the following groups and organizations was invaluable for this
 project:
 <p>
-The <em>FSF</em> (GNU, <a href="http://www.fsf.org/">http://www.fsf.org/</a> project 
+The <em>FSF</em> (GNU, <a href="http://www.fsf.org/">http://www.fsf.org/</a>) project 
 with their free and portable development software and
 lots of other useful tools and libraries.
 <p>

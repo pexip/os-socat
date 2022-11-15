@@ -97,7 +97,7 @@ static size_t sanitize_char(char c, char *o, int style) {
    int hn;	/* high nibble */
    int ln;	/* low nibble */
    int n;	/* written chars */
-   if (isprint(c)) {
+   if (isprint((unsigned char)c)) {
       *o = c;
       return 1;
    }
@@ -160,7 +160,7 @@ char *xiosubstr(char *scratch, const char *str, size_t from, size_t len) {
    *scratch = '\0';
    return scratch0;
 }
-      
+
 
 /* since version 1.7.2.4 socat supports C-99 behaviour of snprintf but still
    can handle the old glibc case with -1 return on truncation.

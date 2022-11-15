@@ -3,7 +3,7 @@
 /* Author: Stefano Garzarella <sgarzare@redhat.com */
 /* Published under the GNU General Public License V.2, see file COPYING */
 
-/* this file contains the source for opening addresses of VSOCK socket type */
+/* This file contains the source for opening addresses of VSOCK socket type */
 
 #include "xiosysincludes.h"
 
@@ -139,6 +139,16 @@ static int xioopen_vsock_listen(int argc, const char *argv[], struct opt *opts,
       return ret;
    }
 
+   {
+      unsigned int cid;
+      if (Ioctl(xfd->fd, IOCTL_VM_SOCKETS_GET_LOCAL_CID, &cid) < 0) {
+	 Warn2("ioctl(%d, IOCTL_VM_SOCKETS_GET_LOCAL_CID, ...): %s",
+	       xfd->fd, strerror(errno));
+      } else {
+	 Notice1("VSOCK CID=%u", cid);
+      }
+   }
+
    opts0 = copyopts(opts, GROUP_ALL);
 
    ret = retropt_bind(opts, pf, socktype, protocol, (struct sockaddr *)&sa_bind,
@@ -154,4 +164,32 @@ static int xioopen_vsock_listen(int argc, const char *argv[], struct opt *opts,
 }
 
 #endif /* WITH_LISTEN */
+
+/* Returns information that can be used for constructing an environment
+   variable describing the socket address.
+   if idx is 0, this function writes "ADDR" into namebuff and the CID address
+   into valuebuff, and returns 1 (which means that one more info is there).
+   if idx is 1, it writes "PORT" into namebuff and the port number into
+   valuebuff, and returns 0 (no more info)
+   namelen and valuelen contain the max. allowed length of output chars in the
+   respective buffer.
+   on error this function returns -1.
+*/
+int
+xiosetsockaddrenv_vsock(int idx, char *namebuff, size_t namelen,
+		      char *valuebuff, size_t valuelen,
+		      struct sockaddr_vm *sa, int ipproto) {
+   switch (idx) {
+   case 0:
+      strcpy(namebuff, "ADDR");
+      snprintf(valuebuff, valuelen, F_uint32_t, sa->svm_cid);
+      return 1;
+   case 1:
+      strcpy(namebuff, "PORT");
+      snprintf(valuebuff, valuelen, F_uint32_t, sa->svm_port);
+      return 0;
+   }
+   return -1;
+}
+
 #endif /* WITH_VSOCK */

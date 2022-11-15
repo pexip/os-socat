@@ -71,7 +71,7 @@ const struct optdesc opt_ip_pktoptions = { "ip-pktoptions", "pktopts", OPT_IP_PK
 #ifdef IP_ADD_MEMBERSHIP
 const struct optdesc opt_ip_add_membership = { "ip-add-membership", "membership",OPT_IP_ADD_MEMBERSHIP, GROUP_SOCK_IP, PH_PASTSOCKET, TYPE_IP_MREQN, OFUNC_SOCKOPT, SOL_IP, IP_ADD_MEMBERSHIP };
 #endif
-#ifdef IP_ADD_SOURCE_MEMBERSHIP
+#if defined(HAVE_STRUCT_IP_MREQ_SOURCE) && defined(IP_ADD_SOURCE_MEMBERSHIP)
 const struct optdesc opt_ip_add_source_membership = { "ip-add-source-membership", "source-membership",OPT_IP_ADD_SOURCE_MEMBERSHIP, GROUP_SOCK_IP, PH_PASTSOCKET, TYPE_IP_MREQ_SOURCE, OFUNC_SOCKOPT, SOL_IP, IP_ADD_SOURCE_MEMBERSHIP };
 #endif
 #ifdef IP_RECVDSTADDR
@@ -238,6 +238,16 @@ int xiogetaddrinfo(const char *node, const char *service,
 	   continue;
 	}
 	if (error_num == EAI_SERVICE && protocol != 0) {
+	   if (hints.ai_protocol == 0) {
+	      Error7("getaddrinfo\"%s\", \"%s\", {%d,%d,%d,%d}, {}): %s",
+		     node?node:"NULL", service?service:"NULL",
+		     hints.ai_flags, hints.ai_family,
+		     hints.ai_socktype, hints.ai_protocol,
+		     gai_strerror(error_num));
+	      if (res != NULL)  freeaddrinfo(res);
+	      if (numnode)  free(numnode);
+	      return STAT_NORETRY;
+	   }
 	   hints.ai_protocol = 0;
 	   continue;
 	}
@@ -454,16 +464,16 @@ int xiogetaddrinfo(const char *node, const char *service,
 
 
 #if defined(HAVE_STRUCT_CMSGHDR) && defined(CMSG_DATA)
-/* converts the ancillary message in *cmsg into a form useable for further
+/* Converts the ancillary message in *cmsg into a form useable for further
    processing. knows the specifics of common message types.
-   these are valid for IPv4 and IPv6
-   returns the number of resulting syntax elements in *num
-   returns a sequence of \0 terminated type strings in *typbuff
-   returns a sequence of \0 terminated name strings in *nambuff
-   returns a sequence of \0 terminated value strings in *valbuff
-   the respective len parameters specify the available space in the buffers
-   returns STAT_OK on success
-   returns STAT_WARNING if a buffer was too short and data truncated.
+   These are valid for IPv4 and IPv6
+   Returns the number of resulting syntax elements in *num
+   Returns a sequence of \0 terminated type strings in *typbuff
+   Returns a sequence of \0 terminated name strings in *nambuff
+   Returns a sequence of \0 terminated value strings in *valbuff
+   The respective len parameters specify the available space in the buffers
+   Returns STAT_OK on success
+   Returns STAT_WARNING if a buffer was too short and data truncated.
  */
 int xiolog_ancillary_ip(struct cmsghdr *cmsg, int *num,
 			char *typbuff, int typlen,
@@ -509,14 +519,31 @@ int xiolog_ancillary_ip(struct cmsghdr *cmsg, int *num,
 	       '\0',
 	       inet4addr_info(ntohl(pktinfo->ipi_addr.s_addr),
 			      scratch3, sizeof(scratch3)));
+      Notice3("Ancillary message: interface \"%s\", locaddr=%s, dstaddr=%s",
+	      xiogetifname(pktinfo->ipi_ifindex, scratch1, -1),
+#if HAVE_PKTINFO_IPI_SPEC_DST
+	      inet4addr_info(ntohl(pktinfo->ipi_spec_dst.s_addr),
+			     scratch2, sizeof(scratch2)),
+#else
+	      "",
+#endif
+	      inet4addr_info(ntohl(pktinfo->ipi_addr.s_addr),
+			     scratch3, sizeof(scratch3)));
    }
       return STAT_OK;
 #endif /* defined(IP_PKTINFO) && HAVE_STRUCT_IN_PKTINFO */
 #endif /* WITH_IP4 */
 #if defined(IP_RECVERR) && HAVE_STRUCT_SOCK_EXTENDED_ERR
    case IP_RECVERR: {
-      struct sock_extended_err *err =
-	 (struct sock_extended_err *)CMSG_DATA(cmsg);
+      struct xio_extended_err {
+	 struct sock_extended_err see;
+	 __u32 data0;
+	 __u32 data1;
+	 __u32 data2;
+	 __u32 data3;
+      } ;
+      struct xio_extended_err *err =
+	 (struct xio_extended_err *)CMSG_DATA(cmsg);
       *num = 6;
       typbuff[0] = '\0'; strncat(typbuff, "IP_RECVERR", typlen-1);
       snprintf(nambuff, namlen, "%s%c%s%c%s%c%s%c%s%c%s",
@@ -527,8 +554,33 @@ int xiolog_ancillary_ip(struct cmsghdr *cmsg, int *num,
 	       "IP_RECVERR_TYPE", '\0', "IP_RECVERR_CODE", '\0',
 	       "IP_RECVERR_INFO", '\0', "IP_RECVERR_DATA");
       snprintf(valbuff, vallen, "%u%c%u%c%u%c%u%c%u%c%u",
-	       err->ee_errno, '\0', err->ee_origin, '\0', err->ee_type, '\0',
-	       err->ee_code, '\0', err->ee_info, '\0', err->ee_data);
+	       err->see.ee_errno, '\0', err->see.ee_origin, '\0', err->see.ee_type, '\0',
+	       err->see.ee_code, '\0', err->see.ee_info, '\0', err->see.ee_data);
+      /* semantic part */
+      switch (err->see.ee_origin) {
+	 char addrbuff[40];
+#if WITH_IP4
+      case SO_EE_ORIGIN_ICMP:
+	 if (1) {
+	    inet4addr_info(ntohl(err->data1), addrbuff, sizeof(addrbuff));
+	    Notice6("received ICMP from %s, type %d, code %d, info %d, data %d, resulting in errno %d",
+		    addrbuff, err->see.ee_type, err->see.ee_code, err->see.ee_info, err->see.ee_data, err->see.ee_errno);
+	 }
+	 break;
+#endif /* WITH_IP4 */
+#if WITH_IP6
+      case SO_EE_ORIGIN_ICMP6:
+	 if (1) {
+	    Notice5("received ICMP type %d, code %d, info %d, data %d, resulting in errno %d",
+		    err->see.ee_type, err->see.ee_code, err->see.ee_info, err->see.ee_data, err->see.ee_errno);
+	 }
+	 break;
+#endif /* WITH_IP6 */
+      default:
+	 Notice6("received error message origin %d, type %d, code %d, info %d, data %d, generating errno %d",
+		 err->see.ee_origin, err->see.ee_type, err->see.ee_code, err->see.ee_info, err->see.ee_data, err->see.ee_errno);
+	 break;
+      }
       return STAT_OK;
    }
 #endif /* defined(IP_RECVERR) && HAVE_STRUCT_SOCK_EXTENDED_ERR */
@@ -543,6 +595,7 @@ int xiolog_ancillary_ip(struct cmsghdr *cmsg, int *num,
       valbuff[0] = '\0';
       strncat(valbuff,
 	      xiosubstr(scratch1, sadl->sdl_data, 0, sadl->sdl_nlen), vallen-1);
+      Notice1("IP_RECVIF: %s", valbuff);
       return STAT_OK;
    }
 #endif /* defined(IP_RECVIF) */
@@ -554,6 +607,7 @@ int xiolog_ancillary_ip(struct cmsghdr *cmsg, int *num,
       nambuff[0] = '\0'; strncat(nambuff, "dstaddr", namlen-1);
       envbuff[0] = '\0'; strncat(envbuff, "IP_DSTADDR", envlen-1);
       inet4addr_info(ntohl(*(uint32_t *)CMSG_DATA(cmsg)), valbuff, vallen);
+      Notice1("IP_RECVDSTADDR: %s", valbuff);
       return STAT_OK;
 #endif
 #endif /* WITH_IP4 */
@@ -561,9 +615,16 @@ int xiolog_ancillary_ip(struct cmsghdr *cmsg, int *num,
 #ifdef IP_RECVOPTS
    case IP_RECVOPTS:
 #endif
-      cmsgtype = "IP_OPTIONS"; cmsgname = "options"; cmsgctr = -1; break;
+      cmsgtype = "IP_OPTIONS"; cmsgname = "options"; cmsgctr = -1;
+      /*!!!*/
+      break;
+#if XIO_ANCILLARY_TYPE_SOLARIS
+   case IP_RECVTOS:
+#else
    case IP_TOS:
-      cmsgtype = "IP_TOS";     cmsgname = "tos"; cmsgctr = msglen; break;
+#endif
+      cmsgtype = "IP_TOS";     cmsgname = "tos"; cmsgctr = msglen;
+      break;
    case IP_TTL: /* Linux */
 #ifdef IP_RECVTTL
    case IP_RECVTTL: /* FreeBSD */
@@ -571,7 +632,7 @@ int xiolog_ancillary_ip(struct cmsghdr *cmsg, int *num,
       cmsgtype = "IP_TTL";     cmsgname = "ttl"; cmsgctr = msglen; break;
    }
    /* when we come here we provide a single parameter
-      with type in cmsgtype, name in cmsgname, value length in msglen */
+      with name in cmsgname, value length in msglen */
    *num = 1;
    if (strlen(cmsgtype) >= typlen)  rc = STAT_WARNING;
    typbuff[0] = '\0'; strncat(typbuff, cmsgtype, typlen-1);
@@ -585,9 +646,13 @@ int xiolog_ancillary_ip(struct cmsghdr *cmsg, int *num,
    }
    switch (cmsgctr) {
    case sizeof(char):
-      snprintf(valbuff, vallen, "%u", *(unsigned char *)CMSG_DATA(cmsg)); break;
+      snprintf(valbuff, vallen, "%u", *(unsigned char *)CMSG_DATA(cmsg));
+      Notice2("Ancillary message: %s=%u", cmsgname, *(unsigned char *)CMSG_DATA(cmsg));
+      break;
    case sizeof(int):
-      snprintf(valbuff, vallen, "%u",    (*(unsigned int *)CMSG_DATA(cmsg))); break;
+      snprintf(valbuff, vallen, "%u",    (*(unsigned int *)CMSG_DATA(cmsg)));
+      Notice2("Ancillary message: %s=%u", cmsgname, *(unsigned int *)CMSG_DATA(cmsg));
+      break;
    case 0:
       xiodump(CMSG_DATA(cmsg), msglen, valbuff, vallen, 0); break;
    default: break;
