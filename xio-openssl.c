@@ -226,7 +226,7 @@ static int
    bool opt_ver = true;	/* verify peer certificate */
    char *opt_cert = NULL;	/* file name of client certificate */
    const char *opt_commonname = NULL;	/* for checking peer certificate */
-   bool        opt_no_sni;
+   bool        opt_no_sni = false;
    const char *opt_snihost = NULL;	/* for SNI host */
    int result;
 
@@ -560,7 +560,6 @@ static int
       return STAT_NORETRY;
    }
 
-   xfd->addr  = &xioaddr_openssl_listen;
    xfd->dtype = XIODATA_OPENSSL;
 
    while (true) {	/* loop over failed attempts */
@@ -930,7 +929,6 @@ int
 
    //*ipproto = IPPROTO_TCP;
 
-   xfd->addr  = &xioaddr_openssl;
    xfd->dtype = XIODATA_OPENSSL;
 
    retropt_bool(opts, OPT_OPENSSL_FIPS, &opt_fips);
@@ -961,11 +959,15 @@ int
    openssl_delete_cert_info();
 
    /* OpenSSL preparation */
-#if HAVE_OPENSSL_init_ssl
+#if HAVE_OPENSSL_INIT_SSL
    {
+      uint64_t opts = 0;
       OPENSSL_INIT_SETTINGS *settings;
       settings = OPENSSL_INIT_new();
-      sycOPENSSL_init_ssl(0, settings);
+#ifdef OPENSSL_INIT_NO_ATEXIT
+      opts |= OPENSSL_INIT_NO_ATEXIT;
+#endif
+      sycOPENSSL_init_ssl(opts, settings);
    }
 #else
    sycSSL_library_init();
@@ -1505,7 +1507,7 @@ static int openssl_delete_cert_info(void) {
    progname = diag_get_string('p');
    envprefix[0] = '\0'; strncat(envprefix, progname, XIO_ENVNAMELEN-1);
    l = strlen(envprefix);
-   for (i = 0; i < l; ++i)  envprefix[i] = toupper(envprefix[i]);
+   for (i = 0; i < l; ++i)  envprefix[i] = toupper((unsigned char)envprefix[i]);
    strncat(envprefix+l, "_OPENSSL_", XIO_ENVNAMELEN-l-1);
 
 #if HAVE_VAR_ENVIRON
@@ -1541,7 +1543,7 @@ static int openssl_setenv_cert_name(const char *field, X509_NAME *name) {
    }
    memcpy(str, buf, len);
    str[len] = '\0';
-   Info2("SSL peer cert %s: \"%s\"", field, buf);
+   Info2("SSL peer cert %s: \"%s\"", field, str);
    xiosetenv2("OPENSSL_X509", field, str, 1, NULL);
    free(str);
    BIO_free(bio);
@@ -1777,15 +1779,17 @@ static int openssl_handle_peer_certificate(struct single *xfd,
 #if WITH_IP6
 			case 16: /* IPv6 */
 			   inet_ntop(AF_INET6, data, aBuffer, sizeof(aBuffer));
-			   xioip6_pton(peername, &ip6bin);
-			   if (memcmp(data, &ip6bin, sizeof(ip6bin)) == 0) {
-			      Debug2("subjectAltName \"%s\" matches peername \"%s\"",
-				    aBuffer, peername);
-			      ok = 1;
-			   } else {
-			      Info2("subjectAltName \"%s\" does not match peername \"%s\"",
-				    aBuffer, peername);
-			   }			      
+			   if (peername != NULL) {
+			      xioip6_pton(peername, &ip6bin);
+			      if (memcmp(data, &ip6bin, sizeof(ip6bin)) == 0) {
+			         Debug2("subjectAltName \"%s\" matches peername \"%s\"",
+					aBuffer, peername);
+			         ok = 1;
+			      } else {
+			         Info2("subjectAltName \"%s\" does not match peername \"%s\"",
+				       aBuffer, peername);
+			      }
+			   }
 			   break;
 #endif
 			}

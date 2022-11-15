@@ -37,6 +37,7 @@ struct diag_opts {
    int exitstatus;	/* pass signal number to error exit */
    bool withhostname;	/* in custom logs add hostname */
    char *hostname;
+   bool signalsafe;
 } ;
 
 
@@ -44,12 +45,12 @@ static void _diag_exit(int status);
 
 
 struct diag_opts diagopts =
-  { NULL, E_ERROR, E_ERROR, 0, NULL, LOG_DAEMON, false, 0 } ;
+  { NULL, E_ERROR, E_ERROR, 0, NULL, LOG_DAEMON, false, 0, false, NULL, true } ;
 
 static void msg2(
 #if HAVE_CLOCK_GETTIME
 		 struct timespec *now,
-#elif HAVE_GETTIMEOFDAY
+#elif HAVE_PROTOTYPE_LIB_gettimeofday
 		 struct timeval *now,
 #else
 		 time_t *now,
@@ -120,6 +121,10 @@ static int diag_sock_pair(void) {
    }
    diag_sock_send = handlersocks[1];
    diag_sock_recv = handlersocks[0];
+#if !defined(MSG_DONTWAIT)
+   fcntl(diag_sock_send, F_SETFL, O_NONBLOCK);
+   fcntl(diag_sock_recv, F_SETFL, O_NONBLOCK);
+#endif
    return 0;
 }
 
@@ -130,8 +135,10 @@ static int diag_init(void) {
    diaginitialized = 1;
    /* gcc with GNU libc refuses to set this in the initializer */
    diagopts.logfile = stderr;
-   if (diag_sock_pair() < 0) {
-      return -1;
+   if (diagopts.signalsafe) {
+      if (diag_sock_pair() < 0) {
+	 return -1;
+      }
    }
    return 0;
 }
@@ -139,6 +146,16 @@ static int diag_init(void) {
 
 
 void diag_set(char what, const char *arg) {
+   switch (what) {
+   case 'I':
+      if (diagopts.signalsafe) {
+	 if (diag_sock_send >= 0) { Close(diag_sock_send); diag_sock_send = -1; }
+	 if (diag_sock_recv >= 0) { Close(diag_sock_recv); diag_sock_recv = -1; }
+      }
+      diagopts.signalsafe = false;
+      return;
+   }
+
    DIAG_INIT;
    switch (what) {
       const struct wordent *keywd;
@@ -236,7 +253,10 @@ int diag_reserve_fd(int fd) {
 int diag_fork() {
    Close(diag_sock_send);
    Close(diag_sock_recv);
-   return diag_sock_pair();
+   if (diagopts.signalsafe) {
+      return diag_sock_pair();
+   }
+   return 0;
 }
 
 /* Linux and AIX syslog format:
@@ -269,7 +289,7 @@ void msg(int level, const char *format, ...) {
    diag_dgram.op = DIAG_OP_MSG;
 #if HAVE_CLOCK_GETTIME
    clock_gettime(CLOCK_REALTIME, &diag_dgram.now);
-#elif HAVE_GETTIMEOFDAY
+#elif HAVE_PROTOTYPE_LIB_gettimeofday
    gettimeofday(&diag_dgram.now, NULL);
 #else
    diag_dgram.now = time(NULL);
@@ -277,8 +297,12 @@ void msg(int level, const char *format, ...) {
    diag_dgram.level = level;
    diag_dgram.exitcode = diagopts.exitstatus;
    vsnprintf_r(diag_dgram.text, sizeof(diag_dgram.text), format, ap);
-   if (diag_in_handler && !diag_immediate_msg) {
-      send(diag_sock_send, &diag_dgram, sizeof(diag_dgram)-TEXTLEN + strlen(diag_dgram.text)+1, MSG_DONTWAIT
+   if (diagopts.signalsafe && diag_in_handler && !diag_immediate_msg) {
+      send(diag_sock_send, &diag_dgram, sizeof(diag_dgram)-TEXTLEN + strlen(diag_dgram.text)+1,
+	   0 	/* for canonical reasons */
+#ifdef MSG_DONTWAIT
+	   |MSG_DONTWAIT
+#endif
 #ifdef MSG_NOSIGNAL
 	   |MSG_NOSIGNAL
 #endif
@@ -295,7 +319,7 @@ void msg(int level, const char *format, ...) {
 void msg2(
 #if HAVE_CLOCK_GETTIME
 	  struct timespec *now,
-#elif HAVE_GETTIMEOFDAY
+#elif HAVE_PROTOTYPE_LIB_gettimeofday
 	  struct timeval *now,
 #else
 	  time_t *now,
@@ -309,54 +333,65 @@ void msg2(
 #if HAVE_STRFTIME
    struct tm struct_tm;
 #endif
-#define BUFLEN 512
-   char buff[BUFLEN], *bufp, *syslp;
+#define MSGLEN 512
+   char buff[MSGLEN+2], *bufp = buff, *syslp;
    size_t bytes;
 
 #if HAVE_CLOCK_GETTIME
    epoch = now->tv_sec;
-#elif HAVE_GETTIMEOFDAY
+#elif HAVE_PROTOTYPE_LIB_gettimeofday
    epoch = now->tv_sec;
 #else
    epoch = *now;
 #endif
+   /*! consider caching instead of recalculating many times per second */
 #if HAVE_STRFTIME
-   bytes = strftime(buff, 20, "%Y/%m/%d %H:%M:%S", localtime_r(&epoch, &struct_tm));
-   buff[bytes] = '\0';
+   bytes = strftime(bufp, 20, "%Y/%m/%d %H:%M:%S", localtime_r(&epoch, &struct_tm));
 #else
-   bytes = snprintf(buff, 11, F_time, epoch);
+   bytes = snprintf(bufp, 11, F_time, epoch);
 #endif
+   bufp += bytes;
+   *bufp = '\0';
    if (diagopts.micros) {
 #if HAVE_CLOCK_GETTIME
       micros = now->tv_nsec/1000;
-#elif HAVE_GETTIMEOFDAY
+#elif HAVE_PROTOTYPE_LIB_gettimeofday
       micros = now->tv_usec;
 #else
       micros = 0;
 #endif
-      bytes += sprintf(buff+19, ".%06lu ", micros);
+      bufp += sprintf(bufp, ".%06lu ", micros);
    } else {
-      buff[19] = ' '; buff[20] = '\0';
+      *bufp++ = ' ';
+      *bufp = '\0';
    }
-   bytes = strlen(buff);
 
-   bufp = buff + bytes;
    if (diagopts.withhostname) {
-      bytes = sprintf(bufp, "%s ", diagopts.hostname), bufp+=bytes;
+      bytes = snprintf(bufp, MSGLEN-(bufp-buff), "%s ", diagopts.hostname);
+      if (bytes >= MSGLEN-(bufp-buff))
+	 bytes = MSGLEN-(bufp-buff)-1;
+      bufp += bytes;
    }
-   bytes = sprintf(bufp, "%s["F_pid"] ", diagopts.progname, getpid());
+   bytes = snprintf(bufp, MSGLEN-(bufp-buff), "%s["F_pid"] ", diagopts.progname, getpid());
+   if (bytes >= MSGLEN-(bufp-buff))
+      bytes = MSGLEN-(bufp-buff)-1;
    bufp += bytes;
-   syslp = bufp;
-   *bufp++ = "DINWEF"[level];
+   syslp = bufp; 	/* syslog prefixes with time etc.itself */
+   if (bufp < buff+MSGLEN)
+      *bufp++ = "DINWEF"[level];
 #if 0 /* only for debugging socat */
-   if (handler)  bufp[-1] = tolower(bufp[-1]); /* for debugging, low chars indicate messages from signal handlers */
+   if (handler)  bufp[-1] = tolower((unsigned char)bufp[-1]); /* for debugging, low chars indicate messages from signal handlers */
 #endif
-   *bufp++ = ' ';
-   strncpy(bufp, text, BUFLEN-(bufp-buff)-1);
-   strcat(bufp, "\n");
+   if (bufp < buff+MSGLEN)
+      *bufp++ = ' ';
+   strncpy(bufp, text, MSGLEN-(bufp-buff));
+   bufp = strchr(bufp, '\0');
+   strcpy(bufp, "\n");
    _msg(level, buff, syslp);
    if (level >= diagopts.exitlevel) {
       if (E_NOTICE >= diagopts.msglevel) {
+	 if ((syslp - buff) + 16 > MSGLEN+1)
+	    syslp = buff + MSGLEN - 15;
 	 snprintf_r(syslp, 16, "N exit(%d)\n", exitcode?exitcode:(diagopts.exitstatus?diagopts.exitstatus:1));
 	 _msg(E_NOTICE, buff, syslp);
       }
@@ -380,14 +415,24 @@ static void _msg(int level, const char *buff, const char *syslp) {
 void diag_flush(void) {
    struct diag_dgram recv_dgram;
    char exitmsg[20];
-   while (recv(diag_sock_recv, &recv_dgram, sizeof(recv_dgram)-1, MSG_DONTWAIT) > 0) {
+
+   if (!diagopts.signalsafe) {
+      return;
+   }
+
+   while (recv(diag_sock_recv, &recv_dgram, sizeof(recv_dgram)-1,
+	       0 	/* for canonical reasons */
+#ifdef MSG_DONTWAIT
+	       |MSG_DONTWAIT
+#endif
+	       ) > 0) {
       recv_dgram.text[TEXTLEN-1] = '\0';
       switch (recv_dgram.op) {
       case DIAG_OP_EXIT:
 	 /* we want the actual time, not when this dgram was sent */
 #if HAVE_CLOCK_GETTIME
 	 clock_gettime(CLOCK_REALTIME, &recv_dgram.now);
-#elif HAVE_GETTIMEOFDAY
+#elif HAVE_PROTOTYPE_LIB_gettimeofday
 	 gettimeofday(&recv_dgram.now, NULL);
 #else
 	 recv_dgram.now = time(NULL);
@@ -443,7 +488,11 @@ void diag_exit(int status) {
    if (diag_in_handler && !diag_immediate_exit) {
       diag_dgram.op = DIAG_OP_EXIT;
       diag_dgram.exitcode = status;
-      send(diag_sock_send, &diag_dgram, sizeof(diag_dgram)-TEXTLEN, MSG_DONTWAIT
+      send(diag_sock_send, &diag_dgram, sizeof(diag_dgram)-TEXTLEN,
+	   0 	/* for canonical reasons */
+#ifdef MSG_DONTWAIT
+	   |MSG_DONTWAIT
+#endif
 #ifdef MSG_NOSIGNAL
 	   |MSG_NOSIGNAL
 #endif

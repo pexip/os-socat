@@ -4340,6 +4340,79 @@ fi
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: $sc_cv_have_prototype_hstrerror" >&5
 $as_echo "$sc_cv_have_prototype_hstrerror" >&6; }
 
+# getprotobynumber_r() is not standardized
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for getprotobynumber_r() variant" >&5
+$as_echo_n "checking for getprotobynumber_r() variant... " >&6; }
+if ${sc_cv_getprotobynumber_r+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+#include <stddef.h>
+#include <netdb.h>
+int
+main ()
+{
+getprotobynumber_r(1,NULL,NULL,1024,NULL);
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+  sc_cv_getprotobynumber_r=1; tmp_bynum_variant=Linux
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+#include <stddef.h>
+ #include <netdb.h>
+int
+main ()
+{
+getprotobynumber_r(1,NULL,NULL,1024);
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+  sc_cv_getprotobynumber_r=2; tmp_bynum_variant=Solaris
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+#include <stddef.h>
+  #include <netdb.h>
+int
+main ()
+{
+getprotobynumber_r(1,NULL,NULL);
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+  sc_cv_getprotobynumber_r=3; tmp_bynum_variant=AIX
+else
+  sc_cv_getprotobynumber_r=
+
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+fi
+
+if test "$sc_cv_getprotobynumber_r"; then
+   cat >>confdefs.h <<_ACEOF
+#define HAVE_GETPROTOBYNUMBER_R $sc_cv_getprotobynumber_r
+_ACEOF
+
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $sc_cv_getprotobynumber_r /* $tmp_bynum_variant */" >&5
+$as_echo "$sc_cv_getprotobynumber_r /* $tmp_bynum_variant */" >&6; }
+
 
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether to include help" >&5
 $as_echo_n "checking whether to include help... " >&6; }
@@ -4566,6 +4639,9 @@ do :
   ac_fn_c_check_header_compile "$LINENO" "netinet/ip6.h" "ac_cv_header_netinet_ip6_h" "$ac_includes_default
      #ifdef HAVE_NETINET_IN_H
      # include <netinet/in.h>
+     #endif
+     #ifdef HAVE_NETINET_IP_H
+     # include <netinet/ip.h>
      #endif
 "
 if test "x$ac_cv_header_netinet_ip6_h" = xyes; then :
@@ -5146,7 +5222,7 @@ if ac_fn_c_try_compile "$LINENO"; then :
 else
   sc_cv_have_openssl_ssl_h=no
        if  "$OPENSSL_BASE" ; then
-	  s="$OPENSSL_BASE"
+	  Ds="$OPENSSL_BASE"
        else
           Ds="/sw /usr/local /opt/freeware /usr/sfw /usr/local/ssl"
        fi
@@ -6144,13 +6220,12 @@ _ACEOF
 fi
 done
 
-for ac_func in getprotobynumber getprotobynumber_r
+for ac_func in getprotobynumber
 do :
-  as_ac_var=`$as_echo "ac_cv_func_$ac_func" | $as_tr_sh`
-ac_fn_c_check_func "$LINENO" "$ac_func" "$as_ac_var"
-if eval test \"x\$"$as_ac_var"\" = x"yes"; then :
+  ac_fn_c_check_func "$LINENO" "getprotobynumber" "ac_cv_func_getprotobynumber"
+if test "x$ac_cv_func_getprotobynumber" = xyes; then :
   cat >>confdefs.h <<_ACEOF
-#define `$as_echo "HAVE_$ac_func" | $as_tr_cpp` 1
+#define HAVE_GETPROTOBYNUMBER 1
 _ACEOF
 
 fi
@@ -8268,7 +8343,49 @@ if test "x$ac_cv_lib_util_openpty" = xyes; then :
 fi
 
 
-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for clock_gettime in -lrt" >&5
+
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for gettimeofday prototype" >&5
+$as_echo_n "checking for gettimeofday prototype... " >&6; }
+if ${sc_cv_have_prototype_lib_gettimeofday+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  CFLAGS1="$CFLAGS"; CFLAGS="$ERRONWARN -Wall $CFLAGS1";
+ cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+#include "sysincludes.h"
+
+int
+main ()
+{
+return(&gettimeofday==(void *)&gettimeofday);
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+  sc_cv_have_prototype_lib_gettimeofday=yes
+else
+  sc_cv_have_prototype_lib_gettimeofday=no
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext;
+ CFLAGS="$CFLAGS1"
+fi
+
+if test $sc_cv_have_prototype_lib_gettimeofday = yes; then
+   $as_echo "#define HAVE_PROTOTYPE_LIB_gettimeofday 1" >>confdefs.h
+
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $sc_cv_have_prototype_lib_gettimeofday" >&5
+$as_echo "$sc_cv_have_prototype_lib_gettimeofday" >&6; }
+
+
+ac_fn_c_check_func "$LINENO" "clock_gettime" "ac_cv_func_clock_gettime"
+if test "x$ac_cv_func_clock_gettime" = xyes; then :
+  $as_echo "#define HAVE_CLOCK_GETTIME 1" >>confdefs.h
+
+else
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for clock_gettime in -lrt" >&5
 $as_echo_n "checking for clock_gettime in -lrt... " >&6; }
 if ${ac_cv_lib_rt_clock_gettime+:} false; then :
   $as_echo_n "(cached) " >&6
@@ -8306,6 +8423,8 @@ fi
 $as_echo "$ac_cv_lib_rt_clock_gettime" >&6; }
 if test "x$ac_cv_lib_rt_clock_gettime" = xyes; then :
   LIBS="-lrt $LIBS"; $as_echo "#define HAVE_CLOCK_GETTIME 1" >>confdefs.h
+
+fi
 
 fi
 
@@ -20992,6 +21111,20 @@ else
 $as_echo "no" >&6; }
 fi
 
+# On Solaris family, we have to use /proc/$$/path/N
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for /proc/*/path" >&5
+$as_echo_n "checking for /proc/*/path... " >&6; }
+if test -d /proc/$$/path; then
+  $as_echo "#define HAVE_PROC_DIR_PATH 1" >>confdefs.h
+
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+else
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+fi
+
+
 # on some platforms, raw linking with libwrap fails because allow_severity and
 # deny_severity are not explicitely defined. Thus we put the libwrap part to
 # the end
@@ -21261,7 +21394,14 @@ fi
 $as_echo "$sc_cv_var_environ" >&6; }
 
 # allow BUILD_DATE to be externally set for build reproducibility
-if test "$BUILD_DATE"; then
+if test "$SOURCE_DATE_EPOCH"; then
+  DATE_FMT="%d %b %Y %H:%M:%S"
+  BUILD_DATE=$(LC_ALL=C date -u -d "@$SOURCE_DATE_EPOCH" "+$DATE_FMT")
+  cat >>confdefs.h <<_ACEOF
+#define BUILD_DATE "$BUILD_DATE"
+_ACEOF
+
+elif test "$BUILD_DATE"; then
   cat >>confdefs.h <<_ACEOF
 #define BUILD_DATE "$BUILD_DATE"
 _ACEOF

@@ -559,6 +559,7 @@ certificate are supported\&.
 Option groups: FD,SOCKET,IP4,IP6,TCP,OPENSSL,RETRY 
 .br 
 Useful options:
+min\-proto\-version,
 cipher,
 verify,
 commonname,
@@ -593,6 +594,7 @@ Option groups: FD,SOCKET,IP4,IP6,TCP,LISTEN,OPENSSL,CHILD,RANGE,RETRY
 .br 
 Useful options:
 pf,
+min\-proto\-version,
 cipher,
 verify,
 commonname,
@@ -630,6 +632,7 @@ on the network\&. Use option \-T to prevent indefinite hanging when peer went do
 Option groups: FD,SOCKET,IP4,IP6,OPENSSL,RETRY 
 .br 
 Useful options:
+min\-proto\-version,
 cipher,
 verify,
 commonname,
@@ -666,6 +669,7 @@ Option groups: FD,SOCKET,IP4,IP6,LISTEN,OPENSSL,CHILD,RANGE,RETRY
 .br 
 Useful options:
 pf,
+min\-proto\-version,
 cipher,
 verify,
 commonname,
@@ -2275,15 +2279,15 @@ or
 calls\&.
 This option affects address resolution and the required syntax of bind and
 range options\&.
-.IP "\fB\f(CWtype=<type>\fP\fP"
+.IP "\fB\f(CWsocktype=<type>\fP\fP"
 Sets the type of the socket, specified as second argument to the
 \f(CWsocket()\fP
 or 
 \f(CWsocketpair()\fP
 calls, to <type>
 [int]\&. Address resolution is not affected by this option\&.
-Under Linux, 1 means stream oriented socket, 2 means datagram socket, and 3
-means raw socket\&.
+Under Linux, 1 means stream oriented socket, 2 means datagram socket, 3
+means raw socket, and 5 seqpacket (stream keeping packet boundaries)\&.
 .IP "\fB\f(CWprotocol\fP\fP"
 Sets the protocol of the socket, specified as third argument to the
 \f(CWsocket()\fP
@@ -3009,7 +3013,7 @@ These options apply to the openssl and
 openssl\-listen address types\&.
 .PP 
 .IP "\fB\f(CWcipher=<cipherlist>\fP\fP"
-Selects the list of ciphers that may be used for the connection\&.
+Specifies the list of ciphers that may be used for the connection\&.
 See the man page of 
 \f(CWciphers\fP
 , section \fBCIPHER LIST FORMAT\fP, for
@@ -3032,6 +3036,9 @@ will fail\&.
 .IP "\fB\f(CWmethod=<ssl\-method>\fP\fP"
 This option is based on deprecated functions and is only available when
 \fBsocat\fP was build with option \f(CW\-\-with\-openssl\-method\fP\&.
+Use option min\-proto\-version
+and maybe max\-proto\-version
+instead\&.
 Sets the protocol version to be used\&. Valid strings (not case sensitive)
 are:  
 .IP "\f(CWSSL2\fP"
@@ -3048,6 +3055,26 @@ Select TLS protocol version 1\&.1\&.
 Select TLS protocol version 1\&.2\&.
 When this option is not provided OpenSSL negotiates the mothod with its
 peer\&.
+.IP "\fB\f(CWmin\-proto\-version\fP\fP"
+This option tells OpenSSL to use this or a later SSL/TLS protocol version
+and refuses to accept a lower/older protocol\&. Valid syntax is:
+.IP "\f(CWSSL2\fP"
+Select SSL protocol version 2\&.
+.IP "\f(CWSSL3\fP"
+Select SSL protocol version 3\&.
+.IP "\f(CWTLS1\fP"
+.IP "\f(CWTLS1\&.0\fP"
+Select TLS protocol version 1\&.
+.IP "\f(CWTLS1\&.1\fP"
+Select TLS protocol version 1\&.1\&.
+.IP "\f(CWTLS1\&.2\fP"
+Select TLS protocol version 1\&.2\&.
+.IP "\f(CWTLS1\&.3\fP"
+Select TLS protocol version 1\&.3\&.
+.IP "\fB\f(CWopenssl\-max\-proto\-version\fP\fP"
+This option is similar to min\-proto\-version,
+however, it disallows use of a higher protocol version\&. Useful for testing
+the peer\&.
 .IP "\fB\f(CWverify=<bool>\fP\fP"
 Controls check of the peer\(cq\&s certificate\&. Default is 1 (true)\&. Disabling
 verify might open your socket for everyone, making the encryption useless!
@@ -3765,7 +3792,7 @@ variables provided by socat\&. On BSD based systems you have to replace
 SOCAT_IP_DSTADDR: it contains the target address of the packet which may be a
 unicast, multicast, or broadcast address\&.
 .IP 
-.IP "\fB\f(CWecho \-e \(dq\&M\-SEARCH * HTTP/1\&.1\enHOST: 239\&.255\&.255\&.250:1900\enMAN: \e\(dq\&ssdp:discover\e\(dq\&\enMX: 4\enST: \e\(dq\&ssdp:all\e\(dq\&\en\(dq\& |\&./socat \- UDP\-DATAGRAM:239\&.255\&.255\&.250:1900,crlf\fP\fP"
+.IP "\fB\f(CWecho \-e \(dq\&M\-SEARCH * HTTP/1\&.1\enHOST: 239\&.255\&.255\&.250:1900\enMAN: \e\(dq\&ssdp:discover\e\(dq\&\enMX: 4\enST: \e\(dq\&ssdp:all\e\(dq\&\en\(dq\& |socat \- UDP\-DATAGRAM:239\&.255\&.255\&.250:1900,crlf\fP\fP"
 
 .IP 
 sends an SSDP (Simple Service Discovery Protocol) query to the local network
@@ -3989,7 +4016,7 @@ given user\&.
 The work of the following groups and organizations was invaluable for this
 project:
 .PP 
-The \fIFSF\fP (GNU, http://www\&.fsf\&.org/ project 
+The \fIFSF\fP (GNU, http://www\&.fsf\&.org/) project 
 with their free and portable development software and
 lots of other useful tools and libraries\&.
 .PP 

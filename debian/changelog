@@ -1,3 +1,43 @@
+socat (1.7.4.4-2pexip1) pexip; urgency=medium
+
+  * New upstream release
+
+ -- John-Mark Bell <jmb@pexip.com>  Tue, 15 Nov 2022 20:46:58 +0000
+
+socat (1.7.4.4-2) unstable; urgency=medium
+
+  * Blacklist test 329 as well.
+  * Don't run self-testing on kFreeBSD and GNU/Hurd.
+
+ -- Laszlo Boszormenyi (GCS) <gcs@debian.org>  Sun, 06 Nov 2022 09:15:51 +0100
+
+socat (1.7.4.4-1) unstable; urgency=medium
+
+  * New upstream release.
+
+  [ Svante Signell <svante.signell@gmail.com> ]
+  * Fix GNU/Hurd FTBFS (closes: #1020919).
+
+ -- Laszlo Boszormenyi (GCS) <gcs@debian.org>  Wed, 02 Nov 2022 17:05:02 +0100
+
+socat (1.7.4.3-3) unstable; urgency=medium
+
+  * Disable additional tests for not working on buildds.
+
+ -- Laszlo Boszormenyi (GCS) <gcs@debian.org>  Wed, 27 Apr 2022 19:30:55 +0200
+
+socat (1.7.4.3-2) unstable; urgency=medium
+
+  * Disable vsock loopback socket test for not working on buildds.
+
+ -- Laszlo Boszormenyi (GCS) <gcs@debian.org>  Fri, 15 Apr 2022 08:34:17 +0200
+
+socat (1.7.4.3-1) unstable; urgency=medium
+
+  * New upstream release.
+
+ -- Laszlo Boszormenyi (GCS) <gcs@debian.org>  Thu, 14 Apr 2022 19:06:10 +0200
+
 socat (1.7.4.1-3pexip5) pexip-bullseye; urgency=medium
 
   * Bullseye rebuild for ARM64 inclusion

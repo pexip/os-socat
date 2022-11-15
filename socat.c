@@ -92,6 +92,7 @@ int main(int argc, const char *argv[]) {
    char buff[10];
    double rto;
    int i, argc0, result;
+   bool isdash = false;
    struct utsname ubuf;
    int lockrc;
 
@@ -191,8 +192,17 @@ int main(int argc, const char *argv[]) {
 #ifdef O_LARGEFILE
 					  O_LARGEFILE|
 #endif
-					  O_NONBLOCK, 0664)) < 0)
+					  O_NONBLOCK, 0664)) < 0) {
+	    if (errno == ENXIO) {
+	       if ((socat_opts.sniffleft = Open(a, O_CREAT|O_RDWR|O_APPEND|
+#ifdef O_LARGEFILE
+						O_LARGEFILE|
+#endif
+						O_NONBLOCK, 0664)) > 0)
+		  break; 	/* try to open pipe rdwr */
+	    }
 	    Error2("option -r \"%s\": %s", a, strerror(errno));
+         }
 	 break;
       case 'R': if (arg1[0][2]) {
 	    a = *arg1+2;
@@ -207,8 +217,17 @@ int main(int argc, const char *argv[]) {
 #ifdef O_LARGEFILE
 					   O_LARGEFILE|
 #endif
-					   O_NONBLOCK, 0664)) < 0)
-	    Error2("option -r \"%s\": %s", a, strerror(errno));
+					   O_NONBLOCK, 0664)) < 0) {
+	    if (errno == ENXIO) {
+	       if ((socat_opts.sniffright = Open(a, O_CREAT|O_RDWR|O_APPEND|
+#ifdef O_LARGEFILE
+						O_LARGEFILE|
+#endif
+						O_NONBLOCK, 0664)) > 0)
+		  break; 	/* try to open pipe rdwr */
+	    }
+	    Error2("option -R \"%s\": %s", a, strerror(errno));
+         }
 	 break;
       case 'b': if (arg1[0][2]) {
 	    a = *arg1+2;
@@ -219,7 +238,7 @@ int main(int argc, const char *argv[]) {
 	       Exit(1);
 	    }
 	 }
-	 socat_opts.bufsiz = strtoul(a, (char **)&a, 0);
+	 socat_opts.bufsiz = Strtoul(a, (char **)&a, 0, "-b");
 	 break;
       case 's':  if (arg1[0][2])  { socat_opt_hint(stderr, arg1[0][1], arg1[0][2]); Exit(1); }
 	 diag_set_int('e', E_FATAL); break;
@@ -232,7 +251,7 @@ int main(int argc, const char *argv[]) {
 	       Exit(1);
 	    }
 	 }
-	 rto = strtod(a, (char **)&a);
+	 rto = Strtod(a, (char **)&a, "-t");
 	 socat_opts.closwait.tv_sec = rto;
 	 socat_opts.closwait.tv_usec =
 	    (rto-socat_opts.closwait.tv_sec) * 1000000; 
@@ -246,7 +265,7 @@ int main(int argc, const char *argv[]) {
 	       Exit(1);
 	    }
 	 }
-	 rto = strtod(a, (char **)&a);
+	 rto = Strtod(a, (char **)&a, "-T");
 	 socat_opts.total_timeout.tv_sec = rto;
 	 socat_opts.total_timeout.tv_usec =
 	    (rto-socat_opts.total_timeout.tv_sec) * 1000000; 
@@ -298,21 +317,22 @@ int main(int argc, const char *argv[]) {
 #endif /* WITH_IP4 || WITH_IP6 */
       case '\0':
       case ',':
-      case ':': break;	/* this "-" is a variation of STDIO */
+      case ':':
+	 isdash = true;
+	 break;	/* this "-" is a variation of STDIO */
       default:
-	 xioinqopt('p', buff, sizeof(buff));
+	 xioinqopt('p', buff, sizeof(buff)); 	/* fetch pipe separator char */
 	 if (arg1[0][1] == buff[0]) {
+	    isdash = true;
 	    break;
 	 }
 	 Error1("unknown option \"%s\"; use option \"-h\" for help", arg1[0]);
 	 Exit(1);
       }
-      /* the leading "-" might be a form of the first address */
-      xioinqopt('p', buff, sizeof(buff));
-      if (arg1[0][0] == '-' &&
-	  (arg1[0][1] == '\0' || arg1[0][1] == ':' ||
-	   arg1[0][1] == ',' || arg1[0][1] == buff[0]))
+      if (isdash) {
+	 /* the leading "-" is a form of the first address */
 	 break;
+      }
       ++arg1; --argc;
    }
    if (argc != 2) {
@@ -1173,40 +1193,45 @@ int _socat(void) {
    returns 0 on success or -1 if an error occurred */
 int gettimestamp(char *timestamp) {
    size_t bytes;
-#if HAVE_GETTIMEOFDAY || 1
+#if HAVE_CLOCK_GETTIME
+   struct timespec now;
+#elif HAVE_PROTOTYPE_LIB_gettimeofday
    struct timeval now;
-   int result;
+#endif /* !HAVE_PROTOTYPE_LIB_gettimeofday */
    time_t nowt;
-#else /* !HAVE_GETTIMEOFDAY */
-   time_t now;
-#endif /* !HAVE_GETTIMEOFDAY */
+   int result;
 
-#if HAVE_GETTIMEOFDAY || 1
-   result = gettimeofday(&now, NULL);
+#if HAVE_CLOCK_GETTIME
+   result = clock_gettime(CLOCK_REALTIME, &now);
    if (result < 0) {
       return result;
-   } else {
-      nowt = now.tv_sec;
-#if HAVE_STRFTIME
-      bytes = strftime(timestamp, 20, "%Y/%m/%d %H:%M:%S", localtime(&nowt));
-      bytes += sprintf(timestamp+19, "."F_tv_usec" ", now.tv_usec);
-#else
-      strcpy(timestamp, ctime(&nowt));
-      bytes = strlen(timestamp);
-#endif
    }
-#else /* !HAVE_GETTIMEOFDAY */
-   now = time(NULL);  if (now == (time_t)-1) {
+   nowt = now.tv_sec;
+#elif HAVE_PROTOTYPE_LIB_gettimeofday
+   result = Gettimeofday(&now, NULL);
+   if (result < 0) {
+      return result;
+   }
+   nowt = now.tv_sec;
+#else
+   nowt = time(NULL);
+   if (nowt == (time_t)-1) {
       return -1;
-   } else {
-#if HAVE_STRFTIME
-      bytes = strftime(timestamp, 21, "%Y/%m/%d %H:%M:%S ", localtime(&now));
-#else
-      strcpy(timestamp, ctime(&now));
-      bytes = strlen(timestamp);
-#endif
    }
-#endif /* !HAVE_GETTIMEOFDAY */
+#endif
+#if HAVE_STRFTIME
+   bytes = strftime(timestamp, 20, "%Y/%m/%d %H:%M:%S", localtime(&nowt));
+#if HAVE_CLOCK_GETTIME
+   bytes += sprintf(timestamp+19, "."F_tv_nsec" ", now.tv_nsec/1000);
+#elif HAVE_PROTOTYPE_LIB_gettimeofday
+   bytes += sprintf(timestamp+19, "."F_tv_usec" ", now.tv_usec);
+#else
+   strncpy(&timestamp[bytes++], " ", 2);
+#endif
+#else
+   strcpy(timestamp, ctime(&nowt));
+   bytes = strlen(timestamp);
+#endif
    return 0;
 }
 
@@ -1303,7 +1328,7 @@ int xiotransfer(xiofile_t *inpipe, xiofile_t *outpipe,
 
 	    if (!righttoleft && socat_opts.sniffleft >= 0) {
 	       Write(socat_opts.sniffleft, buff, bytes);
-	    } else if (socat_opts.sniffright >= 0) {
+	    } else if (righttoleft && socat_opts.sniffright >= 0) {
 	       Write(socat_opts.sniffright, buff, bytes);
 	    }
 
