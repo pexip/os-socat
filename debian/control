@@ -4,7 +4,7 @@ Priority: optional
 Maintainer: Pexip AS <packaging@pexip.com>
 XSBC-Pexip-Original-Maintainer: Laszlo Boszormenyi (GCS) <gcs@debian.org>
 Homepage: http://www.dest-unreach.org/socat/
-Build-Depends: debhelper-compat (= 12), libssl-dev (>= 3), libwrap0-dev, openssl <!nocheck>, net-tools <!nocheck>, iproute2 [linux-any] <!nocheck>, netbase <!nocheck>
+Build-Depends: debhelper-compat (= 12), libwrap0-dev, openssl <!nocheck>, net-tools <!nocheck>, iproute2 [linux-any] <!nocheck>, netbase <!nocheck>
 Standards-Version: 4.5.1
 Rules-Requires-Root: no
 XS-Pexip-Upstream: http://deb.debian.org/debian/ bookworm
