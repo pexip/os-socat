@@ -1,3 +1,9 @@
+socat (1.7.4.4-2+pexip24u5) pexip-bookworm; urgency=medium
+
+  * New versioning scheme
+
+ -- Mark Hymers <mark.hymers@pexip.com>  Thu, 01 Feb 2024 16:36:05 +0000
+
 socat (1.7.4.4-2pexip4) pexip-bookworm; urgency=medium
 
   * Bookworm build for product distribution
