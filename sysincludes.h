@@ -5,6 +5,11 @@
 #ifndef __sysincludes_h_included
 #define __sysincludes_h_included 1
 
+/* Sorry for this... */
+#if defined(__sun) || defined(__sun__) || defined(__SunOS)
+#  define BSD_COMP 1 			/* for SIOCGIFFLAGS */
+#endif
+
 #include <stddef.h>	/* ptrdiff_t */
 #if HAVE_STDBOOL_H
 #include <stdbool.h>	/* bool, true, false */
@@ -136,8 +141,8 @@
 #if HAVE_LINUX_ERRQUEUE_H
 #include <linux/errqueue.h>	/* struct sock_extended_err */
 #endif
-#if HAVE_NETPACKET_PACKET_H
-#include <netpacket/packet.h>
+#if HAVE_LINUX_IF_PACKET_H
+#include <linux/if_packet.h>
 #endif
 #if HAVE_NETINET_IF_ETHER_H
 #include <netinet/if_ether.h>
@@ -145,7 +150,12 @@
 #if HAVE_LINUX_IF_TUN_H
 #include <linux/if_tun.h>
 #endif
-
+#if HAVE_NETINET_DCCP_H
+#include <netinet/dccp.h>
+#endif
+#if HAVE_LINUX_DCCP_H
+#include <linux/dccp.h>
+#endif
 #if HAVE_TERMIOS_H && _WITH_TERMIOS
 #include <termios.h>
 #endif
@@ -160,8 +170,8 @@
 #elif HAVE_LIBUTIL_H
 #include <libutil.h>		/* FreeBSD openpty() */
 #endif
-#if HAVE_SYS_STROPTS_H
-#include <sys/stropts.h>	/* SunOS I_PUSH ... */
+#if HAVE_STROPTS_H
+#include <stropts.h>		/* SunOS I_PUSH ... */
 #endif
 #if HAVE_REGEX_H
 #include <regex.h>
@@ -171,6 +181,12 @@
 #endif
 #if HAVE_LINUX_EXT2_FS_H
 #include <linux/ext2_fs.h>	/* Linux ext2 filesystem definitions */
+#endif
+#if WITH_NAMESPACES && HAVE_SCHED_H
+#include <sched.h>
+#endif
+#if WITH_POSIXMQ && HAVE_MQUEUE_H
+#include <mqueue.h> 		/* POSIX MQ */
 #endif
 #if WITH_READLINE
 #  if HAVE_READLINE_READLINE_H

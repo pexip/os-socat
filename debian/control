@@ -2,13 +2,13 @@ Source: socat
 Section: net
 Priority: optional
 Maintainer: Laszlo Boszormenyi (GCS) <gcs@debian.org>
-Homepage: http://www.dest-unreach.org/socat/
-Build-Depends: debhelper-compat (= 12), libssl-dev, libwrap0-dev, openssl <!nocheck>, net-tools <!nocheck>, iproute2 [linux-any] <!nocheck>, netbase <!nocheck>
-Standards-Version: 4.5.1
+Build-Depends: debhelper-compat (= 13), libssl-dev, libwrap0-dev, openssl <!nocheck>, net-tools <!nocheck>, iproute2 [linux-any] <!nocheck>, netbase <!nocheck>, procps <!nocheck>
+Standards-Version: 4.6.2
 Rules-Requires-Root: no
+Homepage: https://www.dest-unreach.org/socat/
 
 Package: socat
-Architecture: any
+Architecture: linux-any
 Depends: ${shlibs:Depends},${misc:Depends}
 Description: multipurpose relay for bidirectional data transfer
  Socat (for SOcket CAT) establishes two bidirectional byte streams

@@ -1,12 +1,13 @@
-Port changes in manpage from previous versions to a quilt patch.
-Also fix errors in manpage.
+Description: Port manpage fixes to 1.8.0.3 and add new ones
+Author: Vasyl Gello <vasek.gello@gmail.com>
+Last-Update: 2025-04-01
+Forwarded: no
 
-Author: Chris Taylor <ctaylor@debian.org>
-Date: 10FEB2010
-Last-Update: 2017-07-09
---- socat-1.7.2.4.orig/doc/socat.1
-+++ socat-1.7.2.4/doc/socat.1
-@@ -95,7 +95,7 @@ Writes messages to syslog instead of std
+---
+
+--- a/doc/socat.1
++++ b/doc/socat.1
+@@ -101,7 +101,7 @@ Writes messages to syslog instead of std
  option\&. With optional <facility>, the syslog type can
  be selected, default is \(dq\&daemon\(dq\&\&. Third party libraries might not obey this
  option\&.
@@ -15,80 +16,275 @@ Last-Update: 2017-07-09
  Writes messages to <logfile> [filename] instead of
  stderr\&. Some third party libraries, in particular libwrap, might not obey
  this option\&.
-@@ -3169,7 +3169,7 @@ close the relay with ^D or abort it with
+@@ -4110,7 +4110,7 @@ with
+ .PP 
+ \.LP
+ \.nf
+-\fBsocat - TCP4:www.domain.org:80\fP
++\fBsocat \- TCP4:www.domain.org:80\fP
+ \.RE
+ \.fi
+ .IP 
+@@ -4122,7 +4122,7 @@ close the relay with ^D or abort it with
  .IP 
  \.LP
  \.nf
--\fBsocat -d -d READLINE,history=$HOME/.http_history \\ 
-+\fBsocat \-d \-d READLINE,history=$HOME/.http_history \\ 
+-\fBsocat -d -d \\
++\fBsocat \-d \-d \\
+ \.RS
+ \fBREADLINE,history=$HOME/.http_history \\ 
  TCP4:www.domain.org:www,crnl\fP
- \.fi
- .IP 
-@@ -3191,7 +3191,7 @@ a second connection\&.
+@@ -4153,7 +4153,7 @@ a second connection\&.
  .IP 
  \.LP
  \.nf
--\fBsocat -d -d -lmlocal2 \\ 
-+\fBsocat \-d \-d \-lmlocal2 \\ 
- TCP4-LISTEN:80,bind=myaddr1,reuseaddr,fork,su=nobody,range=10.0.0.0/8 \\ 
+-\fBsocat -d -d -lmlocal2 \\
++\fBsocat \-d \-d \-lmlocal2 \\
+ \.RS
+ \fBTCP4-LISTEN:80,bind=myaddr1,reuseaddr,fork,su=nobody,range=10.0.0.0/8 \\ 
  TCP4:www.domain.org:80,bind=myaddr2\fP
- \.fi
-@@ -3296,7 +3296,7 @@ might also be a listening UNIX domain so
- \.LP
- \.nf
- \fB(sleep 5; echo PASSWORD; sleep 5; echo ls; sleep 1) | 
--socat - EXEC:'ssh -l user server',pty,setsid,ctty\fP
-+socat - EXEC:'ssh \-l user server',pty,setsid,ctty\fP
- \.fi
- .IP 
- EXEC\(cq\&utes an ssh session to server\&. Uses a pty for communication between \fBsocat\fP and
-@@ -3306,7 +3306,7 @@ a new process group (setsid), so ssh acc
+@@ -4262,7 +4262,7 @@ session with a given set of addresses an
  .IP 
  \.LP
  \.nf
--\fBsocat -u TCP4-LISTEN:3334,reuseaddr,fork \\ 
-+\fBsocat \-u TCP4-LISTEN:3334,reuseaddr,fork \\ 
+-\fBsocat -u \\
++\fBsocat \-u \\
+ \.RS
+ \fB/tmp/readdata,seek-end=0,ignoreeof \\
+ \fBSTDIO\fP
+@@ -4281,9 +4281,9 @@ might also be a listening UNIX domain so
+ \.LP
+ \.nf
+ \fB(sleep 5; echo PASSWORD; sleep 5; echo ls; sleep 1) | \\
+-\fBsocat - \\
++\fBsocat \- \\
+ \.RS
+-\fBEXEC:'ssh -l user server',pty,setsid,ctty\fP
++\fBEXEC:'ssh \-l user server',pty,setsid,ctty\fP
+ \.RE
+ \.fi
+ .IP 
+@@ -4294,7 +4294,7 @@ a new process group (setsid), so ssh acc
+ .IP 
+ \.LP
+ \.nf
+-\fBsocat -u \\
++\fBsocat \-u \\
+ \.RS
+ \fBTCP4-LISTEN:3334,reuseaddr,fork \\ 
  OPEN:/tmp/in.log,creat,append\fP
+@@ -4329,7 +4329,7 @@ prompts\&.
+ \fBsocat \\
+ \.RS
+ \fBPTY,link=$HOME/dev/vmodem0,rawer,wait-slave \\ 
+-EXEC:'"ssh modemserver.us.org socat - /dev/ttyS0,nonblock,rawer"'\fP
++EXEC:'"ssh modemserver.us.org socat \- /dev/ttyS0,nonblock,rawer"'\fP
+ \.RE
  \.fi
  .IP 
-@@ -3353,7 +3353,7 @@ through the proxy daemon listening on po
- CONNECT method, where they are authenticated as \(dq\&user\(dq\& with \(dq\&pass\(dq\& (proxyauth)\&. The proxy 
- should establish connections to host www\&.domain\&.org on port 22 then\&.
+@@ -4343,7 +4343,7 @@ to a modemserver via ssh where another s
  .IP 
--.IP "\fB\f(CWsocat \- SSL:server:4443,cafile=server\&.crt,cert=client\&.pem\fP\fP"
-+.IP "\fB\f(CWsocat \- OPENSSL:server:4443,cafile=server\&.crt,cert=client\&.pem\fP\fP"
- 
+ \.LP
+ \.nf
+-\fBsudo socat --experimental \\
++\fBsudo socat \-\-experimental \\
+ \.RS
+ \fBTCP4-LISTEN:8000,reuseaddr,fork,netns=namespace1 \\ 
+ TCP4-CONNECT:server2:8000\fP
+@@ -4355,7 +4355,7 @@ on port 8000 and forwards them to server
  .IP 
- is an OpenSSL client that tries to establish a secure connection to an SSL
-@@ -3397,7 +3397,7 @@ connection, invokes a shell\&. This shel
- connected to the TCP socket (nofork)\&.  The shell starts filan and lets it print the socket addresses to
- stderr (your terminal window)\&.
+ \.LP
+ \.nf
+-\fBsudo socat --experimental \\
++\fBsudo socat \-\-experimental \\
+ \.RS
+ \fBTUN:192.168.2.1/24,up \\ 
+ TUN:192.168.2.2/24,up,netns=namespace2\fP
+@@ -4384,7 +4384,7 @@ should establish connections to host www
  .IP 
--.IP "\fB\f(CWecho \-e \(dq\&\e0\e14\e0\e0\ec\(dq\& |socat \-u \- file:/usr/bin/squid\&.exe,seek=0x00074420\fP\fP"
-+.IP "\fB\f(CWecho \-en \(dq\&\e0\e14\e0\e0\ec\(dq\& |socat \-u \- file:/usr/bin/squid\&.exe,seek=0x00074420\fP\fP"
- 
+ \.LP
+ \.nf
+-\fBsocat - \\
++\fBsocat \- \\
+ \.RS
+ \fBSSL:server:4443,cafile=./server.crt,cert=./client.pem\fP
+ \.RE
+@@ -4423,7 +4423,7 @@ see the additional socat docu \f(CWsocat
+ \.LP
+ \.nf
+ \fBecho |
+-socat -u - \\
++socat \-u \- \\
+ \.RS
+ \fBFILE:/tmp/bigfile,create,largefile,seek=100000000000\fP
+ \.RE
+@@ -4440,7 +4440,7 @@ the resulting file can consume some disk
+ \fBsocat \\
+ \.RS
+ \fBTCP-L:7777,reuseaddr,fork \\ 
+-SYSTEM:'filan -i 0 -s >&2',nofork\fP
++SYSTEM:'filan \-i 0 \-s >&2',nofork\fP
+ \.RE
+ \.fi
  .IP 
- functions as primitive binary editor: it writes the 4 bytes 000 014 000 000 to
-@@ -3425,8 +3425,9 @@ connection)\&.
- sends a broadcast to the network 192\&.168\&.1\&.0/24 and receives the replies of the
- timeservers there\&. Ignores NTP packets from hosts outside this network\&.
+@@ -4451,8 +4451,8 @@ stderr (your terminal window)\&.
  .IP 
--.IP "\fB\f(CWsocat \- SOCKET\-DATAGRAM:2:2:17:x007bxc0a80100x0000000000000000,bind=x007bx00000000x0000000000000000,setsockopt\-int=1:6:1,range=x0000xc0a80100x0000000000000000:x0000xffffff00x0000000000000000\fP\fP"
--
-+.ad l
-+.IP "\fB\f(CWsocat \- SOCKET\-DATAGRAM:2:2:17:x007bxc0a80100x0000000000000000,b\%ind=x007bx00000000x0000000000000000,setsockopt\-int=1:6:1,r\%ange=x0000xc0a80100x0000000000000000:x0000xffffff00x0000000000000000\fP\fP"
-+.na
+ \.LP
+ \.nf
+-\fBecho -e "\\0\\14\\0\\0\\c" |
+-socat -u - \\
++\fBecho \-e "\\0\\14\\0\\0\\c" |
++socat \-u \- \\
+ \.RS
+ \fBFILE:/usr/bin/squid.exe,seek=0x00074420\fP
+ \.RE
+@@ -4464,7 +4464,7 @@ to make the squid executable from Cygwin
  .IP 
- is semantically equivalent to the previous
- example, but all parameters are
-@@ -3468,8 +3469,9 @@ socat creates a PTY to make pppd happy,
- interface \f(CWhdlc0\fP, and can transfer data between
- both devices\&. Use pppd on device \f(CW/var/run/ppp\fP then\&.
+ \.LP
+ \.nf
+-\fBsocat - \\
++\fBsocat \- \\
+ \.RS
+ \fBTCP:www.blackhat.org:31337,readbytes=1000\fP
+ \.RE
+@@ -4474,7 +4474,7 @@ connects to an unknown service and preve
  .IP 
-+.ad l
- .IP "\fB\f(CWsocat \-T 1 \-d \-d TCP\-L:10081,reuseaddr,fork,crlf SYSTEM:\(dq\&echo \-e \e\(dq\&\e\e\e\(dq\&HTTP/1\&.0 200 OK\e\e\enDocumentType: text/plain\e\e\en\e\e\endate: \e$\e(date\e)\e\e\enserver:\e$SOCAT_SOCKADDR:\e$SOCAT_SOCKPORT\e\e\enclient: \e$SOCAT_PEERADDR:\e$SOCAT_PEERPORT\e\e\en\e\e\e\(dq\&\e\(dq\&; cat; echo \-e \e\(dq\&\e\e\e\(dq\&\e\e\en\e\e\e\(dq\&\e\(dq\&\(dq\&\fP\fP"
--
-+.na
+ \.LP
+ \.nf
+-\fBsocat -U \\
++\fBsocat \-U \\
+ \.RS
+ \fBTCP:target:9999,end-close \\ 
+ TCP-L:8888,reuseaddr,fork\fP
+@@ -4502,7 +4502,7 @@ socket type to SOCK_DCCP=6 (on Linux) an
  .IP 
- creates a simple HTTP echo server: each HTTP client that connects gets a valid
- HTTP reply that contains information about the client address and port as it is
+ \.LP
+ \.nf
+-\fBsocat - \\
++\fBsocat \- \\
+ \.RS
+ \fBTCP:<server>:10021,reuseaddr,socktype=6,protocol=33,fork\fP
+ \.RE
+@@ -4514,7 +4514,7 @@ socket type to SOCK_DCCP=6 (on Linux) an
+ .IP 
+ \.LP
+ \.nf
+-\fBsocat - \\
++\fBsocat \- \\
+ \.RS
+ \fBUDP4-DATAGRAM:192.168.1.0:123,sp=123,broadcast,range=192.168.1.0/24\fP
+ \.RE
+@@ -4525,7 +4525,7 @@ timeservers there\&. Ignores NTP packets
+ .IP 
+ \.LP
+ \.nf
+-\fBsocat - \\
++\fBsocat \- \\
+ \.RS
+ \fBSOCKET-DATAGRAM:2:2:17:x007bxc0a80100x0000000000000000,bind=x007bx00000000x0000000000000000,setsockopt-int=1:6:1,range=x0000xc0a80100x0000000000000000:x0000xffffff00x0000000000000000\fP
+ \.RE
+@@ -4538,7 +4538,7 @@ specified in generic form\&. the value 6
+ .IP 
+ \.LP
+ \.nf
+-\fBsocat - \\
++\fBsocat \- \\
+ \.RS
+ \fBIP4-DATAGRAM:255.255.255.255:44,broadcast,range=10.0.0.0/8\fP
+ \.RE
+@@ -4549,7 +4549,7 @@ from the private address range only\&.
+ .IP 
+ \.LP
+ \.nf
+-\fBsocat - \\
++\fBsocat \- \\
+ \.RS
+ \fBUDP4-DATAGRAM:224.255.0.1:6666,bind=:6666,ip-add-membership=224.255.0.1:eth0\fP
+ \.RE
+@@ -4580,7 +4580,7 @@ might thus cause packet loss\&.
+ .IP 
+ \.LP
+ \.nf
+-\fBsocat - \\
++\fBsocat \- \\
+ \.RS
+ \fBVSOCK-CONNECT:2:1234\fP
+ \.RE
+@@ -4591,7 +4591,7 @@ the well\-know CID=2) on 1234 port\&.
+ .IP 
+ \.LP
+ \.nf
+-\fBsocat - \\
++\fBsocat \- \\
+ \.RS
+ \fBVSOCK-LISTEN:1234\fP
+ \.RE
+@@ -4601,7 +4601,7 @@ listens for a VSOCK connection on 1234 p
+ .IP 
+ \.LP
+ \.nf
+-\fBsocat - \\
++\fBsocat \- \\
+ \.RS
+ \fBVSOCK-CONNECT:31:4321,bind:5555\fP
+ \.RE
+@@ -4666,7 +4666,7 @@ both devices\&. Use pppd on device \f(CW
+ .IP 
+ \.LP
+ \.nf
+-\fBsocat -u \\
++\fBsocat \-u \\
+ \.RS
+ \fBSTDIO \\ 
+ POSIXMQ-SEND:/queue1,unlink-early,mq-prio=10\fP
+@@ -4678,7 +4678,7 @@ into POSIX message queue, with priority
+ .IP 
+ \.LP
+ \.nf
+-\fBsocat -u \\
++\fBsocat \-u \\
+ \.RS
+ \fBPOSIXMQ-RECV:/queue1,fork,max-children=3 \\ 
+ SYSTEM:"worker.sh"\fP
+@@ -4692,10 +4692,10 @@ processes are allowed at the same time\&
+ .IP 
+ \.LP
+ \.nf
+-\fBsocat -T 1 -d -d \\
++\fBsocat \-T 1 \-d \-d \\
+ \.RS
+ \fBTCP-L:10081,reuseaddr,fork,crlf \\ 
+-SYSTEM:"echo -e \\"\\\\\\"HTTP/1.0 200 OK\\\\\\nDocumentType: text/plain\\\\\\n\\\\\\ndate: \\$\\(date\\)\\\\\\nserver:\\$SOCAT_SOCKADDR:\\$SOCAT_SOCKPORT\\\\\\nclient: \\$SOCAT_PEERADDR:\\$SOCAT_PEERPORT\\\\\\n\\\\\\"\\"; cat; echo -e \\"\\\\\\"\\\\\\n\\\\\\"\\""\fP
++SYSTEM:"echo \-e \\"\\\\\\"HTTP/1.0 200 OK\\\\\\nDocumentType: text/plain\\\\\\n\\\\\\ndate: \\$\\(date\\)\\\\\\nserver:\\$SOCAT_SOCKADDR:\\$SOCAT_SOCKPORT\\\\\\nclient: \\$SOCAT_PEERADDR:\\$SOCAT_PEERPORT\\\\\\n\\\\\\"\\"; cat; echo \-e \\"\\\\\\"\\\\\\n\\\\\\"\\""\fP
+ \.RE
+ \.fi
+ .IP 
+@@ -4707,7 +4707,7 @@ servers), and the original client reques
+ .IP 
+ \.LP
+ \.nf
+-\fBsocat -d -d \\
++\fBsocat \-d \-d \\
+ \.RS
+ \fBUDP4-RECVFROM:9999,so-broadcast,so-timestamp,ip-pktinfo,ip-recverr,ip-recvopts,ip-recvtos,ip-recvttl!!- \\ 
+ SYSTEM:'export; sleep 1' |\fP
+@@ -4724,8 +4724,8 @@ unicast, multicast, or broadcast address
+ .IP 
+ \.LP
+ \.nf
+-\fBecho -e "M-SEARCH * HTTP/1.1\\nHOST: 239.255.255.250:1900\\nMAN: \\"ssdp:discover\\"\\nMX: 4\\nST: \\"ssdp:all\\"\\n" |
+-socat - \\
++\fBecho \-e "M-SEARCH * HTTP/1.1\\nHOST: 239.255.255.250:1900\\nMAN: \\"ssdp:discover\\"\\nMX: 4\\nST: \\"ssdp:all\\"\\n" |
++socat \- \\
+ \.RS
+ \fBUDP-DATAGRAM:239.255.255.250:1900,crlf\fP
+ \.RE
+@@ -4736,7 +4736,7 @@ and collects and outputs the answers rec
+ .IP 
+ \.LP
+ \.nf
+-\fBsystemd-socket-activate -l 1077 --inetd socat ACCEPT:0,fork PIPE\fP
++\fBsystemd-socket-activate \-l 1077 \-\-inetd socat ACCEPT:0,fork PIPE\fP
+ \.RE
+ \.fi
+ .IP 

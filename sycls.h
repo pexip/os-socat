@@ -61,6 +61,7 @@ int Pipe(int filedes[2]);
 ssize_t Read(int fd, void *buf, size_t count);
 ssize_t Write(int fd, const void *buf, size_t count);
 int Fcntl(int fd, int cmd);
+int Fcntl_i(int fd, int cmd, int arg);
 int Fcntl_l(int fd, int cmd, long arg);
 int Fcntl_lock(int fd, int cmd, struct flock *l);
 #if WITH_SYCLS
@@ -147,6 +148,7 @@ struct hostent *Getipnodebyname(const char *name, int af, int flags,
 void *Malloc(size_t size);
 void *Calloc(size_t nmemb, size_t size);
 void *Realloc(void *ptr, size_t size);
+void *Realloc3(void *ptr, size_t size, size_t oldsize);
 int Tcgetattr(int fd, struct termios *termios_p);
 int Tcsetattr(int fd, int optional_actions, struct termios *termios_p);
 char *Ttyname(int fd);
@@ -167,6 +169,7 @@ void Abort(void);
 int Mkstemp(char *template);
 int Setenv(const char *name, const char *value, int overwrite);
 void Unsetenv(const char *name);
+int Setns(int fd, int nstype);
 #endif /* WITH_SYCLS */
 #if WITH_SYCLS
 
@@ -255,6 +258,7 @@ void Add_history(const char *string);
 #define Malloc(s) malloc(s)
 #define Calloc(n,s) calloc(n,s)
 #define Realloc(p,s) realloc(p,s)
+#define Realloc3(p,s,o) realloc(p,s)
 #define Tcgetattr(f,t) tcgetattr(f,t)
 #define Tcsetattr(f,o,t) tcsetattr(f,o,t)
 #define Ttyname(f) ttyname(f)
@@ -271,6 +275,7 @@ void Add_history(const char *string);
 #define Mkstemp(t) mkstemp(t)
 #define Setenv(n,v,o) setenv(n,v,o)
 #define Unsetenv(n) unsetenv(n)
+#define Setns(f,n) setns(f,n)
 
 #define Readline(p) readline(p)
 #define Using_history() using_history()

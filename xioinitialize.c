@@ -15,7 +15,8 @@ static int xioinitialized;
 xiofile_t *sock[XIO_MAXSOCK];
 int (*xiohook_newchild)(void);	/* xio calls this function from a new child
 				   process */
-int num_child = 0;
+int num_child = 0; 		/* actual number of "general" child processes */
+bool first_child = true; 	/* only first child shall print general warnings */
 
 /* returns 0 on success or != if an error occurred */
 int xioinitialize(void) {
@@ -71,25 +72,33 @@ int xioinitialize(void) {
 
    {
       const char *default_ip;
+
       default_ip = getenv("SOCAT_DEFAULT_LISTEN_IP");
       if (default_ip != NULL) {
 	 switch (default_ip[0]) {
 	 case '4':
 	 case '6':
-	    xioopts.default_ip = default_ip[0]; break;
+	    xioparms.default_ip = default_ip[0];
+	    break;
+	 default:
+	    xioparms.default_ip = '0';
+	    break;
 	 }
       }
    }
    {
       const char *preferred_ip;
+
       preferred_ip = getenv("SOCAT_PREFERRED_RESOLVE_IP");
       if (preferred_ip != NULL) {
 	 switch (preferred_ip[0]) {
 	 case '4':
 	 case '6':
-	    xioopts.preferred_ip = preferred_ip[0]; break;
+	    xioparms.preferred_ip = preferred_ip[0];
+	    break;
 	 default:
-	    xioopts.preferred_ip = '0'; break;
+	    xioparms.preferred_ip = '0';
+	    break;
 	 }
       }
    }
@@ -121,22 +130,27 @@ void xiodroplocks(void) {
    int i;
 
    for (i = 0; i < XIO_MAXSOCK; ++i) {
-      if (sock[i] != NULL && sock[i]->tag != XIO_TAG_INVALID) {
+      if (sock[i] != NULL && sock[i]->tag != XIO_TAG_INVALID &&
+	  !(sock[i]->tag & XIO_TAG_CLOSED)) {
 	 xiofiledroplock(sock[i]);
       }
    }
 }
 
 
-/* consider an invokation like this:
-   socat -u exec:'some program that accepts data' tcp-l:...,fork
-   we do not want the program to be killed by the first tcp-l sub process, it's
+/* Consider an invocation like this:
+   socat -u EXEC:'some program that accepts data' TCP-L:...,fork
+   we do not want the program to be killed by the first TCP-L sub process, it's
    better if it survives all sub processes. Thus, it must not be killed when
    the sub process delivers EOF. Also, a socket that is reused in sub processes
    should not be shut down (affects the connection), but closed (affects only
    sub processes copy of file descriptor) */
 static int xio_nokill(xiofile_t *sock) {
    int result = 0;
+
+   if (sock->tag & XIO_TAG_CLOSED) {
+      return -1;
+   }
    switch (sock->tag) {
    case XIO_TAG_INVALID:
    default:
@@ -161,8 +175,8 @@ static int xio_nokill(xiofile_t *sock) {
    return result;
 }
 
-/* call this function immediately after fork() in child process */
-/* it performs some neccessary actions
+/* Call this function immediately after fork() in child process */
+/* It performs some necessary actions
    returns 0 on success or != 0 if an error occurred */
 int xio_forked_inchild(void) {
    int result = 0;
@@ -200,7 +214,10 @@ int xio_forked_inchild(void) {
 /* subchild != 0 means that the current process is already a child process of
    the master process and thus the new sub child process should not set the
    SOCAT_PID variable */
-pid_t xio_fork(bool subchild, int level) {
+pid_t xio_fork(bool subchild,
+	       int level, 	/* log level */
+	       int shutup) 	/* decrease log level in child process */
+{
    pid_t pid;
    const char *forkwaitstring;
    int forkwaitsecs = 0;
@@ -217,6 +234,15 @@ pid_t xio_fork(bool subchild, int level) {
       if (!subchild) {
 	 /* set SOCAT_PID to new value */
 	 xiosetenvulong("PID", pid, 1);
+      } else {
+	 /* Make sure the sub process does not hold the trigger pipe open */
+	 if (sock1 != NULL) {
+	    struct single *sfd;
+	    sfd = XIO_RDSTREAM(sock1);
+	    if (sfd->triggerfd >= 0)  Close(sfd->triggerfd);
+	    sfd = XIO_WRSTREAM(sock1);
+	    if (sfd->triggerfd >= 0)  Close(sfd->triggerfd);
+	 }
       }
       /* gdb recommends to have env controlled sleep after fork */
       if (forkwaitstring = getenv("SOCAT_FORK_WAIT")) {
@@ -226,11 +252,16 @@ pid_t xio_fork(bool subchild, int level) {
       if (xio_forked_inchild() != 0) {
 	 Exit(1);
       }
+      diag_set_int('u', shutup);
       return 0;
    }
 
-   num_child++;
    /* parent process */
+   if (!subchild) {
+      ++num_child;
+      first_child = false;
+   }
+   Info1("number of children increased to %d", num_child);
    Notice1("forked off child process "F_pid, pid);
    /* gdb recommends to have env controlled sleep after fork */
    if (forkwaitstring = getenv("SOCAT_FORK_WAIT")) {

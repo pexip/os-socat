@@ -16,6 +16,10 @@
 #include "utils.h"
 #include "sysutils.h"
 
+#if _WITH_INTERFACE
+const int one = 1;
+#endif
+
 /* Substitute for Write():
    Try to write all bytes before returning; this handles EINTR,
    EAGAIN/EWOULDBLOCK, and partial write situations. The drawback is that this
@@ -23,9 +27,22 @@
    Returns <0 on unhandled error, errno valid
    Will only return <0 or bytes
 */
-ssize_t writefull(int fd, const void *buff, size_t bytes) {
+/* Assuming your pipe size is 65536 - find out with:
+   filan -i 1 |grep F_GETPIPE_SZ |sed 's|.*\(F_GETPIPE_SZ=[1-9][0-9]*\).*|\1|'
+   Then we can test partial write with something like:
+   socat -d4 -lu -b 262144 -u /dev/zero,readbytes=262144 -,o-nonblock |{ sleep 3; wc -c; }
+*/
+ssize_t writefull(
+	int fd,
+	const void *buff,
+	size_t bytes,
+	const struct timeval *tmo0) {
    size_t writt = 0;
    ssize_t chk;
+   struct pollfd pfd;
+   struct timeval tmo = { 0 };
+   int rc;
+
    while (1) {
       chk = Write(fd, (const char *)buff + writt, bytes - writt);
       if (chk < 0) {
@@ -36,18 +53,38 @@ ssize_t writefull(int fd, const void *buff, size_t bytes) {
 	 case EWOULDBLOCK:
 #endif
 	    Warn4("write(%d, %p, "F_Zu"): %s", fd, (const char *)buff+writt, bytes-writt, strerror(errno));
-	    Sleep(1); continue;
-	 default: return -1;
+	    pfd.fd      = fd;
+	    pfd.events  = POLLOUT;
+	    pfd.revents = 0;
+	    if (tmo0 != NULL) {
+	       tmo.tv_sec  = tmo0->tv_sec;
+	       tmo.tv_usec = tmo0->tv_usec;
+	    }
+	    rc = xiopoll(&pfd, 1, (tmo.tv_sec!=0 || tmo.tv_usec!=0) ? &tmo : NULL);
+	    if (rc == 0) {
+	       Notice("inactivity timeout triggered");
+	       errno = ETIMEDOUT;
+	       return -1;
+	    }
+	    continue;
+	 default:
+	    return -1;
 	 }
+      } else if (chk == bytes) {
+	 /* First attempt, complete write */
+	 return chk;
       } else if (writt+chk < bytes) {
-	 Warn4("write(%d, %p, "F_Zu"): only wrote "F_Zu" bytes, trying to continue ",
+	 Warn4("write(%d, %p, "F_Zu"): only wrote "F_Zu" bytes, trying to continue (meanwhile, other direction is blocked)",
 	       fd, (const char *)buff+writt, bytes-writt, chk);
 	 writt += chk;
-      } else {
-	 writt = bytes;
+      } else if (writt == 0) {
+	 /* First attempt, write complete - no extra message */
+	 return chk;
+      } else { 	/* write completed */
 	 break;
       }
    }
+   Notice3("write(%d, %p, "F_Zu") completed", fd, (const char *)buff, bytes);
    return writt;
 }
 
@@ -192,9 +229,14 @@ char *sockaddr_info(const struct sockaddr *sa, socklen_t salen, char *buff, size
    switch (sau->soa.sa_family) {
 #if WITH_UNIX
    case 0:
-   case AF_UNIX: sockaddr_unix_info(&sau->un, salen, cp+1, blen-1);
-      cp[0] = '"';
-      strncat(cp+1, "\"", 1);
+   case AF_UNIX:
+      *cp++ = '"';  --blen;
+      sockaddr_unix_info(&sau->un, salen, cp, blen-1);
+      blen -= strlen(cp);
+      cp = strchr(cp, '\0');
+      *cp++ = '"';  --blen;
+      if (blen > 0)
+	 *cp = '\0';
       break;
 #endif
 #if WITH_IP4
@@ -336,7 +378,7 @@ int sockaddr_vm_parse(struct sockaddr_vm *sa, const char *cid_str,
 
    return 0;
 }
-#endif /* WITH_IP4 */
+#endif /* WITH_VSOCK */
 
 #if !HAVE_INET_NTOP
 /* http://www.opengroup.org/onlinepubs/000095399/functions/inet_ntop.html */
@@ -457,6 +499,76 @@ char *sockaddr_inet6_info(const struct sockaddr_in6 *sa, char *buff, size_t blen
 }
 #endif /* WITH_IP6 */
 
+
+#if WITH_IP4
+/* Checks if the given string is an IPv4 address.
+   Returns 0 when it is an address.
+   Returns 1 when it is not an address.
+   Returns -1 when an error occurred (bad regex - internal) */
+int check_ip4addr(
+	const char *address)
+{
+#if HAVE_REGEX_H
+	regex_t preg;
+	if (regcomp(&preg, "^(25[0-5]|(2[0-4]|1[0-9]|[1-9]?)[0-9])\\.(25[0-5]|(2[0-4]|1[0-9]|[1-9]?)[0-9])\\.(25[0-5]|(2[0-4]|1[0-9]|[1-9]?)[0-9])\\.(25[0-5]|(2[0-4]|1[0-9]|[1-9]?)[0-9])$", REG_EXTENDED|REG_NOSUB)
+	    != 0) {
+		return -1; 	/* do not handle, just state that no match */
+	}
+	if (regexec(&preg, address, 0, NULL, 0) == 0) {
+		return 0;
+	}
+#endif /* HAVE_REGEX_H */
+	/* Fallback when no regexec() compiled in */
+	return 1;
+}
+#endif /* WITH_IP4 */
+
+#if WITH_IP6
+/* Checks if the given string is an IPv6 address.
+   Currently a hack, just checks a few criteria.
+   Returns 0 when it is an address.
+   Returns 1 when it is not an address.
+   Returns -1 when an error occurred (bad regex - internal) */
+int check_ip6addr(
+	const char *address)
+{
+#if HAVE_REGEX_H
+	regex_t preg;
+	if (regcomp(&preg, "^\\[[0-9a-fA-F:]*\\]$", REG_EXTENDED|REG_NOSUB)
+	    != 0) {
+		return -1; 	/* do not handle, just state that no match */
+	}
+	if (regexec(&preg, address, 0, NULL, 0) == 0) {
+		return 0;
+	}
+#endif /* HAVE_REGEX_H */
+	/* Fallback when no regexec() compiled in */
+	return 1;
+}
+#endif /* WITH_IP6 */
+
+/* Checks if the given string is an IPv6 address.
+   Currently a hack, just checks a few criteria.
+   Returns 0 when it is an address.
+   Returns 1 when it is not an address or on error. */
+int check_ipaddr(
+	const char *address)
+{
+	int res4, res6;
+#if WITH_IP4
+	if ((res4 = check_ip4addr(address)) == 0) {
+		return 0;
+	}
+#endif
+#if WITH_IP6
+	if ((res6 = check_ip6addr(address)) == 0) {
+		return 0;
+	}
+#endif
+	return 1;
+}
+
+
 #if HAVE_GETGROUPLIST || (defined(HAVE_SETGRENT) && defined(HAVE_GETGRENT) && defined(HAVE_ENDGRENT))
 /* fills the list with the supplementary group ids of user.
    caller passes size of list in ngroups, function returns number of groups in
@@ -468,7 +580,7 @@ int getusergroups(const char *user, gid_t *list, int *ngroups) {
    /* we prefer getgrouplist because it may be much faster with many groups, but it is not standard */
    gid_t grp, twogrps[2];
    int two = 2;
-   /* getgrouplist requires to pass an extra group id, typically the users primary group, that is then added to the supplementary group list. We don't want such an additional group in the result, but there is not "unspecified" gid value available. Thus we try to find an abitrary supplementary group id that we then pass in a second call to getgrouplist. */
+   /* getgrouplist requires to pass an extra group id, typically the users primary group, that is then added to the supplementary group list. We don't want such an additional group in the result, but there is not "unspecified" gid value available. Thus we try to find an arbitrary supplementary group id that we then pass in a second call to getgrouplist. */
    grp = 0;
    Getgrouplist(user, grp, twogrps, &two);
    if (two == 1) {
@@ -595,9 +707,9 @@ int xiopoll(struct pollfd fds[], unsigned long nfds, struct timeval *timeout) {
 #endif /* !HAVE_POLL */
    }
 }
-   
 
-#if WITH_TCP || WITH_UDP
+
+#if WITH_TCP || WITH_UDP || WITH_SCTP || WITH_DCCP || WITH_UDPLITE
 /* returns port in network byte order;
    ipproto==IPPROTO_UDP resolves as UDP service, every other value resolves as
    TCP */
@@ -622,10 +734,10 @@ int parseport(const char *portname, int ipproto) {
 
    return se->s_port;
 }
-#endif /* WITH_TCP || WITH_UDP */
+#endif /* WITH_TCP || WITH_UDP || WITH_SCTP || WITH_DCCP || WITH_UDPLITE */
 
 
-#if WITH_IP4 || WITH_IP6 || WITH_INTERFACE
+#if WITH_IP4 || WITH_IP6 || _WITH_INTERFACE
 /* check the systems interfaces for ifname and return its index
    or -1 if no interface with this name was found
    The system calls require an arbitrary socket; the calling program may
@@ -649,8 +761,8 @@ int ifindexbyname(const char *ifname, int anysock) {
    }
    if (anysock >= 0) {
       s = anysock;
-   } else  if ((s = Socket(PF_INET, SOCK_DGRAM, IPPROTO_IP)) < 0) {
-      Error1("socket(PF_INET, SOCK_DGRAM, IPPROTO_IP): %s", strerror(errno));
+   } else  if ((s = Socket(PF_INET, SOCK_DGRAM, 0)) < 0) {
+      Error1("socket(PF_INET, SOCK_DGRAM, 0): %s", strerror(errno));
       return -1;
    }
 
@@ -676,10 +788,10 @@ int ifindexbyname(const char *ifname, int anysock) {
    return -1;
 #endif /* !defined(HAVE_ STRUCT_IFREQ) && defined(SIOCGIFCONF) && defined(SIOCGIFINDEX) */
 }
-#endif /* WITH_IP4 || WITH_IP6 || WITH_INTERFACE */
+#endif /* WITH_IP4 || WITH_IP6 || _WITH_INTERFACE */
 
 
-#if WITH_IP4 || WITH_IP6 || WITH_INTERFACE
+#if WITH_IP4 || WITH_IP6 || _WITH_INTERFACE
 /* like ifindexbyname(), but also allows the index number as input - in this
    case it does not lookup the index.
    writes the resulting index to *ifindex and returns 0,
@@ -703,7 +815,7 @@ int ifindex(const char *ifname, unsigned int *ifindex, int anysock) {
    *ifindex = val;
    return 0;
 }
-#endif /* WITH_IP4 || WITH_IP6 || WITH_INTERFACE */
+#endif /* WITH_IP4 || WITH_IP6 || _WITH_INTERFACE */
 
 
 int _xiosetenv(const char *envname, const char *value, int overwrite, const char *sep) {
@@ -865,4 +977,209 @@ double Strtod(const char *nptr, char **endptr, const char *txt) {
       Error1("parseopts(): trailing garbage in numerical arg of option \"%s\"", txt);
    }
    return res;
+}
+
+
+/* This function gets a string with possible references to environment
+   variables and expands them. Variables must be prefixed with '$' and their
+   names consist only of A-Z, a-z, 0-9, and '_'.
+   The name may be enclosed with { }.
+   To pass a literal "$" us "\$".
+   There are special variables supported whose values do not comr from
+   environment:
+   $$ expands to the process's pid
+   $PROGNAME expands to the executables basename or the value of option -lp
+   $TIMESTAMP expands to the actual time in format %Y%m%dT%H%M%S
+   $MICROS expands to the actual microseconds (decimal)
+   The dst output is a copy of src but with the variables expanded.
+   Returns 0 on success;
+   returns -1 when the output buffer was too short (overflow);
+   returns 1 on syntax error.
+*/
+int expandenv(
+	char *dst, 		/* prealloc'd output buff, will be \0 termd */
+	const char *src, 	/* input string to generate expansion from */
+	size_t n, 		/* length of dst */
+	struct timeval *tv) 	/* in/out timestamp for sync */
+{
+	char c; 		/* char currently being lex'd/parsed */
+	bool esc = false;	/* just got '\' */
+	bool bra = false; 	/* within ${ } */
+	char *nam = NULL; 	/* points to temp.allocated rw copy of src */
+	const char *e;		/* pointer to isolated var name in tmp[] */
+	size_t s=0, d=0; 	/* counters in src, dst */
+	size_t v; 		/* variable name begin */
+	bool ofl = false;	/* dst overflow, output truncated */
+	char tmp[18];		/* buffer for timestamp, micros */
+
+	while (c = src[s++]) {
+		if (esc) {
+			if (c == '\0') {
+				if (d+2 > n)  { ofl = true; break; }
+				dst[d++] = '\\';
+				dst[d++] = c;
+				break;
+			}
+			if (c != '$') {
+				if (d+3 > n)  { ofl = true; break; }
+				dst[d++] = '\\';
+			} else {
+				if (d+2 > n)  { ofl = true; break; }
+			}
+			dst[d++] = c;
+			esc = false;
+			continue;
+		}
+		if (c == '\0') {
+			dst[d++] = c;
+			break;
+		}
+		if (c == '\\') {
+			esc = true;
+			continue;
+		}
+		if (c != '$') {
+			if (d+2 > n)  { ofl = true; break; }
+			dst[d++] = c;
+			continue;
+		}
+
+		/* c == '$': Expecting env var to expand */
+		c = src[s];
+		if (c == '\0') {
+			if (d+2 > n)  { ofl = true; break; }
+			++s;
+			dst[d++] = '$';
+			break;
+		}
+		if (c == '$') {
+			int wr;
+			/* Special case: pid */
+			++s;
+			wr = snprintf(&dst[d], n-d, F_pid, getpid());
+			if (wr >= n-d || wr < 0)  { ofl = true; break; }
+			d += wr;
+			continue;
+		}
+		if (c == '{') {
+			++s;
+			bra = true;
+		}
+		if (!isalpha(c) && c != '_') {
+			/* Special case no var name, just keep '$' */
+			if (d+3 > n)  { ofl = true; break; }
+			++s;
+			dst[d++] = '$';
+			dst[d++] = c;
+			continue;
+		}
+		v = 0; 		/* seems we found valid variable name */
+		if (nam == NULL) {
+			nam = strdup(src+s);
+			if (nam == NULL) {
+				errno = ENOMEM;
+				return -1;
+			}
+		}
+		while (c = src[s]) {
+			if (!isalnum(c) && c != '_') {
+				break;
+			}
+			nam[v++] = c;
+			++s;
+		}
+		if (bra && c != '}') {
+			return 1;
+		}
+
+		nam[v] = '\0';
+		/* Var name is complete */
+		/* Check hardcoded var names */
+		if (strcmp(nam, "PROGNAME") == 0) {
+			e = diag_get_string('p');
+		} else if (strcmp(nam, "TIMESTAMP") == 0) {
+			if (tv->tv_sec == 0) {
+				gettimeofday(tv, NULL);
+			}
+			struct tm tm;
+			localtime_r(&tv->tv_sec, &tm);
+			strftime(tmp, sizeof(tmp), "%Y%m%dT%H%M%S", &tm);
+			e = tmp;
+		} else if (strcmp(nam, "MICROS") == 0) {
+			if (tv->tv_sec == 0) {
+				gettimeofday(tv, NULL);
+			}
+			sprintf(tmp, F_tv_usec, tv->tv_usec);
+			e = tmp;
+		} else {
+			e = getenv(nam);
+		}
+		if (e == NULL) {
+			/* Var not found, skip it */
+			continue;
+		}
+		/* Var found, copy it to output buffer */
+		if (d+strlen(e)+1 > n)  { ofl = true; break; }
+		strcpy(&dst[d], e);
+		d += strlen(&dst[d]);
+		continue;
+	}
+
+	if (nam != NULL) {
+		free(nam);
+	}
+
+	if (ofl) {
+		dst[d] = '\0';
+		return -1;
+	}
+	dst[d] = '\0';
+	if (src[s-1] != '\0') {
+		errno = EINVAL;
+		return -1;
+	}
+	return 0;
+}
+
+int xio_opensnifffile(
+	const char *a,
+	struct timeval *tv)
+{
+	char path[PATH_MAX];
+	int flags;
+	int rc;
+	int fd;
+
+	rc = expandenv(path, a, sizeof(path), tv);
+	if (rc < 0) {
+		Error2("expandenv(source=\"%s\", n="F_Zu"): Out of memory", a, sizeof(path));
+		errno = ENOMEM;
+		return -1;
+	} else if (rc > 0) {
+		Error1("expandenv(source=\"%s\"): Syntax error", a);
+		errno = EINVAL;
+		return -1;
+	}
+	flags = O_CREAT|O_WRONLY|O_APPEND|
+#ifdef O_LARGEFILE
+		O_LARGEFILE|
+#endif
+#ifdef O_CLOEXEC
+		O_CLOEXEC|
+#endif
+		O_NONBLOCK;
+	if ((fd = Open(path, flags, 0664)) < 0) {
+		if (errno == ENXIO) {
+			/* try to open pipe rdwr */
+			if ((fd = Open(path, flags, 0664)) < 0) {
+				return -1;
+			}
+		}
+	}
+#ifdef O_CLOEXEC
+	if (Fcntl_l(fd, F_SETFD, FD_CLOEXEC) < 0) {
+		Warn2("fcntl(%d, F_SETFD, FD_CLOEXEC): %s", fd, strerror(errno));
+	}
+#endif
+	return fd;
 }

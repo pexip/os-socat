@@ -1,17 +1,16 @@
---- socat-1.7.3.0.orig/doc/socat.1
-+++ socat-1.7.3.0/doc/socat.1
-@@ -686,18 +686,12 @@ PIPE,
- EXEC, SYSTEM
+diff --git a/doc/socat.1 b/doc/socat.1
+index 7137fd0..d2b3cad 100644
+--- a/doc/socat.1
++++ b/doc/socat.1
+@@ -990,19 +990,9 @@ UNIX\-LISTEN,
+ PIPE,
+ EXEC, SYSTEM, SHELL
  .IP "\fB\f(CWREADLINE\fP\fP"
- Uses GNU readline and history on stdio to allow editing and reusing input
+-Uses GNU readline and history on stdio to allow editing and reusing input
 -lines (example)\&. This requires the GNU readline and 
 -history libraries\&. Note that stdio should be a (pseudo) terminal device,
 -otherwise readline does not seem to work\&.
-+lines (example)\&.
-+.br
-+Due to licensing restrictions the readline feature is disabled in Debian\&.
-+See BUGS\&.
- .br 
+-.br 
 -Option groups: FD,READLINE,TERMIOS 
 -.br 
 -Useful options:
@@ -20,11 +19,13 @@
 -.br 
 -See also:
 -STDIO
++lines (example)\&.
++.br
 +You can use STDIO instead\&.
  .IP "\fB\f(CWSCTP\-CONNECT:<host>:<port>\fP\fP"
  Establishes an SCTP stream connection to the specified <host> [IP
  address] and <port> [TCP service]
-@@ -2001,6 +1995,8 @@ Makes the process the leader of a new se
+@@ -2555,6 +2545,8 @@ Only on Linux; requires root; use option \f(CW\-\-experimental\fP\&.
  .PP 
  \fI\fBREADLINE option group\fP\fP
  .PP 
@@ -33,7 +34,30 @@
  These options apply to the readline address type\&.
  .IP "\fB\f(CWhistory=<filename>\fP\fP"
  Reads and writes history from/to <filename> (example)\&.
-@@ -3258,7 +3258,6 @@ modem\&. rawer sets the console\(cq\&s a
+@@ -4122,22 +4114,6 @@ close the relay with ^D or abort it with ^C\&.
+ .IP 
+ \.LP
+ \.nf
+-\fBsocat \-d \-d \\
+-\.RS
+-\fBREADLINE,history=$HOME/.http_history \\ 
+-TCP4:www.domain.org:www,crnl\fP
+-\.RE
+-\.fi
+-.IP 
+-this is similar to the previous example, but you can edit the current line in a
+-bash like manner (READLINE) and use the
+-history file \&.http_history; \fBsocat\fP prints messages about
+-progress (\-d \-d)\&. The  port is specified by service name
+-(www), and correct network line termination characters
+-(crnl) instead of NL are used\&.
+-.IP 
+-\.LP
+-\.nf
+ \fBsocat \\
+ \.RS
+ \fBTCP4-LISTEN:www \\ 
+@@ -4234,7 +4210,6 @@ modem\&. rawer sets the console\(cq\&s and
  ttyS0\(cq\&s terminal parameters to practicable values, crnl 
  converts to correct newline characters\&. escape allows
  terminating the socat process with character control\-O\&. 
@@ -41,12 +65,14 @@
  .IP 
  \.LP
  \.nf
-@@ -3317,16 +3312,6 @@ If the file does not exist, socat creat\
- Option reuseaddr allows immediate restart of the server
- process\&. 
- .IP 
--.IP "\fB\f(CWsocat READLINE,noecho=\(cq\&[Pp]assword:\(cq\& EXEC:\(cq\&ftp ftp\&.server\&.com\(cq\&,pty,setsid,ctty\fP\fP"
--
+@@ -4312,22 +4287,6 @@ process\&.
+ \.nf
+ \fBsocat \\
+ \.RS
+-\fBREADLINE,noecho='[Pp]assword:' \\ 
+-EXEC:'ftp ftp.server.com',pty,setsid,ctty\fP
+-\.RE
+-\.fi
 -.IP 
 -wraps a command line history (READLINE) around the EXEC\(cq\&uted ftp client utility\&.
 -This allows editing and reuse of FTP commands for relatively comfortable
@@ -55,10 +81,14 @@
 -Nevertheless, there may occur some confusion with the password and FTP
 -prompts\&.
 -.IP 
- \.LP
- \.nf
- \fBsocat PTY,link=$HOME/dev/vmodem0,rawer,wait-slave \\\bf
-@@ -3732,7 +3717,8 @@ Verbose modes (\-x and/or \-v) display l
+-\.LP
+-\.nf
+-\fBsocat \\
+-\.RS
+ \fBPTY,link=$HOME/dev/vmodem0,rawer,wait-slave \\ 
+ EXEC:'"ssh modemserver.us.org socat \- /dev/ttyS0,nonblock,rawer"'\fP
+ \.RE
+@@ -5010,7 +4969,8 @@ Verbose modes (\-x and/or \-v) display line termination characters inconsistentl
  when address options cr or crnl are used: They show the data \fIafter\fP
  conversion in either direction\&.
  .PP 
