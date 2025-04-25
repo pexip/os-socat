@@ -20,10 +20,10 @@ socat \- Multipurpose relay (SOcket CAT)
 .PP 
 \fBSocat\fP is a command line based utility that establishes two bidirectional byte
 streams and transfers data between them\&. Because the streams can be constructed
-from a large set of different types of data sinks and sources 
+from a large set of different types of data sinks and sources
 (see address types), and because lots of
 address options may be applied to the streams, socat can
-be used for many different purposes\&. 
+be used for many different purposes\&.
 .PP 
 \fBFilan\fP is a utility that prints information about its active file
 descriptors to stdout\&. It has been written for debugging \fBsocat\fP, but might be
@@ -73,23 +73,29 @@ Print a help text to stdout describing command line options and available addres
 types, and exit\&.
 .IP "\fB\f(CW\-hh | \-??\fP\fP"
 Like \-h, plus a list of the short names of all available address options\&. Some options are
-platform dependend, so this output is helpful for checking the particular
+platform dependent, so this output is helpful for checking the particular
 implementation\&. 
 .IP "\fB\f(CW\-hhh | \-???\fP\fP"
 Like \-hh, plus a list of all available address option names\&.
 .IP "\fB\f(CW\-d\fP\fP"
-Without this option, only fatal and error messages are generated; applying
-this option also prints warning messages\&. See DIAGNOSTICS
-for more information\&. 
-.IP "\fB\f(CW\-d \-d\fP\fP"
+Without this option, only fatal, error, and warning messages are printed;
+applying this option also prints notice messages\&.
+See DIAGNOSTICS for more information\&.
+.IP "\fB\f(CW\-d0\fP\fP"
+With this option, only fatal and error messages are printed; this restores
+the behaviour of \fBsocat\fP up to version 1\&.7\&.4\&.
+.IP "\fB\f(CW\-d \-d | \-dd | \-d2\fP\fP"
 Prints fatal, error, warning, and notice messages\&.
-.IP "\fB\f(CW\-d \-d \-d\fP\fP"
+.IP "\fB\f(CW\-d \-d \-d | \-ddd | \-d3\fP\fP"
 Prints fatal, error, warning, notice, and info messages\&.
-.IP "\fB\f(CW\-d \-d \-d \-d\fP\fP"
+.IP "\fB\f(CW\-d \-d \-d \-d | \-dddd | \-d4\fP\fP"
 Prints fatal, error, warning, notice, info, and debug
 messages\&. 
 .IP "\fB\f(CW\-D\fP\fP"
 Logs information about file descriptors before starting the transfer phase\&.
+.IP "\fB\f(CW\-\-experimental\fP\fP"
+New features that are not well tested or are subject to change in the future
+must be explicitly enabled using this option\&.
 .IP "\fB\f(CW\-ly[<facility>]\fP\fP"
 Writes messages to syslog instead of stderr; severity as defined with \-d
 option\&. With optional <facility>, the syslog type can
@@ -131,10 +137,20 @@ indicating flow directions\&. Can be combined with
 \&.
 .IP "\fB\f(CW\-r <file>\fP\fP"
 Dumps the raw (binary) data flowing from left to right address to the given
-file\&.
+file\&. The file name may contain references to environment variables and
+\f(CW$$\fP
+(pid), 
+\f(CW$PROGNAME\fP
+(see option option \-lp),
+\f(CW$TIMESTAMP\fP
+(uses format %Y%m%dT%H%M%S), and 
+\f(CWMICROS\fP
+(microseconds
+of daytime)\&. These references have to be protected from shell expansion of
+course\&.
 .IP "\fB\f(CW\-R <file>\fP\fP"
 Dumps the raw (binary) data flowing from right to left address to the given
-file\&.
+file\&. See option \-r for customization of file name\&.
 .IP "\fB\f(CW\-b\fP\fP\f(CW<size>\fP"
 Sets the data transfer block <size> [size_t]\&.
 At most <size> bytes are transferred per step\&. Default is 8192 bytes\&. 
@@ -144,6 +160,16 @@ from running when some option could not be applied\&. With this
 option, \fBsocat\fP is sloppy with errors and tries to continue\&. Even with this
 option, socat will exit on fatals, and will abort connection attempts when
 security checks failed\&.
+.IP "\fB\f(CW\-S\fP\fP\f(CW<signals\-bitmap>\fP"
+Changes the set of signals that are caught by \fBsocat\fP just for printing an
+log message\&. This catching is useful to get the information about the signal
+into \fBsocat\fPs log, but prevents core dump or other standard actions\&. The
+default set of these signals is SIGHUP, SIGINT, SIGQUIT, SIGILL, SIGABRT,
+SIGBUS, SIGFPE, SIGSEGV, and SIGTERM; replace this set (0x89de on Linux)
+with a bitmap (e\&.g\&., SIGFPE has value 8 and its bit is 0x0080)\&.
+.br 
+Note: Signals SIGHUP, SIGINT, SIGQUIT, SIGUSR1, SIGPIPE, SIGALRM, SIGTERM, and
+SIGCHLD may be handled specially anyway\&.
 .IP "\fB\f(CW\-t\fP\fP\f(CW<timeout>\fP"
 When one channel has reached EOF, the write part of the other channel is shut
 down\&. Then, \fBsocat\fP waits <timeout> [timeval] seconds
@@ -152,9 +178,12 @@ addresses where write and read part can be closed independently\&. When during
 the timeout interval the read part gives EOF, socat terminates without
 awaiting the timeout\&.
 .IP "\fB\f(CW\-T\fP\fP\f(CW<timeout>\fP"
-Total inactivity timeout: when socat is already in the transfer loop and
+Total inactivity timeout: when \fBsocat\fP is already in the transfer loop and
 nothing has happened for <timeout> [timeval] seconds
-(no data arrived, no interrupt occurred\&.\&.\&.) then it terminates\&.
+(no data arrived, no interrupt occurred\&.\&.\&.) then it terminates\&. Up to
+version 1\&.8\&.0\&.0 \(dq\&0\(dq\& meant infinite\(dq\&; since version 1\&.8\&.0\&.1 \(dq\&0\(dq\& means 0
+and values <0 mean infinite\&.
+.br 
 Useful with protocols like UDP that cannot transfer EOF\&.
 .IP "\fB\f(CW\-u\fP\fP"
 Uses unidirectional mode\&. The first address is only used for reading, and the
@@ -173,11 +202,22 @@ and continues, unlinks lockfile on exit\&.
 If lockfile exists, waits until it disappears\&. When lockfile does not exist,
 creates it and continues, unlinks lockfile on exit\&.
 .IP "\fB\f(CW\-4\fP\fP"
-Use IP version 4 in case that the addresses do not implicitly or explicitly
-specify a version; this is the default\&.
+Use IP version 4 in case the addresses do not implicitly or explicitly
+specify a version\&. Since version 1\&.8\&.0\&.1 this is the default\&.
 .IP "\fB\f(CW\-6\fP\fP"
-Use IP version 6 in case that the addresses do not implicitly or explicitly
+Use IP version 6 in case the addresses do not implicitly or explicitly
 specify a version\&.
+.IP "\fB\f(CW\-0\fP\fP"
+Do not prefer a particular IP version; this lets passive addresses (LISTEN,
+RECV, \&.\&.\&.) serve both versions on some platforms (not BSD)\&.
+.IP "\fB\f(CW\-\-statistics\fP\fP"
+.IP "\fB\f(CW\-S\fP\fP"
+Logs transfer statistics (bytes and blocks counters for both directions)
+before terminating \fBsocat\fP\&.
+.br 
+See also signal USR1\&.
+.br 
+This feature is experimental and might change in future versions\&.
 
 .PP 
 .SH "ADDRESS SPECIFICATIONS"
@@ -245,9 +285,11 @@ Opens <filename> with
 \f(CWcreat()\fP
 and uses the file
 descriptor for writing\&. 
-This address type requires write\-only context, because a file opened with
+This is a write\-only address because a file opened with 
 \f(CWcreat\fP
-cannot be read from\&. 
+cannot
+be read from\&. See options \-u and
+\-U, and dual addresses\&.
 .br 
 Flags like O_LARGEFILE cannot be applied\&. If you need them use
 OPEN with options
@@ -263,6 +305,7 @@ Option groups: FD,REG,NAMED
 .br 
 Useful options:
 mode,
+mode,
 user,
 group,
 unlink\-early,
@@ -270,6 +313,85 @@ unlink\-late,
 append
 .br 
 See also: OPEN, GOPEN
+.IP 
+.IP "\fB\f(CWDCCP\-CONNECT:<host>:<port>\fP\fP (\fB\f(CWDCCP:<host>:<port>\fP\fP)"
+Establishes a DCCP connect to the specified <host> [IP
+address] and <port> [DCCP service]
+using IP version 4 or 6 depending on address specification, name
+resolution, or option pf\&.
+.br 
+Option groups: FD,SOCKET,IP4,IP6,SCTP,CHILD,RETRY 
+.br 
+Useful options:
+bind,
+connect\-timeout,
+tos,
+dccp\-set\-ccid,
+nonblock,
+sourceport,
+retry,
+readbytes
+.br 
+See also:
+DCCP4\-CONNECT,
+DCCP6\-CONNECT,
+DCCP\-LISTEN,
+TCP\-CONNECT
+SCTP\-CONNECT
+.IP "\fB\f(CWDCCP4\-CONNECT:<host>:<port>\fP\fP (\fB\f(CWDCCP4:<host>:<port>\fP\fP)"
+Like DCCP\-CONNECT, but only supports IPv4 protocol\&.
+.br 
+Option groups: FD,SOCKET,IP4,DCCP,CHILD,RETRY 
+.br 
+.IP "\fB\f(CWDCCP6\-CONNECT:<host>:<port>\fP\fP (\fB\f(CWDCCP6:<host>:<port>\fP\fP)"
+Like DCCP\-CONNECT, but only supports IPv6 protocol\&.
+.br 
+Option groups: FD,SOCKET,IP6,DCCP,CHILD,RETRY 
+.br 
+
+.IP 
+.IP "\fB\f(CWDCCP\-LISTEN:<port>\fP\fP (\fB\f(CWDCCP\-L:<port>\fP\fP)"
+Listens on <port> [DCCP service] and accepts an
+DCCP connection\&. The IP version is 4 or the one specified with
+address option pf, socat option
+(\-4, \-6), or environment variable SOCAT_DEFAULT_LISTEN_IP\&.
+Note that opening
+this address usually blocks until a client connects\&.
+.br 
+Option groups: FD,SOCKET,LISTEN,CHILD,RANGE,IP4,IP6,DCCP,RETRY 
+.br 
+Useful options:
+fork,
+bind,
+range,
+max\-children,
+backlog,
+accept\-timeout,
+dccp\-set\-sid,
+su,
+reuseaddr,
+retry
+.br 
+See also:
+DCCP4\-LISTEN,
+DCCP6\-LISTEN,
+TCP\-LISTEN,
+SCTP\-LISTEN,
+DCCP\-CONNECT
+.IP "\fB\f(CWDCCP4\-LISTEN:<port>\fP\fP (\fB\f(CWDCCP4\-L:<port>\fP\fP)"
+Like DCCP\-LISTEN, but only supports IPv4
+protocol\&.
+.br 
+Option groups: FD,SOCKET,LISTEN,CHILD,RANGE,IP4,DCCP,RETRY 
+.br 
+.IP "\fB\f(CWDCCP6\-LISTEN:<port>\fP\fP (\fB\f(CWDCCP6\-L:<port>\fP\fP)"
+Like DCCP\-LISTEN, but only supports IPv6
+protocol\&.
+.br 
+Option groups: FD,SOCKET,LISTEN,CHILD,RANGE,IP6,DCCP,RETRY 
+.br 
+
+.IP 
 .IP "\fB\f(CWEXEC:<command\-line>\fP\fP"
 Forks a sub process that establishes communication with its parent process
 and invokes the specified program with 
@@ -298,16 +420,19 @@ chroot,
 su,
 su\-d,
 nofork,
+socktype,
 pty,
 stderr,
 ctty,
 setsid,
 pipes,
+umask,
 login,
 sigint,
-sigquit
+sigquit,
+netns
 .br 
-See also: SYSTEM
+See also: SYSTEM,SHELL
 .IP "\fB\f(CWFD:<fdnum>\fP\fP"
 Uses the file descriptor <fdnum>\&. It must already exist as
 valid UN*X file descriptor\&.
@@ -366,6 +491,7 @@ UNIX\-SENDTO
 Communicates with a network connected on an interface using raw packets
 including link level data\&. <interface> is the name of
 the network interface\&. Currently only available on Linux\&.
+.br 
 Option groups: FD,SOCKET 
 .br 
 Useful options:
@@ -406,6 +532,8 @@ ip\-multicast\-ttl,
 ip\-multicast\-if,
 ip\-add\-membership,
 ip\-add\-source\-membership,
+ipv6\-join\-group,
+ipv6\-join\-source\-group,
 ttl,
 tos,
 pf
@@ -479,7 +607,8 @@ Option groups: FD,SOCKET,IP6,CHILD,RANGE
 .IP "\fB\f(CWIP\-RECV:<protocol>\fP\fP"
 Opens a raw IP socket of <protocol>\&. Depending on option pf, IP protocol version
 4 or 6 is used\&. It receives packets from multiple unspecified peers and merges the data\&.
-No replies are possible\&.
+No replies are possible, this is a read\-only address, see options \-u and
+\-U, and dual addresses\&.
 It can be, e\&.g\&., addressed by socat IP\-SENDTO address peers\&.
 Protocol 255 uses the raw socket with the IP header being part of the
 data\&.
@@ -644,7 +773,8 @@ compress,
 bind,
 pf,
 sourceport,
-retry
+retry,
+rcvtimeo
 .br 
 See also:
 OPENSSL\-DTLS\-SERVER,
@@ -686,6 +816,8 @@ su,
 reuseaddr,
 retry
 .br 
+rcvtimeo
+.br 
 See also:
 OPENSSL\-DTLS\-CLIENT,
 OPENSSL\-LISTEN,
@@ -718,8 +850,8 @@ unlink\-early
 See also: unnamed pipe
 .IP "\fB\f(CWPIPE\fP\fP"
 Creates an unnamed pipe and uses it for reading and writing\&. It works as an
-echo, because everything written 
-to it appeares immediately as read data\&.
+echo, because everything written to it appears immediately as read
+data\&.
 .br 
 Note: When socat tries to write more bytes than the pipe can queue (Linux
 2\&.4: 2048 bytes), socat might block\&. Consider, e\&.g\&., using
@@ -728,15 +860,98 @@ option
 .br 
 Option groups: FD 
 .br 
-See also: named pipe
+See also: named pipe, SOCKETPAIR
+.IP "\fB\f(CWSOCKETPAIR\fP\fP"
+Creates a socketpair and uses it for reading and writing\&. It works as an
+echo, because everything written to it appears immediately as read
+data\&. The default socket type is datagram, so it keeps packet boundaries\&.
+.br 
+Option groups: FD 
+.br 
+Useful options:
+socktype
+.br 
+See also: unnamed pipe
+.IP 
+.IP "\fB\f(CWPOSIXMQ\-READ:/<mqueue>\fP\fP"
+Opens or creates the specified POSIX message queue and reads messages
+(packets)\&. It keeps the packet boundaries\&.
+.br 
+This is a read\-only address, see options \-u and
+\-U and dual addresses\&.
+.br 
+\fBSocat\fP provides this address type only on Linux because POSIX MQ is based
+on UNIX filedescriptors there\&.
+.br 
+Useful options:
+posixmq\-priority,
+unlink\-early,
+unlink\-close,
+o\-nonblock,
+o\-creat,
+o\-excl,
+umask
+.IP 
+.IP "\fB\f(CWPOSIXMQ\-RECEIVE:/<mqueue>\fP\fP"
+.IP "\fB\f(CWPOSIXMQ\-RECV:/<mqueue>\fP\fP"
+Opens or creates the specified POSIX message queue and reads one message
+(packet)\&.
+.br 
+This is a read\-only address\&. See POSIXMQ\-READ
+for more info\&.
+.br 
+Example: POSIX MQ recv with fork
+.br 
+Useful options:
+posixmq\-priority,
+fork,
+max\-children,
+unlink\-early,
+unlink\-close,
+o\-creat,
+o\-excl,
+umask
+.IP 
+.IP "\fB\f(CWPOSIXMQ\-SEND:/<mqueue>\fP\fP"
+Opens or creates the specified POSIX message queue and writes messages
+(packets)\&.
+.br 
+This is a write\-only address\&. See POSIXMQ\-READ
+for more info\&.
+.br 
+(Example)
+.br 
+Useful options:
+posixmq\-priority,
+posixmq\-flush,
+fork,
+max\-children,
+unlink\-early,
+unlink\-close,
+o\-creat,
+o\-excl,
+umask
+.IP 
+.IP "\fB\f(CWPOSIXMQ\-WRITE:/<mqueue>\fP\fP"
+Does the same as POSIXMQ\-SEND\&.
+.IP 
+.IP "\fB\f(CWPOSIXMQ\-BIDIRECTIONAL:/mqueue\fP\fP"
+.IP "\fB\f(CWPOSIXMQ:/mqueue\fP\fP"
+Opens or creates the specified POSIX message queue in read and/or write mode
+depending on context, then reads and/or writes messages (packets)\&.
+In bidirectional mode this is just another echo service\&.
+.br 
+See POSIXMQ\-READ and
+POSIXMQ\-SEND for more info\&.
+.IP 
 .IP "\fB\f(CWPROXY:<proxy>:<hostname>:<port>\fP\fP"
 Connects to an HTTP proxy server on port 8080 using TCP/IP  version 4 or 6
 depending on address specification, name resolution, or option
 pf, and sends a CONNECT
 request for hostname:port\&. If the proxy grants access and succeeds to
 connect to the target, data transfer between socat and the target can
-start\&. Note that the traffic need not be HTTP but can be an arbitrary
-protocol\&. 
+start (example)\&.
+Note that the traffic need not be HTTP but can be an arbitrary protocol\&. 
 .br 
 Option groups: FD,SOCKET,IP4,IP6,TCP,HTTP,RETRY 
 .br 
@@ -773,7 +988,7 @@ group
 See also:
 UNIX\-LISTEN,
 PIPE,
-EXEC, SYSTEM
+EXEC, SYSTEM, SHELL
 .IP "\fB\f(CWREADLINE\fP\fP"
 Uses GNU readline and history on stdio to allow editing and reusing input
 lines (example)\&. This requires the GNU readline and 
@@ -848,8 +1063,7 @@ sctp\-maxseg,
 sctp\-nodelay,
 su,
 reuseaddr,
-retry,
-cool\-write
+retry
 .br 
 See also:
 SCTP4\-LISTEN,
@@ -868,6 +1082,8 @@ protocol\&.
 .br 
 Option groups: FD,SOCKET,LISTEN,CHILD,RANGE,IP6,SCTP,RETRY 
 .br 
+
+.IP 
 .IP "\fB\f(CWSOCKET\-CONNECT:<domain>:<protocol>:<remote\-address>\fP\fP"
 Creates a stream socket using the first and second given socket parameters
 and \f(CWSOCK_STREAM\fP (see man socket(2)) and connects to the remote\-address\&.
@@ -1016,6 +1232,21 @@ UNIX\-SENDTO,
 SOCKET\-DATAGRAM,
 SOCKET\-RECV
 SOCKET\-RECVFROM
+.IP "\fB\f(CWACCEPT\-FD:<fdnum>\fP\fP"
+Expects a listening socket in <fdnum> and accepts one or (with option
+fork) more connections\&. This address type is useful under
+systemd control with \(dq\&inetd mode\(dq\&\&.
+.br 
+Example: (example)
+.br 
+Option groups: FD, SOCKET, TCP, CHILD, RETRY
+.br 
+Useful options:
+fork,
+range,
+sourceport,
+lowport,
+tcpwrap
 .IP "\fB\f(CWSOCKS4:<socks\-server>:<host>:<port>\fP\fP"
 Connects via <socks\-server> [IP address]
 to <host> [IPv4 address]
@@ -1033,23 +1264,72 @@ pf,
 retry
 .br 
 See also:
+SOCKS5,
 SOCKS4A,
 PROXY,
 TCP
+.IP 
 .IP "\fB\f(CWSOCKS4A:<socks\-server>:<host>:<port>\fP\fP"
 like SOCKS4, but uses socks protocol version 4a, thus
 leaving host name resolution to the socks server\&.
 .br 
 Option groups: FD,SOCKET,IP4,IP6,TCP,SOCKS4,RETRY 
 .br 
+
+.IP 
+.IP "\fB\f(CWSOCKS5\-CONNECT:<socks\-server>:<socks\-port>:<target\-host>:<target\-port>\fP\fP"
+.IP "\fB\f(CWSOCKS5\-CONNECT:<socks\-server>:<target\-host>:<target\-port>\fP\fP"
+Connects via <socks\-server> [IP address]
+to <target\-host> [IPv4 address]
+on <target\-port> [TCP service],
+using socks version 5 protocol over TCP\&. Currently no authentication mechanism is provided\&.
+.br 
+Option groups: FD, SOCKET, IP4, IP6, TCP, CHILD, RETRY
+.br 
+Useful options:
+socksport,
+sourceport,
+pf,
+retry
+.br 
+See also:
+SOCKS5\-LISTEN,
+SOCKS4,
+SOCKS4A,
+PROXY,
+TCP
+.IP 
+.IP "\fB\f(CWSOCKS5\-LISTEN:<socks\-server>:<socks\-port>:<listen\-host>:<listen\-port>\fP\fP"
+.IP "\fB\f(CWSOCKS5\-LISTEN:<socks\-server>:<listen\-host>:<listen\-port>\fP\fP"
+Connects to <socks\-server> [IP address]
+using socks version 5 protocol over TCP
+and makes it listen for incoming connections on <listen\-port> [TCP service], binding to <\-listen\-host> [IPv4 address]
+Currently not authentication mechanism is provided\&.
+.br 
+Option groups: FD, SOCKET, IP4, IP6, TCP, CHILD, RETRY
+.br 
+Useful options:
+sourceport,
+pf,
+retry
+.br 
+See also:
+SOCKS5\-CONNECT,
+.IP 
 .IP "\fB\f(CWSTDERR\fP\fP"
 Uses file descriptor 2\&.
+.br 
+This is a write\-only address, see options \-u and
+\-U, and dual addresses\&.
 .br 
 Option groups: FD (TERMIOS,REG,SOCKET) 
 .br 
 See also: FD
 .IP "\fB\f(CWSTDIN\fP\fP"
 Uses file descriptor 0\&.
+.br 
+This is a read\-only address, see options \-u and
+\-U, and dual addresses\&.
 .br 
 Option groups: FD (TERMIOS,REG,SOCKET) 
 .br 
@@ -1069,9 +1349,42 @@ See also: FD
 .IP "\fB\f(CWSTDOUT\fP\fP"
 Uses file descriptor 1\&.
 .br 
+This is a write\-only address, see options \-u and
+\-U, and dual addresses\&.
+.br 
 Option groups: FD (TERMIOS,REG,SOCKET) 
 .br 
 See also: FD
+.IP "\fB\f(CWSHELL:<shell\-command>\fP\fP"
+Forks a sub process that establishes communication with its parent process
+and invokes the specified program with the configured shell ($SHELL)\&.
+Note that <shell\-command> [string] must
+not contain \(cq\&,\(cq\& or \(dq\&!!\(dq\&, and that shell meta characters may have to be
+protected\&.
+After successful program start, \fBsocat\fP writes data to stdin of the 
+process and reads from its stdout\&.
+.br 
+Option groups: FD,SOCKET,EXEC,FORK,TERMIOS 
+.br 
+Useful options:
+path,
+fdin,
+fdout,
+chroot,
+su,
+su\-d,
+nofork,
+socktype,
+pty,
+stderr,
+ctty,
+setsid,
+pipes,
+umask,
+sigint,
+sigquit
+.br 
+See also: EXEC, SYSTEM
 .IP "\fB\f(CWSYSTEM:<shell\-command>\fP\fP"
 Forks a sub process that establishes communication with its parent process
 and invokes the specified program with 
@@ -1093,15 +1406,18 @@ chroot,
 su,
 su\-d,
 nofork,
+socktype,
 pty,
 stderr,
 ctty,
 setsid,
 pipes,
+umask,
 sigint,
-sigquit
+sigquit,
+netns
 .br 
-See also: EXEC
+See also: EXEC, SHELL
 .IP "\fB\f(CWTCP:<host>:<port>\fP\fP"
 Connects to <port> [TCP service] on
 <host> [IP address] using TCP/IP version 4 or 6
@@ -1111,17 +1427,18 @@ pf\&.
 Option groups: FD,SOCKET,IP4,IP6,TCP,RETRY 
 .br 
 Useful options:
+connect\-timeout,
+retry,
+sourceport,
+netns,
 crnl,
 bind,
 pf,
-connect\-timeout,
 tos,
 mtudiscover,
 mss,
 nodelay,
 nonblock,
-sourceport,
-retry,
 readbytes
 .br 
 See also:
@@ -1191,7 +1508,7 @@ ipv6only
 Option groups: FD,SOCKET,LISTEN,CHILD,RANGE,IP6,TCP,RETRY 
 .br 
 .IP "\fB\f(CWTUN[:<if\-addr>/<bits>]\fP\fP"
-Creates a Linux TUN/TAP device and optionally assignes it the address and
+Creates a Linux TUN/TAP device and optionally assigns it the address and
 netmask given by the parameters\&. The resulting network interface is almost
 ready for use by other processes; socat serves its \(dq\&wire side\(dq\&\&. This address
 requires read and write access to the tunnel cloning device, usually
@@ -1210,10 +1527,12 @@ iff\-up,
 tun\-device,
 tun\-name,
 tun\-type,
-iff\-no\-pi 
+iff\-no\-pi,
+netns
 .br 
 See also:
 ip\-recv
+.IP 
 .IP "\fB\f(CWUDP:<host>:<port>\fP\fP"
 Connects to <port> [UDP service] on
 <host> [IP address] using UDP/IP version 4 or 6
@@ -1270,6 +1589,8 @@ ip\-multicast\-ttl,
 ip\-multicast\-if,
 ip\-add\-membership,
 ip\-add\-source\-membership,
+ipv6\-join\-group,
+ipv6\-join\-source\-group,
 ttl,
 tos,
 sourceport,
@@ -1340,6 +1661,7 @@ pf\&. It sends packets to and receives packets
 from that peer socket only\&.  
 This address effectively implements a datagram client\&.
 It works well with socat UDP\-RECVFROM and UDP\-RECV address peers\&.
+When the peer might send data first, UDP\-DATAGRAM is preferable\&.
 .br 
 Option groups: FD,SOCKET,IP4,IP6 
 .br 
@@ -1383,6 +1705,8 @@ or named\&. This address works well with socat UDP\-SENDTO address peers\&.
 Note: When the second address fails before entering the transfer loop the
 packet is dropped\&. Use option retry or
 forever on the second address to avoid data loss\&.
+When you know the peer address, UDP\-DATAGRAM is
+preferable\&.
 .br 
 Option groups: FD,SOCKET,IP4,IP6,CHILD,RANGE 
 .br 
@@ -1416,7 +1740,12 @@ Option groups: FD,SOCKET,IP6,CHILD,RANGE
 Creates a UDP socket on <port> [UDP service] using UDP/IP version 4 or 6
 depending on option pf\&.
 It receives packets from multiple unspecified peers and merges the data\&.
-No replies are possible\&. It works well with, e\&.g\&., socat UDP\-SENDTO address peers; it behaves similar to a syslog server\&.
+No replies are possible\&. It works well with, e\&.g\&., socat
+UDP\-SENDTO address peers; it behaves similar to a
+syslog server\&.
+.br 
+This is a read\-only address, see options \-u and
+\-U, and dual addresses\&.
 .br 
 Note: if you need the fork option, use UDP\-RECVFROM in unidirectional mode (with option \-u) instead\&.
 .br 
@@ -1446,6 +1775,30 @@ Option groups: FD,SOCKET,IP4,RANGE
 Like UDP\-RECV, but only supports IPv6 protocol\&.
 .br 
 Option groups: FD,SOCKET,IP6,RANGE
+.IP 
+.IP "\fB\f(CWUDPLITE\-CONNECT:<host>:<port>\fP\fP"
+.IP "\fB\f(CWUDPLITE4\-CONNECT:<host>:<port>\fP\fP"
+.IP "\fB\f(CWUDPLITE6\-CONNECT:<host>:<port>\fP\fP"
+.IP "\fB\f(CWUDPLITE\-DATAGRAM:<address>:<port>\fP\fP"
+.IP "\fB\f(CWUDPLITE4\-DATAGRAM:<address>:<port>\fP\fP"
+.IP "\fB\f(CWUDPLITE6\-DATAGRAM:<address>:<port>\fP\fP"
+.IP "\fB\f(CWUDPLITE\-LISTEN:<port>\fP\fP"
+.IP "\fB\f(CWUDPLITE4\-LISTEN:<port>\fP\fP"
+.IP "\fB\f(CWUDPLITE6\-LISTEN:<port>\fP\fP"
+.IP "\fB\f(CWUDPLITE\-SENDTO:<host>:<port>\fP\fP"
+.IP "\fB\f(CWUDPLITE4\-SENDTO:<host>:<port>\fP\fP"
+.IP "\fB\f(CWUDPLITE6\-SENDTO:<host>:<port>\fP\fP"
+.IP "\fB\f(CWUDPLITE\-RECVFROM:<port>\fP\fP"
+.IP "\fB\f(CWUDPLITE4\-RECVFROM:<port>\fP\fP"
+.IP "\fB\f(CWUDPLITE6\-RECVFROM:<port>\fP\fP"
+.IP "\fB\f(CWUDPLITE\-RECV:<port>\fP\fP"
+.IP "\fB\f(CWUDPLITE4\-RECV:<port>\fP\fP"
+.IP "\fB\f(CWUDPLITE6\-RECV:<port>\fP\fP"
+The UDPLITE addresses are almost identical to the related UDP addresses
+but they use UDP\-Lite protocol and have the additional UDPLITE option
+group\&.
+.br 
+
 .IP 
 .IP "\fB\f(CWUNIX\-CONNECT:<filename>\fP\fP"
 Connects to <filename> assuming it is a UNIX domain
@@ -1526,6 +1879,8 @@ See the note about RECVFROM addresses\&.
 Useful options:
 fork
 .br 
+umask
+.br 
 See also:
 UNIX\-SENDTO,
 UNIX\-RECV,
@@ -1536,10 +1891,15 @@ IP\-RECVFROM
 .IP "\fB\f(CWUNIX\-RECV:<filename>\fP\fP"
 Creates a UNIX domain datagram socket [<filename>]\&.
 Receives packets from multiple unspecified peers and merges the data\&.
-No replies are possible\&. It can be, e\&.g\&., addressed by socat UNIX\-SENDTO address peers\&.
+No replies are possible, this is a read\-only address, see options \-u and
+\-U, and dual addresses\&.
+It can be, e\&.g\&., addressed by socat UNIX\-SENDTO address peers\&.
 It behaves similar to a syslog server\&.
 .br 
 Option groups: FD,SOCKET,NAMED,UNIX 
+.br 
+Useful options:
+umask
 .br 
 See also:
 UNIX\-SENDTO,
@@ -1572,7 +1932,6 @@ Option groups: FD,SOCKET,CHILD,RETRY
 .br 
 Useful options:
 bind,
-pf,
 connect\-timeout,
 retry,
 readbytes
@@ -1590,13 +1949,11 @@ Option groups: FD,SOCKET,LISTEN,CHILD,RETRY
 Useful options:
 fork,
 bind,
-pf,
 max\-children,
 backlog,
 su,
 reuseaddr,
-retry,
-cool\-write
+retry
 .br 
 See also:
 VSOCK\-CONNECT
@@ -1613,6 +1970,9 @@ UNIX domain address space\&. To achieve this the socket address strings are
 prefixed with \(dq\&\e0\(dq\& internally\&. This feature is available (only?) on Linux\&.
 Option groups are the same as with the related UNIX addresses, except that
 the ABSTRACT addresses are not member of the NAMED group\&.
+.br 
+Useful options:
+netns
 
 .PP 
 .SH "ADDRESS OPTIONS"
@@ -1693,7 +2053,7 @@ Note: Some of these options are also member of another option group, that
 provides another, non\-fd based mechanism\&.
 For these options, it depends on the actual address type and its option groups 
 which mechanism is used\&. The second, non\-fd based mechanism is prioritized\&.
-.IP "\fB\f(CWcloexec=<bool>\fP\fP"
+.IP "\fB\f(CWcloexec[=<bool>]\fP\fP"
 Sets the 
 \f(CWFD_CLOEXEC\fP
 flag with the 
@@ -1706,7 +2066,7 @@ family function calls\&. \fBSocat\fP
 internally handles 
 this flag for the fds it controls, so in most cases there will be no need to
 apply this option\&. 
-.IP "\fB\f(CWsetlk\fP\fP"
+.IP "\fB\f(CWsetlk[=<bool>]\fP\fP"
 Tries to set a discretionary write lock to the whole file using the 
 \f(CWfcntl(fd,
 F_SETLK, \&.\&.\&.)\fP
@@ -1715,14 +2075,14 @@ in an error\&.
 On Linux, when the file permissions for group are \(dq\&S\(dq\& (g\-x,g+s), and the
 file system is locally mounted with the \(dq\&mand\(dq\& option, the lock is
 mandatory, i\&.e\&. prevents other processes from opening the file\&.
-.IP "\fB\f(CWsetlkw\fP\fP"
+.IP "\fB\f(CWsetlkw[=<bool>]\fP\fP"
 Tries to set a discretionary waiting write lock to the whole file using the
 \f(CWfcntl(fd, F_SETLKW, \&.\&.\&.)\fP
 system call\&. If the file is already locked,
 this call blocks\&. 
 See option setlk for information about making this
 lock mandatory\&. 
-.IP "\fB\f(CWsetlk\-rd\fP\fP"
+.IP "\fB\f(CWsetlk\-rd[=<bool>]\fP\fP"
 Tries to set a discretionary read lock to the whole file using the 
 \f(CWfcntl(fd,
 F_SETLK, \&.\&.\&.)\fP
@@ -1730,34 +2090,34 @@ system call\&. If the file is already write locked, this call
 results in an error\&. 
 See option setlk for information about making this
 lock mandatory\&. 
-.IP "\fB\f(CWsetlkw\-rd\fP\fP"
+.IP "\fB\f(CWsetlkw\-rd[=<bool>]\fP\fP"
 Tries to set a discretionary waiting read lock to the whole file using the
 \f(CWfcntl(fd, F_SETLKW, \&.\&.\&.)\fP
 system call\&. If the file is already write
 locked, this call blocks\&. 
 See option setlk for information about making this
 lock mandatory\&. 
-.IP "\fB\f(CWflock\-ex\fP\fP"
+.IP "\fB\f(CWflock\-ex[=<bool>]\fP\fP"
 Tries to set a blocking exclusive advisory lock to the file using the
 \f(CWflock(fd, LOCK_EX)\fP
 system call\&. \fBSocat\fP hangs in this call if the file
 is locked by another process\&.
-.IP "\fB\f(CWflock\-ex\-nb\fP\fP"
+.IP "\fB\f(CWflock\-ex\-nb[=<bool>]\fP\fP"
 Tries to set a nonblocking exclusive advisory lock to the file using the
 \f(CWflock(fd, LOCK_EX|LOCK_NB)\fP
 system call\&. If the file is already locked,
 this option results in an error\&.
-.IP "\fB\f(CWflock\-sh\fP\fP"
+.IP "\fB\f(CWflock\-sh[=<bool>]\fP\fP"
 Tries to set a blocking shared advisory lock to the file using the
 \f(CWflock(fd, LOCK_SH)\fP
 system call\&. \fBSocat\fP hangs in this call if the file
 is locked by another process\&.
-.IP "\fB\f(CWflock\-sh\-nb\fP\fP"
+.IP "\fB\f(CWflock\-sh\-nb[=<bool>]\fP\fP"
 Tries to set a nonblocking shared advisory lock to the file using the
 \f(CWflock(fd, LOCK_SH|LOCK_NB)\fP
 system call\&. If the file is already locked,
 this option results in an error\&.
-.IP "\fB\f(CWlock\fP\fP"
+.IP "\fB\f(CWlock[=<bool>]\fP\fP"
 Sets a blocking lock on the file\&. Uses the setlk or flock mechanism
 depending on availability on the particular platform\&. If both are available,
 the POSIX variant (setlkw) is used\&.
@@ -1813,8 +2173,12 @@ filesystem entry or binding to the UNIX domain socket (race condition!)\&.
 Otherwise, \fBsocat\fP sets the mode of the stream
 using 
 \f(CWfchmod()\fP
-\&. 
+which, btw, might not have any effect\&.
+.br 
 These calls might require ownership or root privilege\&.
+.br 
+Note: this option can only tighten the permissions implied by processes
+umask\&. See option umask to loosen permissions\&.
 .IP "\fB\f(CWperm\-late=<mode>\fP\fP"
 Sets the permissions of the fd to value <mode>
 [mode_t] using the 
@@ -1822,7 +2186,7 @@ Sets the permissions of the fd to value <mode>
 system call after
 opening or connecting the channel\&.
 This is useful only on file system entries\&. 
-.IP "\fB\f(CWappend=<bool>\fP\fP"
+.IP "\fB\f(CWappend[=<bool>]\fP\fP"
 Always writes data to the actual end of file\&.
 If the address is member of the OPEN option group, 
 \fBsocat\fP uses the 
@@ -1834,7 +2198,7 @@ system call
 Otherwise, \fBsocat\fP applies the 
 \f(CWfcntl(fd, F_SETFL, O_APPEND)\fP
 call\&.
-.IP "\fB\f(CWnonblock=<bool>\fP\fP"
+.IP "\fB\f(CWnonblock[=<bool>]\fP\fP"
 Tries to open or use file in nonblocking mode\&. Its only effects are that the
 \f(CWconnect()\fP
 call of TCP addresses does not block, and that opening a
@@ -1848,23 +2212,26 @@ system call\&.
 Otherwise, \fBsocat\fP applies the 
 \f(CWfcntl(fd, F_SETFL, O_NONBLOCK)\fP
 call\&.
-.IP "\fB\f(CWbinary\fP\fP"
+.IP "\fB\f(CWbinary[=<bool>]\fP\fP"
 Opens the file in binary mode to avoid implicit line terminator
 conversions (Cygwin)\&.
-.IP "\fB\f(CWtext\fP\fP"
+.IP "\fB\f(CWtext[=<bool>]\fP\fP"
 Opens the file in text mode to force implicit line terminator conversions
 (Cygwin)\&.
-.IP "\fB\f(CWnoinherit\fP\fP"
+.IP "\fB\f(CWnoinherit[=<bool>]\fP\fP"
 Does not keep this file open in a spawned process (Cygwin)\&.
-.IP "\fB\f(CWcool\-write\fP\fP"
+.IP "\fB\f(CWcool\-write[=<bool>]\fP\fP"
 Takes it easy when write fails with EPIPE or ECONNRESET and logs the message
 with \fInotice\fP level instead of \fIerror\fP\&.
 This prevents the log file from being filled with useless error messages
-when socat is used as a high volume server or proxy where clients often
-abort the connection\&.
+when \fBsocat\fP is used as a high volume server or proxy where clients often
+abort the connection\&. Use this option only with option
+fork because otherwise it might cause \fBsocat\fP to exit
+with code 0 even on failure\&.
 .br 
-This option is experimental\&.
-.IP "\fB\f(CWend\-close\fP\fP"
+This option is deprecated, consider using
+option children\-shutup instead\&.
+.IP "\fB\f(CWend\-close[=<bool>]\fP\fP"
 Changes the (address dependent) method of ending a connection to just close
 the file descriptors\&. This is useful when the connection is to be reused by
 or shared with other processes (example)\&.
@@ -1877,21 +2244,21 @@ long as there are still links from other processes\&.
 Similarly, when an address of type EXEC or SYSTEM is ended, socat usually
 will explicitly kill the sub process\&. With this option, it will just close
 the file descriptors\&.
-.IP "\fB\f(CWshut\-none\fP\fP"
+.IP "\fB\f(CWshut\-none[=<bool>]\fP\fP"
 Changes the (address dependent) method of shutting down the write part of a
 connection to not do anything\&.
-.IP "\fB\f(CWshut\-down\fP\fP"
+.IP "\fB\f(CWshut\-down[=<bool>]\fP\fP"
 Changes the (address dependent) method of shutting down the write part of a
 connection to shutdown(fd, SHUT_WR)\&. Is only useful with sockets\&.
-.IP "\fB\f(CWshut\-close\fP\fP"
+.IP "\fB\f(CWshut\-close[=<bool>]\fP\fP"
 Changes the (address dependent) method of shutting down the write part of a
 connection to close(fd)\&.
-.IP "\fB\f(CWshut\-null\fP\fP"
+.IP "\fB\f(CWshut\-null[=<bool>]\fP\fP"
 When one address indicates EOF, \fBsocat\fP will send a zero sized packet to the
 write channel of the other address to transfer the EOF condition\&. This is
 useful with UDP and other datagram protocols\&. Has been tested against
 netcat and socat with option null\-eof\&.
-.IP "\fB\f(CWnull\-eof\fP\fP"
+.IP "\fB\f(CWnull\-eof[=<bool>]\fP\fP"
 Normally \fBsocat\fP will ignore empty (zero size payload) packets arriving on
 datagram sockets, so it survives port scans\&. With this option \fBsocat\fP
 interprets empty datagram packets as EOF indicator (see
@@ -1946,27 +2313,23 @@ before accessing it, using the
 \f(CWchmod()\fP
 system call\&. This call might require ownership or root
 privilege\&. 
-.IP "\fB\f(CWumask=<mode>\fP\fP"
-Sets the umask of the process to <mode> [mode_t] before
-accessing the file system entry (useful 
-with UNIX domain sockets!)\&. This call might affect all further operations
-of the \fBsocat\fP process!  
-.IP "\fB\f(CWunlink\-early\fP\fP"
+.IP "\fB\f(CWunlink\-early[=<bool>]\fP\fP"
 Unlinks (removes) the file before opening it and even before applying
 user\-early etc\&. 
-.IP "\fB\f(CWunlink\fP\fP"
+.IP "\fB\f(CWunlink[=<bool>]\fP\fP"
 Unlinks (removes) the file before accessing it, but after user\-early etc\&.
-.IP "\fB\f(CWunlink\-late\fP\fP"
+.IP "\fB\f(CWunlink\-late[=<bool>]\fP\fP"
 Unlinks (removes) the file after opening it to make it inaccessible for
 other processes after a short race condition\&. 
-.IP "\fB\f(CWunlink\-close\fP\fP"
-Removes the addresses file system entry when closing the address\&.
+.IP "\fB\f(CWunlink\-close[=<bool>]\fP\fP"
+Controls removal of the addresses file system entry when closing the address\&.
 For named pipes,
 UNIX domain sockets,
 and the symbolic links of pty addresses,
-the default is 1; for created files,
+the default is remove (1); for created files,
 opened files, and
-generic opened files the default is 0\&.
+generic opened files the default is keep (0)\&.
+Setting this option to 1 removes the entry, 0 keeps it\&. No value means 1\&.
 
 .PP 
 .br 
@@ -1979,43 +2342,49 @@ The OPEN group options allow setting flags with the
 system call\&. 
 E\&.g\&., option `creat\(cq\& sets the 
 \f(CWO_CREAT\fP
-flag\&.
+flag\&. When the used address does
+not use 
+\f(CWopen()\fP
+(e\&.g\&.STDIO), the 
+\f(CWfcntl(\&.\&.\&., F_SETFL, \&.\&.\&.)\fP
+call is
+used instead\&.
 .br 
 See also options append and
 nonblock\&.
-.IP "\fB\f(CWcreat=<bool>\fP\fP"
+.IP "\fB\f(CWcreat[=<bool>]\fP\fP"
 Creates the file if it does not exist (example)\&.
-.IP "\fB\f(CWdsync=<bool>\fP\fP"
+.IP "\fB\f(CWdsync[=<bool>]\fP\fP"
 Blocks 
 \f(CWwrite()\fP
 calls until metainfo is physically written to media\&.
-.IP "\fB\f(CWexcl=<bool>\fP\fP"
+.IP "\fB\f(CWexcl[=<bool>]\fP\fP"
 With option creat, if file exists this is an error\&.
-.IP "\fB\f(CWlargefile=<bool>\fP\fP"
+.IP "\fB\f(CWlargefile[=<bool>]\fP\fP"
 On 32 bit systems, allows a file larger than 2^31 bytes\&.
-.IP "\fB\f(CWnoatime\fP\fP"
+.IP "\fB\f(CWnoatime[=<bool>]\fP\fP"
 Sets the O_NOATIME options, so reads do not change the access timestamp\&.
-.IP "\fB\f(CWnoctty=<bool>\fP\fP"
+.IP "\fB\f(CWnoctty[=<bool>]\fP\fP"
 Does not make this file the controlling terminal\&.
-.IP "\fB\f(CWnofollow=<bool>\fP\fP"
+.IP "\fB\f(CWnofollow[=<bool>]\fP\fP"
 Does not follow symbolic links\&.
-.IP "\fB\f(CWnshare=<bool>\fP\fP"
+.IP "\fB\f(CWnshare[=<bool>]\fP\fP"
 Does not allow sharing this file with other processes\&.
-.IP "\fB\f(CWrshare=<bool>\fP\fP"
+.IP "\fB\f(CWrshare[=<bool>]\fP\fP"
 Does not allow other processes to open this file for writing\&.
-.IP "\fB\f(CWrsync=<bool>\fP\fP"
+.IP "\fB\f(CWrsync[=<bool>]\fP\fP"
 Blocks 
 \f(CWwrite()\fP
 until metainfo is physically written to media\&.
-.IP "\fB\f(CWsync=<bool>\fP\fP"
+.IP "\fB\f(CWsync[=<bool>]\fP\fP"
 Blocks 
 \f(CWwrite()\fP
 until data is physically written to media\&.
-.IP "\fB\f(CWrdonly=<bool>\fP\fP"
+.IP "\fB\f(CWrdonly[=<bool>]\fP\fP"
 Opens the file for reading only\&.
-.IP "\fB\f(CWwronly=<bool>\fP\fP"
+.IP "\fB\f(CWwronly[=<bool>]\fP\fP"
 Opens the file for writing only\&.
-.IP "\fB\f(CWtrunc\fP\fP"
+.IP "\fB\f(CWtrunc[=<bool>]\fP\fP"
 Truncates the file to size 0 during opening it\&.
 
 .PP 
@@ -2063,17 +2432,17 @@ truncating the file at the position <offset> [off_t or
 off64_t]\&. Please note that a missing value defaults to 1,
 not 0\&.
 .IP 
-.IP "\fB\f(CWsecrm=<bool>\fP\fP"
-.IP "\fB\f(CWunrm=<bool>\fP\fP"
-.IP "\fB\f(CWcompr=<bool>\fP\fP"
-.IP "\fB\f(CWfs\-sync=<bool>\fP\fP"
-.IP "\fB\f(CWimmutable=<bool>\fP\fP"
-.IP "\fB\f(CWfs\-append=<bool>\fP\fP"
-.IP "\fB\f(CWnodump=<bool>\fP\fP"
-.IP "\fB\f(CWfs\-noatime=<bool>\fP\fP"
-.IP "\fB\f(CWjournal\-data=<bool>\fP\fP"
-.IP "\fB\f(CWnotail=<bool>\fP\fP"
-.IP "\fB\f(CWdirsync=<bool>\fP\fP"
+.IP "\fB\f(CWsecrm[=<bool>]\fP\fP"
+.IP "\fB\f(CWunrm[=<bool>]\fP\fP"
+.IP "\fB\f(CWcompr[=<bool>]\fP\fP"
+.IP "\fB\f(CWfs\-sync[=<bool>]\fP\fP"
+.IP "\fB\f(CWimmutable[=<bool>]\fP\fP"
+.IP "\fB\f(CWfs\-append[=<bool>]\fP\fP"
+.IP "\fB\f(CWnodump[=<bool>]\fP\fP"
+.IP "\fB\f(CWfs\-noatime[=<bool>]\fP\fP"
+.IP "\fB\f(CWjournal\-data[=<bool>]\fP\fP"
+.IP "\fB\f(CWnotail[=<bool>]\fP\fP"
+.IP "\fB\f(CWdirsync[=<bool>]\fP\fP"
 These options change non standard file attributes on operating systems and
 file systems that support these features, like Linux with ext2fs and
 successors, xfs, or reiserfs\&. See man 1 chattr for information on these
@@ -2084,13 +2453,52 @@ the file and applying these options\&.
 .br 
 
 .PP 
+\fI\fBPIPE options\fP\fP
+.PP 
+These options may be applied to pipes (fifos)\&.
+.PP 
+.IP "\fB\f(CWf\-setpipe\-sz=<int>\fP\fP"
+.IP "\fB\f(CWsetpipe=<int>\fP\fP"
+Set the number of bytes a pipe can buffer\&. Where more bytes are written the
+writing process might block\&. When more bytes are written in a single
+\f(CWwrite()\fP the writing process blocks and might never recover\&.
+
+.PP 
+.br 
+
+.PP 
+\fI\fBGeneral address options\fP\fP
+.PP 
+These options may be applied to all address types\&. They change some process
+properties that are restored after opening the address\&.
+.PP 
+.IP "\fB\f(CWchdir=<filename>\fP\fP"
+.IP "\fB\f(CWcd=<filename>\fP\fP"
+Changes the working directory\&. After opening the address the master process
+changes back to the original working directory\&. Sub processes inherit the
+temporary setting\&.
+.IP "\fB\f(CWumask=<mode>\fP\fP"
+Sets the umask of the process to <mode> [mode_t] before
+opening the address\&. Useful when file system entries are created or a shell
+or program is invoked\&. Usually the value is specified as octal number with
+leading \(cq\&0\(cq\&\&.
+.br 
+The processes \f(CWumask\fP value is inherited by child processes\&.
+.br 
+Note: umask is an inverted value: creating a file with umask=0026 results in
+permissions 0640\&.
+
+.PP 
+.br 
+
+.PP 
 \fI\fBPROCESS option group\fP\fP
 .PP 
 Options of this group change the process properties instead of just affecting
 one data channel\&.
 For EXEC and SYSTEM addresses and for LISTEN and CONNECT type addresses with
-option FORK, 
-these options apply to the child processes instead of the main socat process\&.
+option fork,
+these options apply to the child processes instead of the main \fBsocat\fP process\&.
 .IP "\fB\f(CWchroot=<directory>\fP\fP"
 Performs a 
 \f(CWchroot()\fP
@@ -2106,7 +2514,7 @@ Changes the primary <group> of the process after
 processing the address\&. This call might require root privilege\&. Please note
 that this option does not drop other group related privileges\&.
 .IP "\fB\f(CWsetgid\-early=<group>\fP\fP"
-Like setgit but is performed before opening the address\&.
+Like setgid but is performed before opening the address\&.
 .IP "\fB\f(CWsetuid=<user>\fP\fP"
 Changes the <user> (owner) of the process after processing
 the address\&. This call might require root privilege\&. Please note that this
@@ -2132,6 +2540,14 @@ is given, or if the value is 0 or 1, the process becomes leader of a new
 process group\&. 
 .IP "\fB\f(CWsetsid\fP\fP"
 Makes the process the leader of a new session (example)\&.
+.IP "\fB\f(CWnetns=<net\-namespace\-name>\fP\fP"
+Before opening the address it tries to switch to the named network namespace\&.
+After opening the address it switches back to the previous namespace
+(example with TCP forwarder,
+example with virtual network connection)\&.
+.br 
+Only on Linux; requires root; use option \f(CW\-\-experimental\fP\&.
+.br 
 
 .PP 
 .br 
@@ -2152,7 +2568,7 @@ of the terminal\&.
 Specifies a regular pattern for a prompt that prevents the following input
 line from being displayed on the screen and from being added to the history\&.
 The prompt is defined as the text that was output to the readline address 
-after the lastest newline character and before an input character was
+after the last newline character and before an input character was
 typed\&. The pattern is a regular expression, e\&.g\&.
 \(dq\&^[Pp]assword:\&.*$\(dq\& or \(dq\&([Uu]ser:|[Pp]assword:)\(dq\&\&. See regex(7) for details\&.
 (example)
@@ -2212,8 +2628,9 @@ Binds the socket to the given socket address using the
 system
 call\&. The form of <sockname> is socket domain dependent:
 IP4 and IP6 allow the form [hostname|hostaddress][:(service|port)] (example),
-UNIX domain sockets require <filename>,
-VSOCK allow the form [cid][:(port)]\&.
+VSOCK allows the form [cid][:(port)]\&.
+.br 
+See also: unix\-bind\-tempname
 .IP "\fB\f(CWconnect\-timeout=<seconds>\fP\fP"
 Abort the connection attempt after <seconds> [timeval]
 with error status\&.
@@ -2252,12 +2669,34 @@ Sets the size of the receive buffer when the socket is already
 connected to <bytes> [int]\&. 
 With TCP sockets, this value corresponds to the socket\(cq\&s 
 maximal window size\&. 
+.IP "\fB\f(CWso\-rcvtimeo=<time>, rcvtimeo=<time>\fP\fP"
+Specifies the time [int] until 
+\f(CWrecv()\fP
+, 
+\f(CWread()\fP
+etc\&. functions timeout when no data is received\&. Note that in the transfer
+phase \fBsocat\fP only calls these functions when 
+\f(CWselect()\fP
+has reported
+that data is available\&. However this option is useful with DTLS addresses to
+timeout during connection negotiation\&.
+.IP "\fB\f(CWso\-sndtimeo=<time>, sndtimeo=<time>\fP\fP"
+Like so\-recvtimeo, but for 
+\f(CWsend\fP
+\&. Not usecase
+known\&.
 .IP "\fB\f(CWrcvlowat=<bytes>\fP\fP"
 Specifies the minimum number of received bytes [int] until
 the socket layer will pass the buffered data to \fBsocat\fP\&. 
-.IP "\fB\f(CWreuseaddr\fP\fP"
+.IP "\fB\f(CWreuseaddr[=[0|1]]\fP\fP"
 Allows other sockets to bind to an address even if parts of it (e\&.g\&. the
-local port) are already in use by \fBsocat\fP (example)\&. 
+local port) are already in use by \fBsocat\fP\&.
+.br 
+With version 1\&.8\&.0, this socket option is set automatically for TCP LISTEN
+addresses\&. If you prefer the system default (no related
+\f(CWsetsockopt(\&.\&.\&.SO_REUSEADDR\&.\&.\&.)\fP call at all), use form \f(CWreuseaddr=\fP\&.
+.br 
+(example)\&.
 .IP "\fB\f(CWsndbuf=<bytes>\fP\fP"
 Sets the size of the send buffer after the 
 \f(CWsocket()\fP
@@ -2288,6 +2727,7 @@ calls, to <type>
 [int]\&. Address resolution is not affected by this option\&.
 Under Linux, 1 means stream oriented socket, 2 means datagram socket, 3
 means raw socket, and 5 seqpacket (stream keeping packet boundaries)\&.
+Datagrams are useful when you want to keep packet boundaries\&.
 .IP "\fB\f(CWprotocol\fP\fP"
 Sets the protocol of the socket, specified as third argument to the
 \f(CWsocket()\fP
@@ -2323,6 +2763,22 @@ listening socket instead of the connected socket\&.
 Like \f(CWsetsockopt\fP, but <optval> is a string\&.
 This string is passed to the function with trailing null character, and the
 length parameter is automatically derived from the data\&.
+.IP "\fB\f(CWsetsockopt\-socket=<level>:<optname>:<optval>\fP\fP"
+Like \f(CWsetsockopt\fP, but is applied to the socket before other operations
+(
+\f(CWbind()\fP
+, 
+\f(CWconnect()\fP
+, 
+\f(CWaccept()\fP
+, \&.\&.\&.)
+.IP "\fB\f(CWsetsockopt\-connected=<level>:<optname>:<optval>\fP\fP"
+Like \f(CWsetsockopt\fP, but is applied only when the socket has been connected
+by a 
+\f(CWconnect()\fP
+or 
+\f(CWlisten()\fP
+call\&.
 
 .PP 
 .br 
@@ -2331,7 +2787,21 @@ length parameter is automatically derived from the data\&.
 \fI\fBUNIX option group\fP\fP
 .PP 
 These options apply to UNIX domain based addresses\&.
-.IP "\fB\f(CWunix\-tightsocklen=[0|1]\fP\fP"
+.IP "\fB\f(CWbind\-tempname[=/tmp/pre\-XXXXXX],
+unix\-bind\-tempname[=/tmp/pre\-XXXXXX]\fP\fP"
+Binds to a random path or random address (on abstract namespace sockets)\&.
+This is useful with datagram client addresses (\f(CWSENDTO\fP, or \f(CWCLIENT\fP)
+that are opened in child processes forked off from a common
+parent process where the child processes cannot have different bind options\&.
+In the path 
+\f(CWX\fP
+\(cq\&s get replaced with a random character sequence
+similar to tempnam(3)\&. When no argument is given \fBsocat\fP takes a
+default like 
+\f(CW/tmp/fileXXXXXX\fP
+\&.
+.br 
+.IP "\fB\f(CWunix\-tightsocklen[=(0|1)]\fP\fP"
 On socket operations, pass a socket address length that does not include the
 whole 
 \f(CWstruct sockaddr_un\fP
@@ -2391,29 +2861,104 @@ interface ancillary messages (*BSD) (example)\&.
 .IP "\fB\f(CWip\-add\-membership=<multicast\-address:interface\-index>\fP\fP"
 .IP "\fB\f(CWip\-add\-membership=<multicast\-address:interface\-address:interface\-name>\fP\fP"
 .IP "\fB\f(CWip\-add\-membership=<multicast\-address:interface\-address:interface\-index>\fP\fP"
-Makes the socket member of the specified multicast group\&. This is currently
-only implemented for IPv4\&. The option takes the IP address of the multicast
-group and info about the desired network interface\&. The most common syntax
-is the first one, while the others are only available on systems that
-provide \f(CWstruct mreqn\fP (Linux)\&.
+Makes the socket member of the specified multicast group\&. This only works
+for IPv4, see ipv6\-join\-group for the IPv6
+variant\&. The option takes the IP address of the multicast group and info
+about the desired network interface\&. The most common syntax is the first
+one, while the others are only available on systems that provide
+\f(CWstruct mreqn\fP (Linux)\&.
 .br 
 The indices of active network interfaces can be shown using the utility
 \fBprocan\fP\&.
 .IP "\fB\f(CWip\-add\-source\-membership=<multicast\-address:interface\-address:source\-address>\fP\fP"
-Makes the socket member of the specified multicast group for the specified
-source, i\&.e\&. only multicast traffic from this address is to be delivered\&.
-This is currently only implemented for IPv4\&.
+Makes the socket member of the specified multicast group for the
+specified source, i\&.e\&. only multicast traffic from this address is to be
+delivered\&. This only works for IPv4, see
+ipv6\-join\-source\-group for the IPv6
+variant\&. The option takes the IP address of the multicast group, the IP
+address of the desired network interface and the source IP address of the
+multicast traffic\&.
+.IP "\fB\f(CWipv6\-join\-group=<multicast\-address:interface\-name>\fP\fP"
+.IP "\fB\f(CWipv6\-join\-group=<multicast\-address:interface\-index>\fP\fP"
+Makes the socket member of the specified multicast group\&. This only works
+for IPv6, see ip\-add\-membership for the
+IPv4 variant\&. The option takes the IP address of the multicast
+group and info about the desired network interface\&.
+The indices of active network interfaces can be shown using the utility
+\fBprocan\fP\&.
+.IP "\fB\f(CWipv6\-join\-source\-group=<multicast\-address:interface\-name:source\-address>\fP\fP"
+.IP "\fB\f(CWipv6\-join\-source\-group=<multicast\-address:interface\-index:source\-address>\fP\fP"
+Makes the socket member of the specified multicast group for the
+specified source, i\&.e\&. only multicast traffic from this address is to be
+delivered\&. This only works for IPv6, see
+ip\-add\-source\-membership for the
+IPv4 variant\&. The option takes the IP address of the multicast group,
+info about the desired network interface and the source IP address of the
+multicast traffic\&. The indices of active network interfaces can be shown
+using the utility \fBprocan\fP\&.
 .br 
+This feature is experimental\&.
 .IP "\fB\f(CWip\-multicast\-if=<hostname>\fP\fP"
 Specifies hostname or address of the network interface to be used for
 multicast traffic\&.
-.IP "\fB\f(CWip\-multicast\-loop=<bool>\fP\fP"
+.IP "\fB\f(CWip\-multicast\-loop[=<bool>]\fP\fP"
 Specifies if outgoing multicast traffic should loop back to the interface\&.
 .IP "\fB\f(CWip\-multicast\-ttl=<byte>\fP\fP"
 Sets the TTL used for outgoing multicast traffic\&. Default is 1\&.
 .IP "\fB\f(CWip\-transparent\fP\fP"
 Sets the IP_TRANSPARENT socket option\&.
 This option might require root privilege\&.
+
+.PP 
+.br 
+
+.PP 
+\fI\fBResolver options\fP\fP
+.PP 
+These options temporarily change the behaviour of hostname resolution\&. The
+options of form 
+\f(CWai\-*\fP
+affect behaviour of the 
+\f(CWgetaddrinfo()\fP
+function that
+includes 
+\f(CW/etc/hosts\fP
+and NIS based lookups\&.
+.PP 
+The addresses of form 
+\f(CWres\-*\fP
+only affect DNS lookups, and only when the
+result is not cached in 
+\f(CWnscd\fP
+\&. These options might not work on all
+operating systems or libc implementations\&.
+.PP 
+.IP "\fB\f(CWai\-addrconfig[=0|1]\fP\fP"
+.IP "\fB\f(CWaddrconfig[=0|1]\fP\fP"
+Sets or unsets the AI_ADDRCONFIG flag to prevent name resolution to address
+families that are not available on the computer (e\&.g\&. IPv6)\&. Default value
+is 1 in case the resolver does not get an address family hint from Socat
+address or defaults\&.
+.IP "\fB\f(CWai\-passive[=0|1]\fP\fP"
+.IP "\fB\f(CWpassive[=0|1]\fP\fP"
+Sets of unsets the AI_PASSIVE flag for 
+\f(CWgetaddrinfo()\fP
+calls\&.
+Default is 1 for LISTEN, RECV, and RECVFROM type addresses, and with
+bind option\&. 
+.IP "\fB\f(CWai\-v4mapped[=0|1]\fP\fP"
+.IP "\fB\f(CWv4mapped[=0|1]\fP\fP"
+Sets or unsets the AI_V4MAPPED flag for 
+\f(CWgetaddrinfo()\fP
+\&. With \fBsocat\fP
+addresses requiring IPv6 addresses, this resolves IPv4 addresses to the
+appropriate IPv6 address [::ffff:*:*]\&. For IPv6 \fBsocat\fP addresses, the
+default is 1\&.
+.IP "\fB\f(CWai\-all[=0|1]\fP\fP"
+Sets or unsets the AI_ALL flag for 
+\f(CWgetaddrinfo()\fP
+\&.
+.IP 
 .IP "\fB\f(CWres\-debug\fP\fP"
 .IP "\fB\f(CWres\-aaonly\fP\fP"
 .IP "\fB\f(CWres\-usevc\fP\fP"
@@ -2424,10 +2969,33 @@ This option might require root privilege\&.
 .IP "\fB\f(CWres\-stayopen\fP\fP"
 .IP "\fB\f(CWres\-dnsrch\fP\fP"
 These options set the corresponding resolver (name resolution) option flags\&.
-Append \(dq\&=0\(dq\& to clear a default option\&. See man resolver(5) for more
-information on these options\&. Note: these options are valid only for the
-address they are applied to\&.
-.IP 
+Append \(dq\&=0\(dq\& to clear a default option\&. See man resolver(5) for
+more information on these options\&. \fBSocat\fP restores the old values after
+finishing the open phase of the address, so these options are valid just for
+the address they are applied to\&.
+.br 
+Please note that these flags only affect DNS resolution, but not hosts or
+NIS based name resolution, and they have no effect when (g)libc retrieves
+the results from 
+\f(CWnscd\fP
+\&.
+.IP "\fB\f(CWres\-retrans=<int>\fP\fP"
+Sets the retransmission time interval of the DNS resolver (based on an
+undocumented feature)\&.
+.IP "\fB\f(CWres\-retry=<int>\fP\fP"
+Sets the number of retransmits of the DNS resolver (based on an undocumented
+feature)\&.
+.IP "\fB\f(CWres\-nsaddr=<ipaddr>[:<port>]\fP\fP"
+Tries to overwrite nameserver settings loaded from /etc/resolv\&.conf by
+writing the given IPv4 address into the undocumented
+\f(CW_res:nsaddr_list[0]\fP
+field\&.
+\f(CW/etc/hosts\fP
+is still checked by resolver\&. Please note that glibc\(cq\&s
+\f(CWnscd\fP
+is always queried first when it is running!
+
+.PP 
 .br 
 
 .PP 
@@ -2436,7 +3004,7 @@ address they are applied to\&.
 These options can only be used on IPv6 based sockets\&. See IP
 options for options that can be applied to both IPv4 and IPv6
 sockets\&.
-.IP "\fB\f(CWipv6only=<bool>\fP\fP"
+.IP "\fB\f(CWipv6only[=<bool>]\fP\fP"
 Sets the IPV6_V6ONLY socket option\&. If 0, the TCP stack will also accept
 connections using IPv4 protocol on the same port\&. The default is system
 dependent\&.
@@ -2554,6 +3122,20 @@ coming from any port\&.
 .br 
 
 .PP 
+\fI\fBUDPLITE option group\fP\fP
+.PP 
+These options may be applied to UDPLITE addresses:
+.IP "\fB\f(CWudplite\-send\-cscov\fP\fP"
+Sets the number of bytes for which the checksum is calculated and sent
+(\(dq\&checksum coverage\(dq\&)\&.
+.IP "\fB\f(CWudplite\-recv\-cscov\fP\fP"
+Sets the number of bytes for which the checksum is checked (\(dq\&checksum
+coverage\(dq\&)\&.
+
+.PP 
+.br 
+
+.PP 
 \fI\fBSCTP option group\fP\fP
 .PP 
 These options may be applied to SCTP stream sockets\&.
@@ -2567,12 +3149,24 @@ value is then proposed to the peer with the SYN or SYN/ACK packet\&.
 .br 
 
 .PP 
-\fI\fBUDP, TCP, and SCTP option group\fP\fP
+\fI\fBDCCP option group\fP\fP
+.PP 
+These options may be applied to DCCP sockets\&.
+.IP "\fB\f(CWdccp\-set\-ccid=<int>\fP\fP"
+.IP "\fB\f(CWccid=<int>\fP\fP"
+Selects the desired congestion control mechanism (CCID)\&.
+
+.PP 
+.br 
+
+.PP 
+\fI\fBUDP, TCP, SCTP, DCCP, and UDPLITE option group\fP\fP
 .PP 
 Here we find options that are related to the network port mechanism and thus
-can be used with UDP, TCP, and SCTP client and server addresses\&.
+can be used with UDP, TCP, SCTP, DCCP, and UDP\-Lite client and server addresses\&.
+.PP 
 .IP "\fB\f(CWsourceport=<port>\fP\fP"
-For outgoing (client) TCP and UDP connections, it sets the source
+For outgoing (client) connections, it sets the source
 <port> using an extra 
 \f(CWbind()\fP
 call\&.
@@ -2582,7 +3176,7 @@ UDP\-RECVFROM, UDP\-SENDTO, and UDP\-DATAGRAM addresses ignore the packet when
 it does not match\&.
 (example)\&.
 .IP "\fB\f(CWlowport\fP\fP"
-Outgoing (client) TCP and UDP connections with this option use
+Outgoing (client) connections with this option use
 an unused random source port between 640 and 1023 incl\&. On UNIX class operating
 systems, this requires root privilege, and thus indicates that the
 client process is authorized by local root\&.
@@ -2613,13 +3207,17 @@ socks server\&. Default is the actual user name ($LOGNAME or $USER) (example)\&.
 Options that can be provided with HTTP type addresses\&. The only HTTP address
 currently implemented is proxy\-connect\&.
 .PP 
+.IP "\fB\f(CWhttp\-version=<string>\fP\fP"
+Changes the default \(dq\&1\&.0\(dq\& that is sent to the server in the initial HTTP
+request\&. Currently it has not other effect, in particular it does not
+provide any means to send a Host header\&.
 .IP "\fB\f(CWproxyport=<TCP service>\fP\fP"
 Overrides the default HTTP proxy port 8080 with
 <TCP service>\&.
 .IP "\fB\f(CWignorecr\fP\fP"
 The HTTP protocol requires the use of CR+NL as line terminator\&. When a proxy
 server violates this standard, socat might not understand its answer\&. 
-This option directs socat to interprete NL as line terminator and
+This option directs socat to interpret NL as line terminator and
 to ignore CR in the answer\&. Nevertheless, socat sends CR+NL to the proxy\&.
 .IP "\fB\f(CWproxy\-authorization=<username>:<password>\fP\fP"
 Provide \(dq\&basic\(dq\& authentication to the proxy server\&. The argument to the
@@ -2688,15 +3286,16 @@ system call to <count>
 .IP "\fB\f(CWaccept\-timeout=<seconds>\fP\fP"
 End waiting for a connection after <seconds> [timeval]
 with error status\&.
-.IP "\fB\f(CWmax\-children=<count>\fP\fP"
-Limits the number of concurrent child processes [int]\&.
-Default is no limit\&. 
+
+.PP 
 .br 
 
 .PP 
 \fI\fBCHILD option group\fP\fP
 .PP 
-Options for addresses with multiple connections via child processes\&.
+Addresses of LISTEN and CONNECT type take the
+fork option to handle multiple connections via child
+processes\&.
 .IP "\fB\f(CWfork\fP\fP"
 After establishing a connection, handles its channel in a child process and
 keeps the parent process attempting to produce more connections, either by
@@ -2712,6 +3311,19 @@ inherited by the child process\&.
 On some operating systems (e\&.g\&. FreeBSD) this option does not work for
 UDP\-LISTEN addresses\&.
 .br 
+.IP "\fB\f(CWmax\-children=<count>\fP\fP"
+Limits the number of concurrent child processes [int]\&.
+Default is no limit\&.
+.IP "\fB\f(CWchildren\-shutup[=1|2|\&.\&.]\fP\fP"
+Decreases the severity of log messages produced by child processes\&. For
+example, with value 1 notices are logged as info (or dropped depending on
+option \-dX), and errors are logged as warnings but still
+cause termination of the child process\&.
+.br 
+This option is intended to reduce logging of high volume servers or
+proxies\&.
+.br 
+This option succeeds option cool\-write\&.
 
 .PP 
 .br 
@@ -2762,6 +3374,9 @@ socat options \-b, \-t, \-D, \-l, \-v, \-x become useless
 .IP o 
 for both addresses, options ignoreeof, cr, and crnl become useless
 .IP o 
+for both addresses, address specific end/shutdown handling (e\&.g\&.,
+graceful socket shutdown) and related options become useless
+.IP o 
 for the second address (the one with option nofork), options 
 append,  cloexec, flock, user, group, mode, nonblock,
 perm\-late, setlk, and setpgid cannot be applied\&. Some of these could be
@@ -2807,6 +3422,15 @@ If no address has this option, socat terminates on these signals\&.
 .br 
 
 .PP 
+Options for address SHELL
+.PP 
+.IP "\fB\f(CWshell=<filename>\fP\fP"
+Overwrites use the default shell with the named executable, e\&.g\&.
+\f(CW/bin/dash\fP\&. Also sets the \f(CWSHELL\fP environment variable\&.
+.IP 
+.br 
+
+.PP 
 \fI\fBTERMIOS option group\fP\fP
 .PP 
 For addresses that work on a tty (e\&.g\&., stdio, file:/dev/tty, exec:\&.\&.\&.,pty), the terminal parameters defined in the UN*X termios mechanism are made available as address option parameters\&.
@@ -2826,9 +3450,9 @@ your implementation\&.
 Note: On some operating systems, these options may not be
 available\&. Use ispeed or ospeed
 instead\&.
-.IP "\fB\f(CWecho=<bool>\fP\fP"
+.IP "\fB\f(CWecho[=<bool>]\fP\fP"
 Enables or disables local echo\&.
-.IP "\fB\f(CWicanon=<bool>\fP\fP"
+.IP "\fB\f(CWicanon[=<bool>]\fP\fP"
 Sets or clears canonical mode, enabling line buffering and some special
 characters\&. 
 .IP "\fB\f(CWraw\fP\fP"
@@ -2837,13 +3461,13 @@ Sets raw mode, thus passing input and output almost unprocessed\&. This option i
 Makes terminal rawer than raw option\&. This option implicitly turns off echo\&. (example)\&.
 .IP "\fB\f(CWcfmakeraw\fP\fP"
 Sets raw mode by invoking \f(CWcfmakeraw()\fP or by simulating this call\&. This option implicitly turns off echo\&.
-.IP "\fB\f(CWignbrk=<bool>\fP\fP"
-Ignores or interpretes the BREAK character (e\&.g\&., ^C)
-.IP "\fB\f(CWbrkint=<bool>\fP\fP"
+.IP "\fB\f(CWignbrk[=<bool>]\fP\fP"
+Ignores or interprets the BREAK character (e\&.g\&., ^C)
+.IP "\fB\f(CWbrkint[=<bool>]\fP\fP"
 .IP "\fB\f(CWbs0\fP\fP"
 .IP "\fB\f(CWbs1\fP\fP"
 .IP "\fB\f(CWbsdly=<0|1>\fP\fP"
-.IP "\fB\f(CWclocal=<bool>\fP\fP"
+.IP "\fB\f(CWclocal[=<bool>]\fP\fP"
 
 .IP 
 \.LP
@@ -2858,8 +3482,8 @@ Sets the carriage return delay to 0, 1, 2, or 3, respectively\&.
 0 means no delay, the other values are terminal dependent\&.
 .IP 
 .IP "\fB\f(CWcrdly=<0|1|2|3>\fP\fP"
-.IP "\fB\f(CWcread=<bool>\fP\fP"
-.IP "\fB\f(CWcrtscts=<bool>\fP\fP"
+.IP "\fB\f(CWcread[=<bool>]\fP\fP"
+.IP "\fB\f(CWcrtscts[=<bool>]\fP\fP"
 
 .IP 
 \.LP
@@ -2873,18 +3497,18 @@ cs8\fP
 Sets the character size to 5, 6, 7, or 8 bits, respectively\&.
 .IP 
 .IP "\fB\f(CWcsize=<0|1|2|3>\fP\fP"
-.IP "\fB\f(CWcstopb=<bool>\fP\fP"
+.IP "\fB\f(CWcstopb[=<bool>]\fP\fP"
 Sets two stop bits, rather than one\&.
 .IP "\fB\f(CWdsusp=<byte>\fP\fP"
 Sets the value for the VDSUSP character that suspends the current foreground
 process and reactivates the shell (all except Linux)\&.
-.IP "\fB\f(CWechoctl=<bool>\fP\fP"
+.IP "\fB\f(CWechoctl[=<bool>]\fP\fP"
 Echos control characters in hat notation (e\&.g\&. ^A)
-.IP "\fB\f(CWechoe=<bool>\fP\fP"
-.IP "\fB\f(CWechok=<bool>\fP\fP"
-.IP "\fB\f(CWechoke=<bool>\fP\fP"
-.IP "\fB\f(CWechonl=<bool>\fP\fP"
-.IP "\fB\f(CWechoprt=<bool>\fP\fP"
+.IP "\fB\f(CWechoe[=<bool>]\fP\fP"
+.IP "\fB\f(CWechok[=<bool>]\fP\fP"
+.IP "\fB\f(CWechoke[=<bool>]\fP\fP"
+.IP "\fB\f(CWechonl[=<bool>]\fP\fP"
+.IP "\fB\f(CWechoprt[=<bool>]\fP\fP"
 .IP "\fB\f(CWeof=<byte>\fP\fP"
 .IP "\fB\f(CWeol=<byte>\fP\fP"
 .IP "\fB\f(CWeol2=<byte>\fP\fP"
@@ -2892,53 +3516,53 @@ Echos control characters in hat notation (e\&.g\&. ^A)
 .IP "\fB\f(CWdiscard=<byte>\fP\fP"
 .IP "\fB\f(CWff0\fP\fP"
 .IP "\fB\f(CWff1\fP\fP"
-.IP "\fB\f(CWffdly=<bool>\fP\fP"
-.IP "\fB\f(CWflusho=<bool>\fP\fP"
-.IP "\fB\f(CWhupcl=<bool>\fP\fP"
-.IP "\fB\f(CWicrnl=<bool>\fP\fP"
-.IP "\fB\f(CWiexten=<bool>\fP\fP"
-.IP "\fB\f(CWigncr=<bool>\fP\fP"
-.IP "\fB\f(CWignpar=<bool>\fP\fP"
-.IP "\fB\f(CWimaxbel=<bool>\fP\fP"
-.IP "\fB\f(CWinlcr=<bool>\fP\fP"
-.IP "\fB\f(CWinpck=<bool>\fP\fP"
+.IP "\fB\f(CWffdly[=<bool>]\fP\fP"
+.IP "\fB\f(CWflusho[=<bool>]\fP\fP"
+.IP "\fB\f(CWhupcl[=<bool>]\fP\fP"
+.IP "\fB\f(CWicrnl[=<bool>]\fP\fP"
+.IP "\fB\f(CWiexten[=<bool>]\fP\fP"
+.IP "\fB\f(CWigncr[=<bool>]\fP\fP"
+.IP "\fB\f(CWignpar[=<bool>]\fP\fP"
+.IP "\fB\f(CWimaxbel[=<bool>]\fP\fP"
+.IP "\fB\f(CWinlcr[=<bool>]\fP\fP"
+.IP "\fB\f(CWinpck[=<bool>]\fP\fP"
 .IP "\fB\f(CWintr=<byte>\fP\fP"
-.IP "\fB\f(CWisig=<bool>\fP\fP"
+.IP "\fB\f(CWisig[=<bool>]\fP\fP"
 .IP "\fB\f(CWispeed=<unsigned\-int>\fP\fP"
 Set the baud rate for incoming data on this line\&.
 .br 
 See also: ospeed, b19200
-.IP "\fB\f(CWistrip=<bool>\fP\fP"
-.IP "\fB\f(CWiuclc=<bool>\fP\fP"
-.IP "\fB\f(CWixany=<bool>\fP\fP"
-.IP "\fB\f(CWixoff=<bool>\fP\fP"
-.IP "\fB\f(CWixon=<bool>\fP\fP"
+.IP "\fB\f(CWistrip[=<bool>]\fP\fP"
+.IP "\fB\f(CWiuclc[=<bool>]\fP\fP"
+.IP "\fB\f(CWixany[=<bool>]\fP\fP"
+.IP "\fB\f(CWixoff[=<bool>]\fP\fP"
+.IP "\fB\f(CWixon[=<bool>]\fP\fP"
 .IP "\fB\f(CWkill=<byte>\fP\fP"
 .IP "\fB\f(CWlnext=<byte>\fP\fP"
 .IP "\fB\f(CWmin=<byte>\fP\fP"
 .IP "\fB\f(CWnl0\fP\fP"
 Sets the newline delay to 0\&.
 .IP "\fB\f(CWnl1\fP\fP"
-.IP "\fB\f(CWnldly=<bool>\fP\fP"
-.IP "\fB\f(CWnoflsh=<bool>\fP\fP"
-.IP "\fB\f(CWocrnl=<bool>\fP\fP"
-.IP "\fB\f(CWofdel=<bool>\fP\fP"
-.IP "\fB\f(CWofill=<bool>\fP\fP"
-.IP "\fB\f(CWolcuc=<bool>\fP\fP"
-.IP "\fB\f(CWonlcr=<bool>\fP\fP"
-.IP "\fB\f(CWonlret=<bool>\fP\fP"
-.IP "\fB\f(CWonocr=<bool>\fP\fP"
-.IP "\fB\f(CWopost=<bool>\fP\fP"
+.IP "\fB\f(CWnldly[=<bool>]\fP\fP"
+.IP "\fB\f(CWnoflsh[=<bool>]\fP\fP"
+.IP "\fB\f(CWocrnl[=<bool>]\fP\fP"
+.IP "\fB\f(CWofdel[=<bool>]\fP\fP"
+.IP "\fB\f(CWofill[=<bool>]\fP\fP"
+.IP "\fB\f(CWolcuc[=<bool>]\fP\fP"
+.IP "\fB\f(CWonlcr[=<bool>]\fP\fP"
+.IP "\fB\f(CWonlret[=<bool>]\fP\fP"
+.IP "\fB\f(CWonocr[=<bool>]\fP\fP"
+.IP "\fB\f(CWopost[=<bool>]\fP\fP"
 Enables or disables output processing; e\&.g\&., converts NL to CR\-NL\&.
 .IP "\fB\f(CWospeed=<unsigned\-int>\fP\fP"
 Set the baud rate for outgoing data on this line\&.
 .br 
 See also: ispeed, b19200
-.IP "\fB\f(CWparenb=<bool>\fP\fP"
+.IP "\fB\f(CWparenb[=<bool>]\fP\fP"
 Enable parity generation on output and parity checking for input\&.
-.IP "\fB\f(CWparmrk=<bool>\fP\fP"
-.IP "\fB\f(CWparodd=<bool>\fP\fP"
-.IP "\fB\f(CWpendin=<bool>\fP\fP"
+.IP "\fB\f(CWparmrk[=<bool>]\fP\fP"
+.IP "\fB\f(CWparodd[=<bool>]\fP\fP"
+.IP "\fB\f(CWpendin[=<bool>]\fP\fP"
 .IP "\fB\f(CWquit=<byte>\fP\fP"
 .IP "\fB\f(CWreprint=<byte>\fP\fP"
 .IP "\fB\f(CWsane\fP\fP"
@@ -2953,12 +3577,12 @@ Brings the terminal to something like a useful default state\&.
 .IP "\fB\f(CWtab3\fP\fP"
 .IP "\fB\f(CWtabdly=<unsigned\-int>\fP\fP"
 .IP "\fB\f(CWtime=<byte>\fP\fP"
-.IP "\fB\f(CWtostop=<bool>\fP\fP"
+.IP "\fB\f(CWtostop[=<bool>]\fP\fP"
 .IP "\fB\f(CWvt0\fP\fP"
 .IP "\fB\f(CWvt1\fP\fP"
-.IP "\fB\f(CWvtdly=<bool>\fP\fP"
+.IP "\fB\f(CWvtdly[=<bool>]\fP\fP"
 .IP "\fB\f(CWwerase=<byte>\fP\fP"
-.IP "\fB\f(CWxcase=<bool>\fP\fP"
+.IP "\fB\f(CWxcase[=<bool>]\fP\fP"
 .IP "\fB\f(CWxtabs\fP\fP"
 .IP "\fB\f(CWi\-pop\-all\fP\fP"
 With UNIX System V STREAMS, removes all drivers from the stack\&.
@@ -3002,6 +3626,12 @@ When the wait\-slave option is set, socat
 periodically checks the HUP condition using \f(CWpoll()\fP to find if the pty\(cq\&s
 slave side has been opened\&. The default polling interval is 1s\&. Use the
 pty\-interval option [timeval] to change this value\&.
+.IP "\fB\f(CWsitout\-eio=<timeval>\fP\fP"
+The login program in Linux closes its tty/pty and reopens it for security
+reasons\&. During this time the pty master would get EIO on I/O operations and
+might terminate\&. With this option \fBsocat\fP tolerates EIO for the specified
+time\&. Please note that in this state \fBsocat\fP blocks traffic in both
+directions, even when it is not related to this channel\&.
 
 .PP 
 .br 
@@ -3053,7 +3683,7 @@ Select TLS protocol version 1\&.
 Select TLS protocol version 1\&.1\&.
 .IP "\f(CWTLS1\&.2\fP"
 Select TLS protocol version 1\&.2\&.
-When this option is not provided OpenSSL negotiates the mothod with its
+When this option is not provided OpenSSL negotiates the method with its
 peer\&.
 .IP "\fB\f(CWmin\-proto\-version\fP\fP"
 This option tells OpenSSL to use this or a later SSL/TLS protocol version
@@ -3075,7 +3705,7 @@ Select TLS protocol version 1\&.3\&.
 This option is similar to min\-proto\-version,
 however, it disallows use of a higher protocol version\&. Useful for testing
 the peer\&.
-.IP "\fB\f(CWverify=<bool>\fP\fP"
+.IP "\fB\f(CWverify[=<bool>]\fP\fP"
 Controls check of the peer\(cq\&s certificate\&. Default is 1 (true)\&. Disabling
 verify might open your socket for everyone, making the encryption useless!
 .IP "\fB\f(CWcert=<filename>\fP\fP"
@@ -3105,12 +3735,21 @@ documentation)
 On some systems, openssl requires an explicit source of random data\&. Specify
 the socket name where an entropy gathering daemon like egd provides random
 data, e\&.g\&. /dev/egd\-pool\&.
+.IP "\fB\f(CWopenssl\-maxfraglen=<int>, maxfraglen=<int>\fP\fP"
+For client connections, make a Max Fragment Length Negotiation Request to the server to limit the
+maximum size fragment the server will send to us\&. Supported lengths are: 512, 1024, 2048, or
+4096\&. Note that this option is not applicable for OPENSSL\-LISTEN\&.
+.IP "\fB\f(CWopenssl\-maxsendfrag=<int>, maxsendfrag=<int>\fP\fP"
+Limit the maximum size of the fragment we will send to the other side\&. Supported length range:
+512 \- 16384\&. Note that under OPENSSL\-LISTEN, the maximum fragment
+size may be further limited by the client\(cq\&s Maximum Fragment Length Negotiation Request, if it
+makes one\&.
 .IP "\fB\f(CWpseudo\fP\fP"
 On systems where openssl cannot find an entropy source and where no entropy
 gathering daemon can be utilized, this option activates a mechanism for
 providing pseudo entropy\&. This is achieved by taking the current time in
 microseconds for feeding the libc pseudo random number generator with an
-initial value\&. openssl is then feeded with output from random() calls\&.
+initial value\&. openssl is then fed with output from random() calls\&.
 .br 
 NOTE:This mechanism is not sufficient for generation of secure keys!
 .IP "\fB\f(CWcompress\fP\fP"
@@ -3128,7 +3767,7 @@ OPENSSL\-LISTEN this turns on check of peer
 certificates commonname\&. This option has only meaning when option
 verify is not disabled and the chosen cipher
 provides a peer certificate\&.
-.IP "\fB\f(CWno\-sni=<bool>\fP\fP"
+.IP "\fB\f(CWno\-sni[=<bool>]\fP\fP"
 Do not use the client side Server Name Indication (SNI) feature that selects
 the desired server certificate\&.
 .br 
@@ -3169,26 +3808,22 @@ Performs an unlimited number of retry attempts\&.
 .br 
 
 .PP 
-\fI\fBTUN option group\fP\fP
+\fI\fBINTERFACE option group\fP\fP
 .PP 
-Options that control Linux TUN/TAP interface device addresses\&.
+These options may be applied to addresses INTERFACE and
+TUN\&. These address types and options are currently only
+implemented on Linux operating system\&.
 .PP 
-.IP "\fB\f(CWtun\-device=<device\-file>\fP\fP"
-Instructs socat to take another path for the TUN clone device\&. Default is
-\f(CW/dev/net/tun\fP\&.
-.IP "\fB\f(CWtun\-name=<if\-name>\fP\fP"
-Gives the resulting network interface a specific name instead of the system
-generated (tun0, tun1, etc\&.)
-.IP "\fB\f(CWtun\-type=[tun|tap]\fP\fP"
-Sets the type of the TUN device; use this option to generate a TAP
-device\&. See the Linux docu for the difference between these types\&.
-When you try to establish a tunnel between two TUN devices, their types
-should be the same\&.
-.IP "\fB\f(CWiff\-no\-pi\fP\fP"
-Sets the IFF_NO_PI flag which controls if the device includes additional
-packet information in the tunnel\&.
-When you try to establish a tunnel between two TUN devices, these flags
-should have the same values\&.
+Note regarding VLANs: On incoming packets the Linux kernel strips off the VLAN
+tag before passing the data to the user space program on raw sockets\&. Special
+measures are required to get the VLAN information, see packet(7) PACKET_AUXDATA,
+and to optionally insert the tag into the packet again, use option
+retrieve\-vlan when you need this\&.
+.PP 
+.IP "\fB\f(CWretrieve\-vlan\fP\fP"
+On packets incoming on raw sockets, retrieve the VLAN information and insert
+it into the packets for further processing (Linux)
+.IP 
 .IP "\fB\f(CWiff\-up\fP\fP"
 Sets the TUN network interface status UP\&. Strongly recommended\&.
 .IP "\fB\f(CWiff\-broadcast\fP\fP"
@@ -3226,6 +3861,51 @@ Sets the DYNAMIC flag of the TUN device\&.
 .br 
 
 .PP 
+\fI\fBTUN option group\fP\fP
+.PP 
+Options that control Linux TUN/TAP interface device addresses\&.
+.PP 
+.IP "\fB\f(CWtun\-device=<device\-file>\fP\fP"
+Instructs socat to take another path for the TUN clone device\&. Default is
+\f(CW/dev/net/tun\fP\&.
+.IP "\fB\f(CWtun\-name=<if\-name>\fP\fP"
+Gives the resulting network interface a specific name instead of the system
+generated (tun0, tun1, etc\&.)
+.IP "\fB\f(CWtun\-type=[tun|tap]\fP\fP"
+Sets the type of the TUN device; use this option to generate a TAP
+device\&. See the Linux docu for the difference between these types\&.
+When you try to establish a tunnel between two TUN devices, their types
+should be the same\&.
+.IP "\fB\f(CWiff\-no\-pi\fP\fP"
+Sets the IFF_NO_PI flag which controls if the device includes additional
+packet information in the tunnel\&.
+When you try to establish a tunnel between two TUN devices, these flags
+should have the same values\&.
+
+.PP 
+.br 
+
+.PP 
+\fI\fBPOSIX\-MQ option group\fP\fP
+.PP 
+Options that may be applied to POSIX\-MQ addresses\&.
+.PP 
+.IP "\fB\f(CWposixmq\-priority (mq\-prio)\fP\fP"
+Sets the priority of messages (packets) written to the queue, or the minimal
+priority of packet read from the queue\&.
+.IP "\fB\f(CWposixmq\-flush (mq\-flush)\fP\fP"
+\(dq\&Consumes\(dq\& (drops) all messages currently in the queue before starting
+transfers\&.
+.IP "\fB\f(CWposixmq\-maxmsg (mq\-maxmsg)\fP\fP"
+Sets the maxmsg parameter of the POSIX message queue when creating it\&.
+.br 
+Note: This option applies only when the queue does not already exist\&.
+.IP "\fB\f(CWposixmq\-msgsize (mq\-msgsize)\fP\fP"
+Sets the msgsize parameter of the POSIX message queue when creating it\&.
+.br 
+Note: This option applies only when the queue does not already exist\&.
+
+.PP 
 .SH "DATA VALUES"
 
 .PP 
@@ -3247,7 +3927,8 @@ An unsigned int number, read with
 A string specifying a program name and its arguments, separated by single
 spaces\&. 
 .IP "data"
-This is a more general data specification\&. The given text string contains
+This is a more general data specification, \(dq\&dalan\(dq\& (low level data
+description language)\&. The given text string contains
 information about the target data type and value\&. Generally a leading
 character specifies the type of the following data item\&. In its specific
 context a default data type may exist\&.
@@ -3281,14 +3962,14 @@ An unsigned byte (unsigned char)\&.
 .br 
 .IP "x"
 Following is an even number of hex digits, stored as sequence of
-bytes\&.
+bytes, the data length is the resulting number of bytes\&.
 .br 
 Example:    \fBx7f000001\fP (IP address 127\&.0\&.0\&.1)
 .IP "\(dq\&"
 Following is a string that is used with the common conversions 
 \en \er \et \ef \eb \ea \ee \e0; the string must be closed with \(cq\&\(dq\&\(cq\&\&. Please note
 that the quotes and backslashes need to be escaped from shell and \fBsocat\fP
-conversion\&.
+conversion\&. No implicit \e0 is appended\&.
 .br 
 Example:    \fB\(dq\&Hello world!\en\(dq\&\fP
 .IP "\(cq\&"
@@ -3349,10 +4030,10 @@ A number read with
 \f(CWstrtoll()\fP
 \&. The value must fit into a C long long\&.
 .IP "off_t"
-An implementation dependend signed number, usually 32 bits, read with strtol
+An implementation dependent signed number, usually 32 bits, read with strtol
 or strtoll\&.
 .IP "off64_t"
-An implementation dependend signed number, usually 64 bits, read with strtol
+An implementation dependent signed number, usually 64 bits, read with strtol
 or strtoll\&.
 .IP "mode_t"
 An unsigned integer, read with 
@@ -3427,8 +4108,11 @@ with
 .SH "EXAMPLES"
 
 .PP 
-.IP "\fB\f(CWsocat \- TCP4:www\&.domain\&.org:80\fP\fP"
-
+\.LP
+\.nf
+\fBsocat - TCP4:www.domain.org:80\fP
+\.RE
+\.fi
 .IP 
 transfers data between STDIO (\-) and a
 TCP4 connection to port 80 of host 
@@ -3438,8 +4122,11 @@ close the relay with ^D or abort it with ^C\&.
 .IP 
 \.LP
 \.nf
-\fBsocat -d -d READLINE,history=$HOME/.http_history \\ 
+\fBsocat -d -d \\
+\.RS
+\fBREADLINE,history=$HOME/.http_history \\ 
 TCP4:www.domain.org:www,crnl\fP
+\.RE
 \.fi
 .IP 
 this is similar to the previous example, but you can edit the current line in a
@@ -3449,8 +4136,14 @@ progress (\-d \-d)\&. The  port is specified by service name
 (www), and correct network line termination characters
 (crnl) instead of NL are used\&.
 .IP 
-.IP "\fB\f(CWsocat TCP4\-LISTEN:www TCP4:www\&.domain\&.org:www\fP\fP"
-
+\.LP
+\.nf
+\fBsocat \\
+\.RS
+\fBTCP4-LISTEN:www \\ 
+TCP4:www.domain.org:www\fP
+\.RE
+\.fi
 .IP 
 installs a simple TCP port forwarder\&. With
 TCP4\-LISTEN it listens on local port \(dq\&www\(dq\& until a
@@ -3460,9 +4153,11 @@ a second connection\&.
 .IP 
 \.LP
 \.nf
-\fBsocat -d -d -lmlocal2 \\ 
-TCP4-LISTEN:80,bind=myaddr1,reuseaddr,fork,su=nobody,range=10.0.0.0/8 \\ 
+\fBsocat -d -d -lmlocal2 \\
+\.RS
+\fBTCP4-LISTEN:80,bind=myaddr1,reuseaddr,fork,su=nobody,range=10.0.0.0/8 \\ 
 TCP4:www.domain.org:80,bind=myaddr2\fP
+\.RE
 \.fi
 .IP 
 TCP port forwarder, each side bound to another local IP address
@@ -3483,8 +4178,11 @@ local2\&.
 .IP 
 \.LP
 \.nf
-\fBsocat TCP4-LISTEN:5555,fork,tcpwrap=script \\ 
+\fBsocat \\
+\.RS
+\fBTCP4-LISTEN:5555,fork,tcpwrap=script \\ 
 EXEC:/bin/myscript,chroot=/home/sandbox,su-d=sandbox,pty,stderr\fP
+\.RE
 \.fi
 .IP 
 a simple server that accepts connections
@@ -3503,8 +4201,11 @@ so its error messages are transferred via \fBsocat\fP to the connected client\&.
 .IP 
 \.LP
 \.nf
-\fBsocat EXEC:"mail.sh target@domain.com",fdin=3,fdout=4 \\ 
+\fBsocat \\
+\.RS
+\fBEXEC:"mail.sh target@domain.com",fdin=3,fdout=4 \\ 
 TCP4:mail.relay.org:25,crnl,bind=alias1.server.org,mss=512\fP
+\.RE
 \.fi
 .IP 
 \fBmail\&.sh\fP is a shell script, distributed with \fBsocat\fP, that implements a
@@ -3519,8 +4220,14 @@ mail body from stdin\&. \fBSocat\fP makes alias1 your local source address
 (crnl) and sends  
 at most 512 data bytes per packet (mss)\&. 
 .IP 
-.IP "\fB\f(CWsocat \-,escape=0x0f /dev/ttyS0,rawer,crnl\fP\fP"
-
+\.LP
+\.nf
+\fBsocat \\
+\.RS
+\fB-,escape=0x0f \\ 
+/dev/ttyS0,rawer,crnl\fP
+\.RE
+\.fi
 .IP 
 opens an interactive connection via the serial line, e\&.g\&. for talking with a
 modem\&. rawer sets the console\(cq\&s and
@@ -3531,8 +4238,11 @@ Consider using READLINE instead of the first address\&.
 .IP 
 \.LP
 \.nf
-\fBsocat UNIX-LISTEN:/tmp/.X11-unix/X1,fork \\ 
+\fBsocat \\
+\.RS
+\fBUNIX-LISTEN:/tmp/.X11-unix/X1,fork \\ 
 SOCKS4:host.victim.org:127.0.0.1:6000,socksuser=nobody,sourceport=20\fP
+\.RE
 \.fi
 .IP 
 with UNIX\-LISTEN, \fBsocat\fP opens a listening
@@ -3550,8 +4260,14 @@ cookies or Kerberos authentication, we can start work\&. Please note that there
 can only be one connection at a time, because TCP can establish only one
 session with a given set of addresses and ports\&.
 .IP 
-.IP "\fB\f(CWsocat \-u /tmp/readdata,seek\-end=0,ignoreeof \-\fP\fP"
-
+\.LP
+\.nf
+\fBsocat -u \\
+\.RS
+\fB/tmp/readdata,seek-end=0,ignoreeof \\
+\fBSTDIO\fP
+\.RE
+\.fi
 .IP 
 this is an example for unidirectional data transfer
 (\-u)\&. \fBSocat\fP transfers data 
@@ -3564,8 +4280,11 @@ might also be a listening UNIX domain socket (do not use a seek option then)\&.
 .IP 
 \.LP
 \.nf
-\fB(sleep 5; echo PASSWORD; sleep 5; echo ls; sleep 1) | 
-socat - EXEC:'ssh -l user server',pty,setsid,ctty\fP
+\fB(sleep 5; echo PASSWORD; sleep 5; echo ls; sleep 1) | \\
+\fBsocat - \\
+\.RS
+\fBEXEC:'ssh -l user server',pty,setsid,ctty\fP
+\.RE
 \.fi
 .IP 
 EXEC\(cq\&utes an ssh session to server\&. Uses a pty for communication between \fBsocat\fP and
@@ -3575,8 +4294,11 @@ a new process group (setsid), so ssh accepts the password from \fBsocat\fP\&.
 .IP 
 \.LP
 \.nf
-\fBsocat -u TCP4-LISTEN:3334,reuseaddr,fork \\ 
+\fBsocat -u \\
+\.RS
+\fBTCP4-LISTEN:3334,reuseaddr,fork \\ 
 OPEN:/tmp/in.log,creat,append\fP
+\.RE
 \.fi
 .IP 
 implements a simple network based message collector\&. 
@@ -3586,8 +4308,14 @@ If the file does not exist, socat creat\(cq\&s it\&.
 Option reuseaddr allows immediate restart of the server
 process\&. 
 .IP 
-.IP "\fB\f(CWsocat READLINE,noecho=\(cq\&[Pp]assword:\(cq\& EXEC:\(cq\&ftp ftp\&.server\&.com\(cq\&,pty,setsid,ctty\fP\fP"
-
+\.LP
+\.nf
+\fBsocat \\
+\.RS
+\fBREADLINE,noecho='[Pp]assword:' \\ 
+EXEC:'ftp ftp.server.com',pty,setsid,ctty\fP
+\.RE
+\.fi
 .IP 
 wraps a command line history (READLINE) around the EXEC\(cq\&uted ftp client utility\&.
 This allows editing and reuse of FTP commands for relatively comfortable
@@ -3598,8 +4326,11 @@ prompts\&.
 .IP 
 \.LP
 \.nf
-\fBsocat PTY,link=$HOME/dev/vmodem0,rawer,wait-slave \\\bf
-\fBEXEC:"ssh modemserver.us.org socat - /dev/ttyS0,nonblock,rawer"\fP
+\fBsocat \\
+\.RS
+\fBPTY,link=$HOME/dev/vmodem0,rawer,wait-slave \\ 
+EXEC:'"ssh modemserver.us.org socat - /dev/ttyS0,nonblock,rawer"'\fP
+\.RE
 \.fi
 .IP 
 generates a pseudo terminal 
@@ -3612,18 +4343,52 @@ to a modemserver via ssh where another socat instance links it to
 .IP 
 \.LP
 \.nf
-\fBsocat TCP4-LISTEN:2022,reuseaddr,fork \\ 
-PROXY:proxy:www.domain.org:22,proxyport=3128,proxyauth=user:pass\fP
+\fBsudo socat --experimental \\
+\.RS
+\fBTCP4-LISTEN:8000,reuseaddr,fork,netns=namespace1 \\ 
+TCP4-CONNECT:server2:8000\fP
+\.RE
+\.fi
+.IP 
+creates a listener in the given network namespace that accepts TCP connections
+on port 8000 and forwards them to server2\&.
+.IP 
+\.LP
+\.nf
+\fBsudo socat --experimental \\
+\.RS
+\fBTUN:192.168.2.1/24,up \\ 
+TUN:192.168.2.2/24,up,netns=namespace2\fP
+\.RE
+\.fi
+.IP 
+creates two virtual network interfaces, one in default namespace, the other one
+in namespace2, and forwards packets between them, acting as a virtual
+network connection\&.
+.IP 
+\.LP
+\.nf
+\fBsocat \\
+\.RS
+\fBTCP4-LISTEN:2022,reuseaddr,fork \\ 
+PROXY:proxy.local:www.domain.org:22,proxyport=3128,proxyauth=username:s3cr3t\fP
+\.RE
 \.fi
 .IP 
 starts a forwarder that accepts connections on port 2022, and directs them 
 through the proxy daemon listening on port 3128
-(proxyport) on host proxy, using the
-CONNECT method, where they are authenticated as \(dq\&user\(dq\& with \(dq\&pass\(dq\& (proxyauth)\&. The proxy 
+(proxyport) on host proxy\&.local, using the
+CONNECT method, where they are authenticated as \(dq\&username\(dq\& with \(dq\&s3cr3t\(dq\&
+(proxyauth)\&. proxy\&.local
 should establish connections to host www\&.domain\&.org on port 22 then\&.
 .IP 
-.IP "\fB\f(CWsocat \- SSL:server:4443,cafile=server\&.crt,cert=client\&.pem\fP\fP"
-
+\.LP
+\.nf
+\fBsocat - \\
+\.RS
+\fBSSL:server:4443,cafile=./server.crt,cert=./client.pem\fP
+\.RE
+\.fi
 .IP 
 is an OpenSSL client that tries to establish a secure connection to an SSL
 server\&. Option cafile specifies a file that
@@ -3636,8 +4401,14 @@ server wishes a client authentication; many Internet servers do not\&.
 .br 
 The first address (\(cq\&\-\(cq\&) can be replaced by almost any other socat address\&.
 .IP 
-.IP "\fB\f(CWsocat OPENSSL\-LISTEN:4443,reuseaddr,pf=ip4,fork,cert=server\&.pem,cafile=client\&.crt PIPE\fP\fP"
-
+\.LP
+\.nf
+\fBsocat \\
+\.RS
+\fBOPENSSL-LISTEN:4443,reuseaddr,pf=ip4,fork,cert=./server.pem,cafile=./client.crt \\ 
+PIPE\fP
+\.RE
+\.fi
 .IP 
 is an OpenSSL server that accepts TCP connections, presents the certificate
 from the file server\&.pem and forces the client to present a certificate that is
@@ -3649,37 +4420,66 @@ address\&.
 For instructions on generating and distributing OpenSSL keys and certificates
 see the additional socat docu \f(CWsocat\-openssl\&.txt\fP\&.
 .IP 
-.IP "\fB\f(CWecho |socat \-u \- file:/tmp/bigfile,create,largefile,seek=100000000000\fP\fP"
-
+\.LP
+\.nf
+\fBecho |
+socat -u - \\
+\.RS
+\fBFILE:/tmp/bigfile,create,largefile,seek=100000000000\fP
+\.RE
+\.fi
 .IP 
-creates a 100GB sparse file; this requires a file system type that
-supports this (ext2, ext3, reiserfs, jfs; not minix, vfat)\&. The operation of
+creates a 100GB+1B sparse file; this requires a file system type that
+supports this (ext2, ext3, ext4, reiserfs, xfs; not minix, vfat)\&. The operation of
 writing 1 byte might take long (reiserfs: some minutes; ext2: \(dq\&no\(dq\& time), and
 the resulting file can consume some disk space with just its inodes (reiserfs:
 2MB; ext2: 16KB)\&. 
 .IP 
-.IP "\fB\f(CWsocat tcp\-l:7777,reuseaddr,fork system:\(cq\&filan \-i 0 \-s >&2\(cq\&,nofork\fP\fP"
-
+\.LP
+\.nf
+\fBsocat \\
+\.RS
+\fBTCP-L:7777,reuseaddr,fork \\ 
+SYSTEM:'filan -i 0 -s >&2',nofork\fP
+\.RE
+\.fi
 .IP 
 listens for incoming TCP connections on port 7777\&. For each accepted
 connection, invokes a shell\&. This shell has its stdin and stdout directly
 connected to the TCP socket (nofork)\&.  The shell starts filan and lets it print the socket addresses to
 stderr (your terminal window)\&.
 .IP 
-.IP "\fB\f(CWecho \-e \(dq\&\e0\e14\e0\e0\ec\(dq\& |socat \-u \- file:/usr/bin/squid\&.exe,seek=0x00074420\fP\fP"
-
+\.LP
+\.nf
+\fBecho -e "\\0\\14\\0\\0\\c" |
+socat -u - \\
+\.RS
+\fBFILE:/usr/bin/squid.exe,seek=0x00074420\fP
+\.RE
+\.fi
 .IP 
 functions as primitive binary editor: it writes the 4 bytes 000 014 000 000 to
-the executable /usr/bin/squid at offset 0x00074420 (this is a real world patch
-to make the squid executable from Cygwin run under Windows, actual per May 2004)\&.
+the executable /usr/bin/squid\&.exe at offset 0x00074420 (this was a real world patch
+to make the squid executable from Cygwin run under Windows, in 2004)\&.
 .IP 
-.IP "\fB\f(CWsocat \- tcp:www\&.blackhat\&.org:31337,readbytes=1000\fP\fP"
-
+\.LP
+\.nf
+\fBsocat - \\
+\.RS
+\fBTCP:www.blackhat.org:31337,readbytes=1000\fP
+\.RE
+\.fi
 .IP 
 connects to an unknown service and prevents being flooded\&.
 .IP 
-.IP "\fB\f(CWsocat \-U TCP:target:9999,end\-close TCP\-L:8888,reuseaddr,fork\fP\fP"
-
+\.LP
+\.nf
+\fBsocat -U \\
+\.RS
+\fBTCP:target:9999,end-close \\ 
+TCP-L:8888,reuseaddr,fork\fP
+\.RE
+\.fi
 .IP 
 merges data arriving from different TCP streams on port 8888 to just one stream
 to target:9999\&. The end\-close option prevents the child
@@ -3688,28 +4488,72 @@ connection to 9999 (close(2) just unlinks the inode which stays active as long
 as the parent process lives; shutdown(2) would actively terminate the
 connection)\&.
 .IP 
-.IP "\fB\f(CWsocat \- UDP4\-DATAGRAM:192\&.168\&.1\&.0:123,sp=123,broadcast,range=192\&.168\&.1\&.0/24\fP\fP"
-
+\.LP
+\.nf
+\fBsocat \\
+\.RS
+\fBTCP-LISTEN:10021,reuseaddr,socktype=6,protocol=33,fork \PIPE\fP
+\.RE
+\.fi
+.IP 
+is a simple DCCP echo server\&. DCCP is now directly provisioned in \fBsocat\fP,
+however this example shows how use \fBsocat\fPs TCP procedures and change the
+socket type to SOCK_DCCP=6 (on Linux) and the IP protocol to IPPROTO_DCCP=33\&.
+.IP 
+\.LP
+\.nf
+\fBsocat - \\
+\.RS
+\fBTCP:<server>:10021,reuseaddr,socktype=6,protocol=33,fork\fP
+\.RE
+\.fi
+.IP 
+is a simple DCCP client\&. DCCP is now directly provisioned in \fBsocat\fP,
+however this example shows how use \fBsocat\fPs TCP procedures, but changes the
+socket type to SOCK_DCCP=6 (on Linux) and the IP protocol to IPPROTO_DCCP=33\&.
+.IP 
+\.LP
+\.nf
+\fBsocat - \\
+\.RS
+\fBUDP4-DATAGRAM:192.168.1.0:123,sp=123,broadcast,range=192.168.1.0/24\fP
+\.RE
+\.fi
 .IP 
 sends a broadcast to the network 192\&.168\&.1\&.0/24 and receives the replies of the
 timeservers there\&. Ignores NTP packets from hosts outside this network\&.
 .IP 
-.IP "\fB\f(CWsocat \- SOCKET\-DATAGRAM:2:2:17:x007bxc0a80100x0000000000000000,bind=x007bx00000000x0000000000000000,setsockopt\-int=1:6:1,range=x0000xc0a80100x0000000000000000:x0000xffffff00x0000000000000000\fP\fP"
-
+\.LP
+\.nf
+\fBsocat - \\
+\.RS
+\fBSOCKET-DATAGRAM:2:2:17:x007bxc0a80100x0000000000000000,bind=x007bx00000000x0000000000000000,setsockopt-int=1:6:1,range=x0000xc0a80100x0000000000000000:x0000xffffff00x0000000000000000\fP
+\.RE
+\.fi
 .IP 
 is semantically equivalent to the previous
 example, but all parameters are
 specified in generic form\&. the value 6 of setsockopt\-int is the Linux value for
 \f(CWSO_BROADCAST\fP\&.
 .IP 
-.IP "\fB\f(CWsocat \- IP4\-DATAGRAM:255\&.255\&.255\&.255:44,broadcast,range=10\&.0\&.0\&.0/8\fP\fP"
-
+\.LP
+\.nf
+\fBsocat - \\
+\.RS
+\fBIP4-DATAGRAM:255.255.255.255:44,broadcast,range=10.0.0.0/8\fP
+\.RE
+\.fi
 .IP 
 sends a broadcast to the local network(s) using protocol 44\&. Accepts replies
 from the private address range only\&.
 .IP 
-.IP "\fB\f(CWsocat \- UDP4\-DATAGRAM:224\&.255\&.0\&.1:6666,bind=:6666,ip\-add\-membership=224\&.255\&.0\&.1:eth0\fP\fP"
-
+\.LP
+\.nf
+\fBsocat - \\
+\.RS
+\fBUDP4-DATAGRAM:224.255.0.1:6666,bind=:6666,ip-add-membership=224.255.0.1:eth0\fP
+\.RE
+\.fi
 .IP 
 transfers data from stdin to the specified multicast address using UDP\&. Both
 local and remote ports are 6666\&. Tells the interface eth0 to also accept
@@ -3719,8 +4563,14 @@ by all the other ones\&. Note that there are many possible reasons for failure,
 including IP\-filters, routing issues, wrong interface selection by the
 operating system, bridges, or a badly configured switch\&.
 .IP 
-.IP "\fB\f(CWsocat UDP:host2:4443 TUN:192\&.168\&.255\&.1/24,up\fP\fP"
-
+\.LP
+\.nf
+\fBsocat \\
+\.RS
+\fBUDP:host2:4443 \\ 
+TUN:192.168.255.1/24,up\fP
+\.RE
+\.fi
 .IP 
 establishes one side of a virtual (but not private!) network with host2 where a
 similar process might run, with UDP\-L and tun address 192\&.168\&.255\&.2\&. They can
@@ -3728,46 +4578,85 @@ reach each other using the addresses 192\&.168\&.255\&.1 and 192\&.168\&.255\&.2
 streaming eg\&.via TCP or SSL does not guarantee to retain packet boundaries and
 might thus cause packet loss\&.
 .IP 
-.IP "\fB\f(CWsocat \- VSOCK\-CONNECT:2:1234\fP\fP"
-
+\.LP
+\.nf
+\fBsocat - \\
+\.RS
+\fBVSOCK-CONNECT:2:1234\fP
+\.RE
+\.fi
 .IP 
 establishes a VSOCK connection with the host (host is always reachable with
 the well\-know CID=2) on 1234 port\&.
 .IP 
-.IP "\fB\f(CWsocat \- VSOCK\-LISTEN:1234\fP\fP"
-
+\.LP
+\.nf
+\fBsocat - \\
+\.RS
+\fBVSOCK-LISTEN:1234\fP
+\.RE
+\.fi
 .IP 
 listens for a VSOCK connection on 1234 port\&.
 .IP 
-.IP "\fB\f(CWsocat \- VSOCK\-CONNECT:31:4321,bind:5555\fP\fP"
-
+\.LP
+\.nf
+\fBsocat - \\
+\.RS
+\fBVSOCK-CONNECT:31:4321,bind:5555\fP
+\.RE
+\.fi
 .IP 
 establishes a VSOCK connection with the guest that have CID=31 on 1234 port,
 binding the local socket to the 5555 port\&.
 .IP 
-.IP "\fB\f(CWsocat VSOCK\-LISTEN:3333,reuseaddr,fork VSOCK\-CONNECT:42,3333\fP\fP"
-
+\.LP
+\.nf
+\fBsocat \\
+\.RS
+\fBVSOCK-LISTEN:3333,reuseaddr,fork \\ 
+VSOCK-CONNECT:42,3333\fP
+\.RE
+\.fi
 .IP 
 starts a forwarder that accepts VSOCK connections on port 3333, and directs
 them to the guest with CID=42 on the same port\&.
 .IP 
-.IP "\fB\f(CWsocat VSOCK\-LISTEN:22,reuseaddr,fork TCP:localhost:22\fP\fP"
-
+\.LP
+\.nf
+\fBsocat \\
+\.RS
+\fBVSOCK-LISTEN:22,reuseaddr,fork \\ 
+TCP:localhost:22\fP
+\.RE
+\.fi
 .IP 
 forwards VSOCK connections from 22 port to the local SSH server\&.
 Running this in a VM allows you to connect via SSH from the host using VSOCK,
 as in the example below\&.
 .IP 
-.IP "\fB\f(CWsocat TCP4\-LISTEN:22222,reuseaddr,fork VSOCK\-CONNECT:33:22\fP\fP"
-
+\.LP
+\.nf
+\fBsocat \\
+\.RS
+\fBTCP4-LISTEN:22222,reuseaddr,fork \\ 
+VSOCK-CONNECT:33:22\fP
+\.RE
+\.fi
 .IP 
 forwards TCP connections from 22222 port to the guest with CID=33 listening on
 VSOCK port 22\&.
 Running this in the host, allows you to connect via SSH running
 \(dq\&ssh \-p 22222 user@localhost\(dq\&, if the guest runs the example above\&.
 .IP 
-.IP "\fB\f(CWsocat PTY,link=/var/run/ppp,rawer INTERFACE:hdlc0\fP\fP"
-
+\.LP
+\.nf
+\fBsocat \\
+\.RS
+\fBPTY,link=/var/run/ppp,rawer \\ 
+INTERFACE:hdlc0\fP
+\.RE
+\.fi
 .IP 
 circumvents the problem that pppd requires a serial device and thus might not
 be able to work on a synchronous line that is represented by a network device\&.
@@ -3775,28 +4664,87 @@ socat creates a PTY to make pppd happy, binds to the network
 interface \f(CWhdlc0\fP, and can transfer data between
 both devices\&. Use pppd on device \f(CW/var/run/ppp\fP then\&.
 .IP 
-.IP "\fB\f(CWsocat \-T 1 \-d \-d TCP\-L:10081,reuseaddr,fork,crlf SYSTEM:\(dq\&echo \-e \e\(dq\&\e\e\e\(dq\&HTTP/1\&.0 200 OK\e\e\enDocumentType: text/plain\e\e\en\e\e\endate: \e$\e(date\e)\e\e\enserver:\e$SOCAT_SOCKADDR:\e$SOCAT_SOCKPORT\e\e\enclient: \e$SOCAT_PEERADDR:\e$SOCAT_PEERPORT\e\e\en\e\e\e\(dq\&\e\(dq\&; cat; echo \-e \e\(dq\&\e\e\e\(dq\&\e\e\en\e\e\e\(dq\&\e\(dq\&\(dq\&\fP\fP"
-
+\.LP
+\.nf
+\fBsocat -u \\
+\.RS
+\fBSTDIO \\ 
+POSIXMQ-SEND:/queue1,unlink-early,mq-prio=10\fP
+\.RE
+\.fi
 .IP 
-creates a simple HTTP echo server: each HTTP client that connects gets a valid
+Writes packets read from stdio (i\&.e\&., lines of input when run interactively)
+into POSIX message queue, with priority 10\&.
+.IP 
+\.LP
+\.nf
+\fBsocat -u \\
+\.RS
+\fBPOSIXMQ-RECV:/queue1,fork,max-children=3 \\ 
+SYSTEM:"worker.sh"\fP
+.IP 
+\.RE
+\.fi
+.IP 
+Receives messages (packets) from POSIX message queue and, for each message,
+forks a sub process that reads and processes the message\&. At most 3 sub
+processes are allowed at the same time\&.
+.IP 
+\.LP
+\.nf
+\fBsocat -T 1 -d -d \\
+\.RS
+\fBTCP-L:10081,reuseaddr,fork,crlf \\ 
+SYSTEM:"echo -e \\"\\\\\\"HTTP/1.0 200 OK\\\\\\nDocumentType: text/plain\\\\\\n\\\\\\ndate: \\$\\(date\\)\\\\\\nserver:\\$SOCAT_SOCKADDR:\\$SOCAT_SOCKPORT\\\\\\nclient: \\$SOCAT_PEERADDR:\\$SOCAT_PEERPORT\\\\\\n\\\\\\"\\"; cat; echo -e \\"\\\\\\"\\\\\\n\\\\\\"\\""\fP
+\.RE
+\.fi
+.IP 
+creates a very primitive HTTP echo server: each HTTP client that connects gets
+a valid
 HTTP reply that contains information about the client address and port as it is
 seen by the server host, the host address (which might vary on multihomed
 servers), and the original client request\&.
 .IP 
-.IP "\fB\f(CWsocat \-d \-d UDP4\-RECVFROM:9999,so\-broadcast,so\-timestamp,ip\-pktinfo,ip\-recverr,ip\-recvopts,ip\-recvtos,ip\-recvttl!!\- SYSTEM:\(cq\&export; sleep 1\(cq\& |grep SOCAT\fP\fP"
-
+\.LP
+\.nf
+\fBsocat -d -d \\
+\.RS
+\fBUDP4-RECVFROM:9999,so-broadcast,so-timestamp,ip-pktinfo,ip-recverr,ip-recvopts,ip-recvtos,ip-recvttl!!- \\ 
+SYSTEM:'export; sleep 1' |\fP
+\.RE
+\fBgrep SOCAT\fP
+\.RE
+\.fi
 .IP 
 waits for an incoming UDP packet on port 9999 and prints the environment 
 variables provided by socat\&. On BSD based systems you have to replace
-\f(CWip\-pktinfo\fP with \f(CWip\-recvdstaddr\fP,\f(CWip\-recvif\fP\&. Especially interesting is
+\f(CWip\-pktinfo\fP with \f(CWip\-recvdstaddr\fP,\f(CWip\-recvif\fP\&. Especially of interest is
 SOCAT_IP_DSTADDR: it contains the target address of the packet which may be a
 unicast, multicast, or broadcast address\&.
 .IP 
-.IP "\fB\f(CWecho \-e \(dq\&M\-SEARCH * HTTP/1\&.1\enHOST: 239\&.255\&.255\&.250:1900\enMAN: \e\(dq\&ssdp:discover\e\(dq\&\enMX: 4\enST: \e\(dq\&ssdp:all\e\(dq\&\en\(dq\& |socat \- UDP\-DATAGRAM:239\&.255\&.255\&.250:1900,crlf\fP\fP"
-
+\.LP
+\.nf
+\fBecho -e "M-SEARCH * HTTP/1.1\\nHOST: 239.255.255.250:1900\\nMAN: \\"ssdp:discover\\"\\nMX: 4\\nST: \\"ssdp:all\\"\\n" |
+socat - \\
+\.RS
+\fBUDP-DATAGRAM:239.255.255.250:1900,crlf\fP
+\.RE
+\.fi
 .IP 
 sends an SSDP (Simple Service Discovery Protocol) query to the local network
 and collects and outputs the answers received\&.
+.IP 
+\.LP
+\.nf
+\fBsystemd-socket-activate -l 1077 --inetd socat ACCEPT:0,fork PIPE\fP
+\.RE
+\.fi
+.IP 
+\f(CWsystemd\-socket\-activate\fP is a program for testing \f(CWsystemd\fP socket
+activation of daemons\&. With \f(CW\-\-inetd\fP it waits for a connection on the
+specified port\&. It does not accept the connection but passes the listening file
+descriptor as FDs 0 and 1\&. \fBSocat\fP accepts the waiting connection and starts
+data transfer\&.
 .IP 
 .IP "\fB\f(CW\fP\fP"
 
@@ -3843,6 +4791,15 @@ error\&.
 .br 
 /usr/bin/procan
 .PP 
+.SH "SIGNALS"
+
+.PP 
+.IP "SIGUSR1:"
+Causes logging of current transfer statistics\&.
+.br 
+See also option \-\-statistics
+
+.PP 
 .SH "ENVIRONMENT VARIABLES"
 
 .PP 
@@ -3868,9 +4825,19 @@ address format\&. If name resolution does not return a matching entry, the first
 result (with differing IP version) is taken\&. With value 0, socat always selects
 the first record and its IP version\&. 
 .IP 
+.IP "\fBSOCAT_MAIN_WAIT\fP (input)"
+Specifies the time (seconds) to sleep the
+main process on begin of main\e()\&. Useful for debugging\&.
+.IP 
+.IP "\fBSOCAT_TRANSFER_WAIT\fP (input)"
+Specifies the time (seconds) to sleep the
+process after opening addresses before entering the transfer loop\&. Useful for
+debugging\&.
+.IP 
 .IP "\fBSOCAT_FORK_WAIT\fP (input)"
 Specifies the time (seconds) to sleep the
-parent and child processes after successful fork()\&. Useful for debugging\&.
+parent and child processes after successful fork()\&. Useful for
+debugging\&.
 .IP 
 .IP "\fBSOCAT_VERSION\fP (output)"
 Socat sets this variable to its version string,
@@ -3880,8 +4847,8 @@ temporary versions; can be used in scripts invoked by socat\&.
 .IP "\fBSOCAT_PID\fP (output)"
 Socat sets this variable to its process id\&. In case
 of fork address option, SOCAT_PID gets the child processes
-id\&. Forking for exec and system does
-not change SOCAT_PID\&.
+id\&. Forking for exec, system, and
+SHELL does not change SOCAT_PID\&.
 .IP 
 .IP "\fBSOCAT_PPID\fP (output)"
 Socat sets this variable to its process id\&. In
@@ -4002,8 +4969,8 @@ su\-d, SHELL is set to the login shell of the
 given user\&.
 .IP 
 .IP "\fBPATH\fP (output)"
-Can be set with option path for exec and
-system addresses\&.
+Can be set with option path for exec,
+system, and SHELL addresses\&.
 .IP 
 .IP "\fBHOME\fP (output)"
 With options su and
@@ -4029,7 +4996,7 @@ standard specifications available on the Internet for free\&.
 .SH "VERSION"
 
 .PP 
-This man page describes version 1\&.7\&.4 of \fBsocat\fP\&.
+This man page describes version 1\&.8\&.0 of \fBsocat\fP\&.
 .PP 
 .SH "BUGS"
 
