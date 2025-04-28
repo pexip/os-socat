@@ -1,12 +1,14 @@
 <html><head>
-<title><strong>socat</strong></title>
+<title>socat</title>
 <link rev="made" href="mailto:socat@dest-unreach.org">
 </head>
 <body>
 <hr>
-<h1><strong>socat</strong></h1>
+<h1>socat</h1>
 
 
+<p>
+<link rel="stylesheet" type="text/css" href="dest-unreach.css">
 <p>
 
 <a name="CONTENTS"></a>
@@ -44,10 +46,10 @@
 <p>
 <strong>Socat</strong> is a command line based utility that establishes two bidirectional byte
 streams and transfers data between them. Because the streams can be constructed
-from a large set of different types of data sinks and sources 
+from a large set of different types of data sinks and sources
 (see <a href="socat.html#ADDRESS_TYPES">address types</a>), and because lots of
 <a href="socat.html#ADDRESS_OPTIONS">address options</a> may be applied to the streams, socat can
-be used for many different purposes. 
+be used for many different purposes.
 <p>
 <strong>Filan</strong> is a utility that prints information about its active file
 descriptors to stdout. It has been written for debugging <strong>socat</strong>, but might be
@@ -98,20 +100,26 @@ program. They have nothing to do with so called
    types, and exit.
 <p><dt><strong><strong><code>-hh | -??</code></strong></strong><dd>
    Like -h, plus a list of the short names of all available address options. Some options are
-   platform dependend, so this output is helpful for checking the particular
+   platform dependent, so this output is helpful for checking the particular
    implementation. 
 <p><dt><strong><strong><code>-hhh | -???</code></strong></strong><dd>
    Like -hh, plus a list of all available address option names.
 <a name="option_d"></a><p><dt><strong><strong><code>-d</code></strong></strong><dd>
-   Without this option, only fatal and error messages are generated; applying
-   this option also prints warning messages. See <a href="socat.html#DIAGNOSTICS">DIAGNOSTICS</a>
-   for more information. 
-<a name="option_d_d"></a><p><dt><strong><strong><code>-d -d</code></strong></strong><dd> Prints fatal, error, warning, and notice messages.
-<p><dt><strong><strong><code>-d -d -d</code></strong></strong><dd> Prints fatal, error, warning, notice, and info messages.
-<p><dt><strong><strong><code>-d -d -d -d</code></strong></strong><dd> Prints fatal, error, warning, notice, info, and debug
+   Without this option, only fatal, error, and warning messages are printed;
+   applying this option also prints notice messages.
+   See <a href="socat.html#DIAGNOSTICS">DIAGNOSTICS</a> for more information.
+<a name="option_d0"></a><p><dt><strong><strong><code>-d0</code></strong></strong><dd>
+   With this option, only fatal and error messages are printed; this restores
+   the behaviour of <strong>socat</strong> up to version 1.7.4.
+<a name="option_d_d"></a><p><dt><strong><strong><code>-d -d | -dd | -d2</code></strong></strong><dd> Prints fatal, error, warning, and notice messages.
+<p><dt><strong><strong><code>-d -d -d | -ddd | -d3</code></strong></strong><dd> Prints fatal, error, warning, notice, and info messages.
+<p><dt><strong><strong><code>-d -d -d -d | -dddd | -d4</code></strong></strong><dd> Prints fatal, error, warning, notice, info, and debug
    messages. 
 <p><dt><strong><strong><code>-D</code></strong></strong><dd>
    Logs information about file descriptors before starting the transfer phase.
+<a name="option_experimental"></a><p><dt><strong><strong><code>--experimental</code></strong></strong><dd>
+   New features that are not well tested or are subject to change in the future
+   must be explicitly enabled using this option.
 <p><dt><strong><strong><code>-ly[&lt;facility&gt;]</code></strong></strong><dd>
    Writes messages to syslog instead of stderr; severity as defined with -d
    option. With optional <a href="socat.html#TYPE_FACILITY">&lt;facility&gt;</a>, the syslog type can
@@ -151,12 +159,24 @@ program. They have nothing to do with so called
    indicating flow directions. Can be combined with 
 <code>-v</code>
 .
-<p><dt><strong><strong><code>-r &lt;file&gt;</code></strong></strong><dd>
+<a name="option_r"></a><p><dt><strong><strong><code>-r &lt;file&gt;</code></strong></strong><dd>
    Dumps the raw (binary) data flowing from left to right address to the given
-   file.
+   file. The file name may contain references to environment variables and
+   
+<code>$$</code>
+ (pid), 
+<code>$PROGNAME</code>
+ (see option <a href="socat.html#option_lp">option -lp</a>),
+   
+<code>$TIMESTAMP</code>
+ (uses format %Y%m%dT%H%M%S), and 
+<code>MICROS</code>
+ (microseconds
+   of daytime). These references have to be protected from shell expansion of
+   course.
 <p><dt><strong><strong><code>-R &lt;file&gt;</code></strong></strong><dd>
    Dumps the raw (binary) data flowing from right to left address to the given
-   file.
+   file. See <a href="socat.html#option_r">option -r</a> for customization of file name.
 <a name="option_b"></a><p><dt><strong><strong><code>-b</code></strong><code>&lt;size&gt;</code></strong><dd>
    Sets the data transfer block &lt;size&gt; [<a href="socat.html#TYPE_SIZE_T">size_t</a>].
    At most &lt;size&gt; bytes are transferred per step. Default is 8192 bytes. 
@@ -166,6 +186,15 @@ program. They have nothing to do with so called
    option, <strong>socat</strong> is sloppy with errors and tries to continue. Even with this
    option, socat will exit on fatals, and will abort connection attempts when
    security checks failed.
+<a name="option_S"></a><p><dt><strong><strong><code>-S</code></strong><code>&lt;signals-bitmap&gt;</code></strong><dd>
+   Changes the set of signals that are caught by <strong>socat</strong> just for printing an
+   log message. This catching is useful to get the information about the signal
+   into <strong>socat</strong>s log, but prevents core dump or other standard actions. The
+   default set of these signals is SIGHUP, SIGINT, SIGQUIT, SIGILL, SIGABRT,
+   SIGBUS, SIGFPE, SIGSEGV, and SIGTERM; replace this set (0x89de on Linux)
+   with a bitmap (e.g., SIGFPE has value 8 and its bit is 0x0080).<br>
+   Note: Signals SIGHUP, SIGINT, SIGQUIT, SIGUSR1, SIGPIPE, SIGALRM, SIGTERM, and
+   SIGCHLD may be handled specially anyway.
 <a name="option_t"></a><p><dt><strong><strong><code>-t</code></strong><code>&lt;timeout&gt;</code></strong><dd>
    When one channel has reached EOF, the write part of the other channel is shut
    down. Then, <strong>socat</strong> waits &lt;timeout&gt; [<a href="socat.html#TYPE_TIMEVAL">timeval</a>] seconds
@@ -174,9 +203,11 @@ program. They have nothing to do with so called
    the timeout interval the read part gives EOF, socat terminates without
    awaiting the timeout.
 <a name="option_T"></a><p><dt><strong><strong><code>-T</code></strong><code>&lt;timeout&gt;</code></strong><dd>
-   Total inactivity timeout: when socat is already in the transfer loop and
+   Total inactivity timeout: when <strong>socat</strong> is already in the transfer loop and
    nothing has happened for &lt;timeout&gt; [<a href="socat.html#TYPE_TIMEVAL">timeval</a>] seconds
-   (no data arrived, no interrupt occurred...) then it terminates.
+   (no data arrived, no interrupt occurred...) then it terminates. Up to
+   version 1.8.0.0 "0" meant infinite"; since version 1.8.0.1 "0" means 0
+   and values &lt;0 mean infinite.<br>
    Useful with protocols like UDP that cannot transfer EOF.
 <a name="option_u"></a><p><dt><strong><strong><code>-u</code></strong></strong><dd>
    Uses unidirectional mode. The first address is only used for reading, and the
@@ -195,11 +226,20 @@ program. They have nothing to do with so called
    If lockfile exists, waits until it disappears. When lockfile does not exist,
    creates it and continues, unlinks lockfile on exit.
 <a name="option_4"></a><p><dt><strong><strong><code>-4</code></strong></strong><dd>
-   Use IP version 4 in case that the addresses do not implicitly or explicitly
-   specify a version; this is the default.
+   Use IP version 4 in case the addresses do not implicitly or explicitly
+   specify a version. Since version 1.8.0.1 this is the default.
 <a name="option_6"></a><p><dt><strong><strong><code>-6</code></strong></strong><dd>
-   Use IP version 6 in case that the addresses do not implicitly or explicitly
+   Use IP version 6 in case the addresses do not implicitly or explicitly
    specify a version.
+<a name="option_0"></a><p><dt><strong><strong><code>-0</code></strong></strong><dd>
+   Do not prefer a particular IP version; this lets passive addresses (LISTEN,
+   RECV, ...) serve both versions on some platforms (not BSD).
+<a name="option_statistics"></a><p><dt><strong><strong><code>--statistics</code></strong></strong><dd>
+<p><dt><strong><strong><code>-S</code></strong></strong><dd>
+   Logs transfer statistics (bytes and blocks counters for both directions)
+   before terminating <strong>socat</strong>.<br>
+   See also <a href="socat.html#signal_usr1">signal USR1</a>.<br>
+   This feature is experimental and might change in future versions.
 </dl>
 <p>
 <a name="ADDRESS_SPECIFICATIONS"></a>
@@ -269,10 +309,11 @@ parameters, and semantics.
 <code>creat()</code>
  and uses the file
    descriptor for writing. 
-   This address type requires write-only context, because a file opened with
-   
+   This is a write-only address because a file opened with 
 <code>creat</code>
- cannot be read from. <br>
+ cannot
+   be read from. See options <a href="socat.html#option_u">-u</a> and
+   <a href="socat.html#option_U">-U</a>, and <a href="socat.html#ADDRESS_DUAL">dual addresses</a>.<br>
    Flags like O_LARGEFILE cannot be applied. If you need them use
    <a href="socat.html#ADDRESS_OPEN">OPEN</a> with options
    <a href="socat.html#OPTION_O_CREAT">create</a>,<a href="socat.html#OPTION_O_TRUNC">create</a>. <br>
@@ -283,6 +324,7 @@ parameters, and semantics.
    if &lt;filename&gt; refers to a socket, this is an error.<br> 
    Option groups: <a href="socat.html#GROUP_FD">FD</a>,<a href="socat.html#GROUP_REG">REG</a>,<a href="socat.html#GROUP_NAMED">NAMED</a> <br>
    Useful options:
+   <a href="socat.html#OPTION_UMASK">mode</a>,
    <a href="socat.html#OPTION_MODE">mode</a>,
    <a href="socat.html#OPTION_USER">user</a>,
    <a href="socat.html#OPTION_GROUP">group</a>,
@@ -290,6 +332,69 @@ parameters, and semantics.
    <a href="socat.html#OPTION_UNLINK_LATE">unlink-late</a>,
    <a href="socat.html#OPTION_APPEND">append</a><br>
    See also: <a href="socat.html#ADDRESS_OPEN">OPEN</a>, <a href="socat.html#ADDRESS_GOPEN">GOPEN</a>
+<p>
+<a name="ADDRESS_DCCP_CONNECT"></a><p><dt><strong><strong><code>DCCP-CONNECT:&lt;host&gt;:&lt;port&gt;</code></strong> (<strong><code>DCCP:&lt;host&gt;:&lt;port&gt;</code></strong>)</strong><dd>
+   Establishes a DCCP connect to the specified &lt;host&gt; [<a href="socat.html#TYPE_IP_ADDRESS">IP
+   address</a>] and &lt;port&gt; [<a href="socat.html#TYPE_TCP_SERVICE">DCCP service</a>]
+   using IP version 4 or 6 depending on address specification, name
+   resolution, or option <a href="socat.html#OPTION_PROTOCOL_FAMILY">pf</a>.<br>
+   Option groups: <a href="socat.html#GROUP_FD">FD</a>,<a href="socat.html#GROUP_SOCKET">SOCKET</a>,<a href="socat.html#GROUP_IP4">IP4</a>,<a href="socat.html#GROUP_IP6">IP6</a>,<a href="socat.html#GROUP_SCTP">SCTP</a>,<a href="socat.html#GROUP_CHILD">CHILD</a>,<a href="socat.html#GROUP_RETRY">RETRY</a> <br>
+   Useful options:
+   <a href="socat.html#OPTION_BIND">bind</a>,
+   <a href="socat.html#OPTION_CONNECT_TIMEOUT">connect-timeout</a>,
+   <a href="socat.html#OPTION_TOS">tos</a>,
+   <a href="socat.html#OPTION_DCCP_SET_CCID">dccp-set-ccid</a>,
+   <a href="socat.html#OPTION_O_NONBLOCK">nonblock</a>,
+   <a href="socat.html#OPTION_SOURCEPORT">sourceport</a>,
+   <a href="socat.html#OPTION_RETRY">retry</a>,
+   <a href="socat.html#OPTION_READBYTES">readbytes</a><br>
+   See also:
+   <a href="socat.html#ADDRESS_DCCP4_CONNECT">DCCP4-CONNECT</a>,
+   <a href="socat.html#ADDRESS_DCCP6_CONNECT">DCCP6-CONNECT</a>,
+   <a href="socat.html#ADDRESS_DCCP_LISTEN">DCCP-LISTEN</a>,
+   <a href="socat.html#ADDRESS_TCP_CONNECT">TCP-CONNECT</a>
+   <a href="socat.html#ADDRESS_SCTP_CONNECT">SCTP-CONNECT</a>
+<a name="ADDRESS_DCCP4_CONNECT"></a><p><dt><strong><strong><code>DCCP4-CONNECT:&lt;host&gt;:&lt;port&gt;</code></strong> (<strong><code>DCCP4:&lt;host&gt;:&lt;port&gt;</code></strong>)</strong><dd>
+   Like <a href="socat.html#ADDRESS_DCCP_CONNECT">DCCP-CONNECT</a>, but only supports IPv4 protocol.<br>
+   Option groups: <a href="socat.html#GROUP_FD">FD</a>,<a href="socat.html#GROUP_SOCKET">SOCKET</a>,<a href="socat.html#GROUP_IP4">IP4</a>,<a href="socat.html#GROUP_DCCP">DCCP</a>,<a href="socat.html#GROUP_CHILD">CHILD</a>,<a href="socat.html#GROUP_RETRY">RETRY</a> <br>
+<a name="ADDRESS_DCCP6_CONNECT"></a><p><dt><strong><strong><code>DCCP6-CONNECT:&lt;host&gt;:&lt;port&gt;</code></strong> (<strong><code>DCCP6:&lt;host&gt;:&lt;port&gt;</code></strong>)</strong><dd>
+   Like <a href="socat.html#ADDRESS_DCCP_CONNECT">DCCP-CONNECT</a>, but only supports IPv6 protocol.<br>
+   Option groups: <a href="socat.html#GROUP_FD">FD</a>,<a href="socat.html#GROUP_SOCKET">SOCKET</a>,<a href="socat.html#GROUP_IP6">IP6</a>,<a href="socat.html#GROUP_DCCP">DCCP</a>,<a href="socat.html#GROUP_CHILD">CHILD</a>,<a href="socat.html#GROUP_RETRY">RETRY</a> <br>
+<p>
+<a name="ADDRESS_DCCP_LISTEN"></a><p><dt><strong><strong><code>DCCP-LISTEN:&lt;port&gt;</code></strong> (<strong><code>DCCP-L:&lt;port&gt;</code></strong>)</strong><dd>
+   Listens on &lt;port&gt; [<a href="socat.html#TYPE_TCP_SERVICE">DCCP service</a>] and accepts an
+   DCCP connection. The IP version is 4 or the one specified with
+   address option <a href="socat.html#OPTION_PROTOCOL_FAMILY">pf</a>, socat option
+   (<a href="socat.html#option_4">-4</a>, <a href="socat.html#option_6">-6</a>), or environment variable <a href="socat.html#ENV_SOCAT_DEFAULT_LISTEN_IP">SOCAT_DEFAULT_LISTEN_IP</a>.
+   Note that opening
+   this address usually blocks until a client connects.<br>
+   Option groups: <a href="socat.html#GROUP_FD">FD</a>,<a href="socat.html#GROUP_SOCKET">SOCKET</a>,<a href="socat.html#GROUP_LISTEN">LISTEN</a>,<a href="socat.html#GROUP_CHILD">CHILD</a>,<a href="socat.html#GROUP_RANGE">RANGE</a>,<a href="socat.html#GROUP_IP4">IP4</a>,<a href="socat.html#GROUP_IP6">IP6</a>,<a href="socat.html#GROUP_DCCP">DCCP</a>,<a href="socat.html#GROUP_RETRY">RETRY</a> <br>
+   Useful options:
+   <a href="socat.html#OPTION_FORK">fork</a>,
+   <a href="socat.html#OPTION_BIND">bind</a>,
+   <a href="socat.html#OPTION_RANGE">range</a>,
+   <a href="socat.html#OPTION_MAX_CHILDREN">max-children</a>,
+   <a href="socat.html#OPTION_BACKLOG">backlog</a>,
+   <a href="socat.html#OPTION_ACCEPT_TIMEOUT">accept-timeout</a>,
+   <a href="socat.html#OPTION_DCCP_SET_CCID">dccp-set-sid</a>,
+   <a href="socat.html#OPTION_SUBSTUSER">su</a>,
+   <a href="socat.html#OPTION_SO_REUSEADDR">reuseaddr</a>,
+   <a href="socat.html#OPTION_RETRY">retry</a><br>
+   See also:
+   <a href="socat.html#ADDRESS_DCCP4_LISTEN">DCCP4-LISTEN</a>,
+   <a href="socat.html#ADDRESS_DCCP6_LISTEN">DCCP6-LISTEN</a>,
+   <a href="socat.html#ADDRESS_TCP_LISTEN">TCP-LISTEN</a>,
+   <a href="socat.html#ADDRESS_SCTP_LISTEN">SCTP-LISTEN</a>,
+   <a href="socat.html#ADDRESS_DCCP_CONNECT">DCCP-CONNECT</a>
+<a name="ADDRESS_DCCP4_LISTEN"></a><p><dt><strong><strong><code>DCCP4-LISTEN:&lt;port&gt;</code></strong> (<strong><code>DCCP4-L:&lt;port&gt;</code></strong>)</strong><dd>
+   Like <a href="socat.html#ADDRESS_DCCP_LISTEN">DCCP-LISTEN</a>, but only supports IPv4
+   protocol.<br>
+   Option groups: <a href="socat.html#GROUP_FD">FD</a>,<a href="socat.html#GROUP_SOCKET">SOCKET</a>,<a href="socat.html#GROUP_LISTEN">LISTEN</a>,<a href="socat.html#GROUP_CHILD">CHILD</a>,<a href="socat.html#GROUP_RANGE">RANGE</a>,<a href="socat.html#GROUP_IP4">IP4</a>,<a href="socat.html#GROUP_DCCP">DCCP</a>,<a href="socat.html#GROUP_RETRY">RETRY</a> <br>
+<a name="ADDRESS_DCCP6_LISTEN"></a><p><dt><strong><strong><code>DCCP6-LISTEN:&lt;port&gt;</code></strong> (<strong><code>DCCP6-L:&lt;port&gt;</code></strong>)</strong><dd>
+   Like <a href="socat.html#ADDRESS_DCCP_LISTEN">DCCP-LISTEN</a>, but only supports IPv6
+   protocol.<br>
+   Option groups: <a href="socat.html#GROUP_FD">FD</a>,<a href="socat.html#GROUP_SOCKET">SOCKET</a>,<a href="socat.html#GROUP_LISTEN">LISTEN</a>,<a href="socat.html#GROUP_CHILD">CHILD</a>,<a href="socat.html#GROUP_RANGE">RANGE</a>,<a href="socat.html#GROUP_IP6">IP6</a>,<a href="socat.html#GROUP_DCCP">DCCP</a>,<a href="socat.html#GROUP_RETRY">RETRY</a> <br>
+<p>
 <a name="ADDRESS_EXEC"></a><p><dt><strong><strong><code>EXEC:&lt;command-line&gt;</code></strong></strong><dd>
    Forks a sub process that establishes communication with its parent process
    and invokes the specified program with 
@@ -319,15 +424,18 @@ parameters, and semantics.
    <a href="socat.html#OPTION_SUBSTUSER">su</a>,
    <a href="socat.html#OPTION_SUBSTUSER_DELAYED">su-d</a>,
    <a href="socat.html#OPTION_NOFORK">nofork</a>,
+   <a href="socat.html#OPTION_SO_TYPE">socktype</a>,
    <a href="socat.html#OPTION_PTY">pty</a>,
    <a href="socat.html#OPTION_STDERR">stderr</a>,
    <a href="socat.html#OPTION_CTTY">ctty</a>,
    <a href="socat.html#OPTION_SETSID">setsid</a>,
    <a href="socat.html#OPTION_PIPES">pipes</a>,
+   <a href="socat.html#OPTION_UMASK">umask</a>,
    <a href="socat.html#OPTION_LOGIN">login</a>,
    <a href="socat.html#OPTION_SIGINT">sigint</a>,
-   <a href="socat.html#OPTION_SIGQUIT">sigquit</a><br>
-   See also: <a href="socat.html#ADDRESS_SYSTEM">SYSTEM</a>
+   <a href="socat.html#OPTION_SIGQUIT">sigquit</a>,
+   <a href="socat.html#OPTION_NETNS">netns</a><br>
+   See also: <a href="socat.html#ADDRESS_SYSTEM">SYSTEM</a>,<a href="socat.html#ADDRESS_SHELL">SHELL</a>
 <a name="ADDRESS_FD"></a><p><dt><strong><strong><code>FD:&lt;fdnum&gt;</code></strong></strong><dd>
    Uses the file descriptor <a href="socat.html#TYPE_FDNUM">&lt;fdnum&gt;</a>. It must already exist as
    valid UN*X file descriptor.<br>
@@ -380,7 +488,7 @@ parameters, and semantics.
 <a name="ADDRESS_INTERFACE"></a><p><dt><strong><strong><code>INTERFACE:&lt;interface&gt;</code></strong></strong><dd>
    Communicates with a network connected on an interface using raw packets
    including link level data. <a href="socat.html#TYPE_INTERFACE">&lt;interface&gt;</a> is the name of
-   the network interface. Currently only available on Linux.
+   the network interface. Currently only available on Linux.<br>
    Option groups: <a href="socat.html#GROUP_FD">FD</a>,<a href="socat.html#GROUP_SOCKET">SOCKET</a> <br>
    Useful options:
    <a href="socat.html#OPTION_PROTOCOL_FAMILY">pf</a>,
@@ -412,6 +520,8 @@ parameters, and semantics.
    <a href="socat.html#OPTION_IP_MULTICAST_IF">ip-multicast-if</a>,
    <a href="socat.html#OPTION_IP_ADD_MEMBERSHIP">ip-add-membership</a>,
    <a href="socat.html#OPTION_IP_ADD_SOURCE_MEMBERSHIP">ip-add-source-membership</a>,
+   <a href="socat.html#OPTION_IPV6_JOIN_GROUP">ipv6-join-group</a>,
+   <a href="socat.html#OPTION_IPV6_JOIN_SOURCE_GROUP">ipv6-join-source-group</a>,
    <a href="socat.html#OPTION_TTL">ttl</a>,
    <a href="socat.html#OPTION_TOS">tos</a>,
    <a href="socat.html#OPTION_PROTOCOL_FAMILY">pf</a><br>
@@ -468,7 +578,8 @@ parameters, and semantics.
 <a name="ADDRESS_IP_RECV"></a><p><dt><strong><strong><code>IP-RECV:&lt;protocol&gt;</code></strong></strong><dd>
    Opens a raw IP socket of <a href="socat.html#TYPE_PROTOCOL">&lt;protocol&gt;</a>. Depending on option <a href="socat.html#OPTION_PROTOCOL_FAMILY">pf</a>, IP protocol version
    4 or 6 is used. It receives packets from multiple unspecified peers and merges the data.
-   No replies are possible.
+   No replies are possible, this is a read-only address, see options <a href="socat.html#option_u">-u</a> and
+   <a href="socat.html#option_U">-U</a>, and <a href="socat.html#ADDRESS_DUAL">dual addresses</a>.
    It can be, e.g., addressed by socat IP-SENDTO address peers.
    Protocol 255 uses the raw socket with the IP header being part of the
    data.<br>
@@ -500,7 +611,7 @@ parameters, and semantics.
    Option groups: <a href="socat.html#GROUP_FD">FD</a>,<a href="socat.html#GROUP_REG">REG</a>,<a href="socat.html#GROUP_NAMED">NAMED</a>,<a href="socat.html#GROUP_OPEN">OPEN</a> <br>
    Useful options:
    <a href="socat.html#OPTION_O_CREAT">creat</a>,
-   <a href="socat.html#OPTION_EXCL">excl</a>,
+   <a href="socat.html#OPTION_O_EXCL">excl</a>,
    <a href="socat.html#OPTION_O_NOATIME">noatime</a>,
    <a href="socat.html#OPTION_NOFOLLOW">nofollow</a>,
    <a href="socat.html#OPTION_APPEND">append</a>,
@@ -577,7 +688,7 @@ parameters, and semantics.
    <a href="socat.html#OPTION_RANGE">range</a>,
    <a href="socat.html#OPTION_TCPWRAPPERS">tcpwrap</a>,
    <a href="socat.html#OPTION_SUBSTUSER">su</a>,
-   <a href="socat.html#OPTION_REUSEADDR">reuseaddr</a>,
+   <a href="socat.html#OPTION_SO_REUSEADDR">reuseaddr</a>,
    <a href="socat.html#OPTION_RETRY">retry</a><br>
    See also:
    <a href="socat.html#ADDRESS_OPENSSL_CONNECT">OPENSSL</a>,
@@ -608,7 +719,8 @@ parameters, and semantics.
    <a href="socat.html#OPTION_BIND">bind</a>,
    <a href="socat.html#OPTION_PROTOCOL_FAMILY">pf</a>,
    <a href="socat.html#OPTION_SOURCEPORT">sourceport</a>,
-   <a href="socat.html#OPTION_RETRY">retry</a><br>
+   <a href="socat.html#OPTION_RETRY">retry</a>,
+   <a href="socat.html#OPTION_SO_RCVTIMOE">rcvtimeo</a><br>
    See also:
    <a href="socat.html#ADDRESS_OPENSSL_DTLS_SERVER">OPENSSL-DTLS-SERVER</a>,
    <a href="socat.html#ADDRESS_OPENSSL_CONNECT">OPENSSL-CONNECT</a>,
@@ -642,8 +754,9 @@ parameters, and semantics.
    <a href="socat.html#OPTION_RANGE">range</a>,
    <a href="socat.html#OPTION_TCPWRAPPERS">tcpwrap</a>,
    <a href="socat.html#OPTION_SUBSTUSER">su</a>,
-   <a href="socat.html#OPTION_REUSEADDR">reuseaddr</a>,
+   <a href="socat.html#OPTION_SO_REUSEADDR">reuseaddr</a>,
    <a href="socat.html#OPTION_RETRY">retry</a><br>
+   <a href="socat.html#OPTION_SO_RCVTIMOE">rcvtimeo</a><br>
    See also:
    <a href="socat.html#ADDRESS_OPENSSL_DTLS_CLIENT">OPENSSL-DTLS-CLIENT</a>,
    <a href="socat.html#ADDRESS_OPENSSL_LISTEN">OPENSSL-LISTEN</a>,
@@ -664,7 +777,7 @@ parameters, and semantics.
    Option groups: <a href="socat.html#GROUP_FD">FD</a>,<a href="socat.html#GROUP_NAMED">NAMED</a>,<a href="socat.html#GROUP_OPEN">OPEN</a> <br>
    Useful options:
    <a href="socat.html#OPTION_RDONLY">rdonly</a>,
-   <a href="socat.html#OPTION_NONBLOCK">nonblock</a>,
+   <a href="socat.html#OPTION_O_NONBLOCK">nonblock</a>,
    <a href="socat.html#OPTION_GROUP">group</a>,
    <a href="socat.html#OPTION_USER">user</a>,
    <a href="socat.html#OPTION_MODE">mode</a>,
@@ -672,23 +785,94 @@ parameters, and semantics.
    See also: <a href="socat.html#ADDRESS_UNNAMED_PIPE">unnamed pipe</a>
 <a name="ADDRESS_UNNAMED_PIPE"></a><p><dt><strong><strong><code>PIPE</code></strong></strong><dd>
    Creates an unnamed pipe and uses it for reading and writing. It works as an
-   echo, because everything written 
-   to it appeares immediately as read data.<br>
+   echo, because everything written to it appears immediately as read
+   data.<br>
    Note: When socat tries to write more bytes than the pipe can queue (Linux
    2.4: 2048 bytes), socat might block. Consider, e.g., using
    option 
 <code>-b 2048</code>
  <br>
    Option groups: <a href="socat.html#GROUP_FD">FD</a> <br>
-   See also: <a href="socat.html#ADDRESS_NAMED_PIPE">named pipe</a>
+   See also: <a href="socat.html#ADDRESS_NAMED_PIPE">named pipe</a>, <a href="socat.html#ADDRESS_SOCKETPAIR">SOCKETPAIR</a>
+<a name="ADDRESS_SOCKETPAIR"></a><p><dt><strong><strong><code>SOCKETPAIR</code></strong></strong><dd>
+   Creates a socketpair and uses it for reading and writing. It works as an
+   echo, because everything written to it appears immediately as read
+   data. The default socket type is datagram, so it keeps packet boundaries.
+   <br>
+   Option groups: <a href="socat.html#GROUP_FD">FD</a> <br>
+   Useful options:
+   <a href="socat.html#OPTION_SO_TYPE">socktype</a><br>
+   See also: <a href="socat.html#ADDRESS_UNNAMED_PIPE">unnamed pipe</a>
+<p>
+<a name="ADDRESS_POSIXMQ_READ"></a><p><dt><strong><strong><code>POSIXMQ-READ:/&lt;mqueue&gt;</code></strong></strong><dd>
+   Opens or creates the specified POSIX message queue and reads messages
+   (packets). It keeps the packet boundaries.<br>
+   This is a read-only address, see options <a href="socat.html#option_u">-u</a> and
+   <a href="socat.html#option_U">-U</a> and <a href="socat.html#ADDRESS_DUAL">dual addresses</a>.<br>
+   <strong>Socat</strong> provides this address type only on Linux because POSIX MQ is based
+   on UNIX filedescriptors there.<br>
+   Useful options:
+   <a href="socat.html#OPTION_POSIXMQ_PRIORITY">posixmq-priority</a>,
+   <a href="socat.html#OPTION_UNLINK_EARLY">unlink-early</a>,
+   <a href="socat.html#OPTION_UNLINK_CLOSE">unlink-close</a>,
+   <a href="socat.html#OPTION_O_NONBLOCK">o-nonblock</a>,
+   <a href="socat.html#OPTION_O_CREAT">o-creat</a>,
+   <a href="socat.html#OPTION_O_EXCL">o-excl</a>,
+   <a href="socat.html#OPTION_UMASK">umask</a>
+<p>
+<a name="ADDRESS_POSIXMQ_RECEIVE"></a><p><dt><strong><strong><code>POSIXMQ-RECEIVE:/&lt;mqueue&gt;</code></strong></strong><dd>
+<p><dt><strong><strong><code>POSIXMQ-RECV:/&lt;mqueue&gt;</code></strong></strong><dd>
+   Opens or creates the specified POSIX message queue and reads one message
+   (packet).<br>
+   This is a read-only address. See <a href="socat.html#ADDRESS_POSIXMQ_READ">POSIXMQ-READ</a>
+   for more info.<br>
+   Example: <a href="socat.html#EXAMPLE_POSIXMQ_RECV_FORK">POSIX MQ recv with fork</a><br>
+   Useful options:
+   <a href="socat.html#OPTION_POSIXMQ_PRIORITY">posixmq-priority</a>,
+   <a href="socat.html#OPTION_FORK">fork</a>,
+   <a href="socat.html#OPTION_MAX_CHILDREN">max-children</a>,
+   <a href="socat.html#OPTION_UNLINK_EARLY">unlink-early</a>,
+   <a href="socat.html#OPTION_UNLINK_CLOSE">unlink-close</a>,
+   <a href="socat.html#OPTION_O_CREAT">o-creat</a>,
+   <a href="socat.html#OPTION_O_EXCL">o-excl</a>,
+   <a href="socat.html#OPTION_UMASK">umask</a>
+<p>
+<a name="ADDRESS_POSIXMQ_SEND"></a><p><dt><strong><strong><code>POSIXMQ-SEND:/&lt;mqueue&gt;</code></strong></strong><dd>
+   Opens or creates the specified POSIX message queue and writes messages
+   (packets).<br>
+   This is a write-only address. See <a href="socat.html#ADDRESS_POSIXMQ_READ">POSIXMQ-READ</a>
+   for more info.<br>
+   (<a href="socat.html#EXAMPLE_POSIXMQ_SEND">Example</a>)<br>
+   Useful options:
+   <a href="socat.html#OPTION_POSIXMQ_PRIORITY">posixmq-priority</a>,
+   <a href="socat.html#OPTION_POSIXMQ_FLUSH">posixmq-flush</a>,
+   <a href="socat.html#OPTION_FORK">fork</a>,
+   <a href="socat.html#OPTION_MAX_CHILDREN">max-children</a>,
+   <a href="socat.html#OPTION_UNLINK_EARLY">unlink-early</a>,
+   <a href="socat.html#OPTION_UNLINK_CLOSE">unlink-close</a>,
+   <a href="socat.html#OPTION_O_CREAT">o-creat</a>,
+   <a href="socat.html#OPTION_O_EXCL">o-excl</a>,
+   <a href="socat.html#OPTION_UMASK">umask</a>
+<p>
+<a name="ADDRESS_POSIXMQ_WRITE"></a><p><dt><strong><strong><code>POSIXMQ-WRITE:/&lt;mqueue&gt;</code></strong></strong><dd>
+   Does the same as <a href="socat.html#ADDRESS_POSIXMQ_SEND">POSIXMQ-SEND</a>.
+<p>
+<a name="ADDRESS_POSIXMQ_BIDIRECTIONAL"></a><p><dt><strong><strong><code>POSIXMQ-BIDIRECTIONAL:/mqueue</code></strong></strong><dd>
+<p><dt><strong><strong><code>POSIXMQ:/mqueue</code></strong></strong><dd>
+   Opens or creates the specified POSIX message queue in read and/or write mode
+   depending on context, then reads and/or writes messages (packets).
+   In bidirectional mode this is just another echo service.<br>
+   See <a href="socat.html#ADDRESS_POSIXMQ_READ">POSIXMQ-READ</a> and
+   <a href="socat.html#ADDRESS_POSIXMQ_SEND">POSIXMQ-SEND</a> for more info.
+<p>
 <a name="ADDRESS_PROXY_CONNECT"></a><p><dt><strong><strong><code>PROXY:&lt;proxy&gt;:&lt;hostname&gt;:&lt;port&gt;</code></strong></strong><dd>
    Connects to an HTTP proxy server on port 8080 using TCP/IP  version 4 or 6
    depending on address specification, name resolution, or option
    <a href="socat.html#OPTION_PROTOCOL_FAMILY">pf</a>, and sends a CONNECT
    request for hostname:port. If the proxy grants access and succeeds to
    connect to the target, data transfer between socat and the target can
-   start. Note that the traffic need not be HTTP but can be an arbitrary
-   protocol. <br>
+   start (<a href="socat.html#EXAMPLE_PROXY_CONNECT">example</a>).
+   Note that the traffic need not be HTTP but can be an arbitrary protocol. <br>
    Option groups: <a href="socat.html#GROUP_FD">FD</a>,<a href="socat.html#GROUP_SOCKET">SOCKET</a>,<a href="socat.html#GROUP_IP4">IP4</a>,<a href="socat.html#GROUP_IP6">IP6</a>,<a href="socat.html#GROUP_TCP">TCP</a>,<a href="socat.html#GROUP_HTTP">HTTP</a>,<a href="socat.html#GROUP_RETRY">RETRY</a> <br>
    Useful options:
    <a href="socat.html#OPTION_PROXYPORT">proxyport</a>,
@@ -719,7 +903,7 @@ parameters, and semantics.
    See also:
    <a href="socat.html#ADDRESS_UNIX_LISTEN">UNIX-LISTEN</a>,
    <a href="socat.html#ADDRESS_NAMED_PIPE">PIPE</a>,
-   <a href="socat.html#ADDRESS_EXEC">EXEC</a>, <a href="socat.html#ADDRESS_SYSTEM">SYSTEM</a>
+   <a href="socat.html#ADDRESS_EXEC">EXEC</a>, <a href="socat.html#ADDRESS_SYSTEM">SYSTEM</a>, <a href="socat.html#ADDRESS_SHELL">SHELL</a>
 <a name="ADDRESS_READLINE"></a><p><dt><strong><strong><code>READLINE</code></strong></strong><dd>
    Uses GNU readline and history on stdio to allow editing and reusing input
    lines (<a href="socat.html#EXAMPLE_ADDRESS_READLINE">example</a>). This requires the GNU readline and 
@@ -745,7 +929,7 @@ parameters, and semantics.
    <a href="socat.html#OPTION_MTUDISCOVER">mtudiscover</a>,
    <a href="socat.html#OPTION_SCTP_MAXSEG">sctp-maxseg</a>,
    <a href="socat.html#OPTION_SCTP_NODELAY">sctp-nodelay</a>,
-   <a href="socat.html#OPTION_NONBLOCK">nonblock</a>,
+   <a href="socat.html#OPTION_O_NONBLOCK">nonblock</a>,
    <a href="socat.html#OPTION_SOURCEPORT">sourceport</a>,
    <a href="socat.html#OPTION_RETRY">retry</a>,
    <a href="socat.html#OPTION_READBYTES">readbytes</a><br>
@@ -781,9 +965,8 @@ parameters, and semantics.
    <a href="socat.html#OPTION_SCTP_MAXSEG">sctp-maxseg</a>,
    <a href="socat.html#OPTION_SCTP_NODELAY">sctp-nodelay</a>,
    <a href="socat.html#OPTION_SUBSTUSER">su</a>,
-   <a href="socat.html#OPTION_REUSEADDR">reuseaddr</a>,
-   <a href="socat.html#OPTION_RETRY">retry</a>,
-   <a href="socat.html#OPTION_COOL_WRITE">cool-write</a><br>
+   <a href="socat.html#OPTION_SO_REUSEADDR">reuseaddr</a>,
+   <a href="socat.html#OPTION_RETRY">retry</a><br>
    See also:
    <a href="socat.html#ADDRESS_SCTP4_LISTEN">SCTP4-LISTEN</a>,
    <a href="socat.html#ADDRESS_SCTP6_LISTEN">SCTP6-LISTEN</a>,
@@ -797,6 +980,7 @@ parameters, and semantics.
    Like <a href="socat.html#ADDRESS_SCTP_LISTEN">SCTP-LISTEN</a>, but only supports IPv6
    protocol.<br> 
    Option groups: <a href="socat.html#GROUP_FD">FD</a>,<a href="socat.html#GROUP_SOCKET">SOCKET</a>,<a href="socat.html#GROUP_LISTEN">LISTEN</a>,<a href="socat.html#GROUP_CHILD">CHILD</a>,<a href="socat.html#GROUP_RANGE">RANGE</a>,<a href="socat.html#GROUP_IP6">IP6</a>,<a href="socat.html#GROUP_SCTP">SCTP</a>,<a href="socat.html#GROUP_RETRY">RETRY</a> <br>
+<p>
 <a name="ADDRESS_SOCKET_CONNECT"></a><p><dt><strong><strong><code>SOCKET-CONNECT:&lt;domain&gt;:&lt;protocol&gt;:&lt;remote-address&gt;</code></strong></strong><dd>
    Creates a stream socket using the first and second given socket parameters
    and <code>SOCK_STREAM</code> (see man socket(2)) and connects to the remote-address.
@@ -929,6 +1113,18 @@ parameters, and semantics.
    <a href="socat.html#ADDRESS_SOCKET_DATAGRAM">SOCKET-DATAGRAM</a>,
    <a href="socat.html#ADDRESS_SOCKET_RECV">SOCKET-RECV</a>
    <a href="socat.html#ADDRESS_SOCKET_RECVFROM">SOCKET-RECVFROM</a>
+<a name="ADDRESS_ACCEPT_FD"></a><p><dt><strong><strong><code>ACCEPT-FD:&lt;fdnum&gt;</code></strong></strong><dd>
+   Expects a listening socket in &lt;fdnum&gt; and accepts one or (with option
+   <a href="socat.html#OPTION_FORK">fork</a>) more connections. This address type is useful under
+   systemd control with "inetd mode".<br>
+   Example: (<a href="socat.html#EXAMPLE_ADDRESS_ACCEPT_FD">example</a>)<br>
+   Option groups: <a href="socat.html#GROUP_FD">FD</a>, <a href="socat.html#GROUP_SOCKET">SOCKET</a>, <a href="socat.html#GROUP_TCP">TCP</a>, <a href="socat.html#GROUP_CHILD">CHILD</a>, <a href="socat.html#GROUP_RETRY">RETRY</a><br>
+   Useful options:
+   <a href="socat.html#OPTION_FORK">fork</a>,
+   <a href="socat.html#OPTION_RANGE">range</a>,
+   <a href="socat.html#OPTION_SOURCEPORT">sourceport</a>,
+   <a href="socat.html#OPTION_LOWPORT">lowport</a>,
+   <a href="socat.html#OPTION_TCPWRAPPERS">tcpwrap</a>
 <a name="ADDRESS_SOCKS4"></a><p><dt><strong><strong><code>SOCKS4:&lt;socks-server&gt;:&lt;host&gt;:&lt;port&gt;</code></strong></strong><dd>
    Connects via &lt;socks-server&gt; [<a href="socat.html#TYPE_IP_ADDRESS">IP address</a>]
    to &lt;host&gt; [<a href="socat.html#TYPE_IPV4_ADDRESS">IPv4 address</a>]
@@ -943,19 +1139,59 @@ parameters, and semantics.
    <a href="socat.html#OPTION_PROTOCOL_FAMILY">pf</a>,
    <a href="socat.html#OPTION_RETRY">retry</a><br>
    See also:
+   <a href="socat.html#ADDRESS_SOCKS5_CONNECT">SOCKS5</a>,
    <a href="socat.html#ADDRESS_SOCKS4A">SOCKS4A</a>,
    <a href="socat.html#ADDRESS_PROXY_CONNECT">PROXY</a>,
    <a href="socat.html#ADDRESS_TCP_CONNECT">TCP</a>
+<p>
 <a name="ADDRESS_SOCKS4A"></a><p><dt><strong><strong><code>SOCKS4A:&lt;socks-server&gt;:&lt;host&gt;:&lt;port&gt;</code></strong></strong><dd>
    like <a href="socat.html#ADDRESS_SOCKS4">SOCKS4</a>, but uses socks protocol version 4a, thus
    leaving host name resolution to the socks server.<br>
    Option groups: <a href="socat.html#GROUP_FD">FD</a>,<a href="socat.html#GROUP_SOCKET">SOCKET</a>,<a href="socat.html#GROUP_IP4">IP4</a>,<a href="socat.html#GROUP_IP6">IP6</a>,<a href="socat.html#GROUP_TCP">TCP</a>,<a href="socat.html#GROUP_SOCKS">SOCKS4</a>,<a href="socat.html#GROUP_RETRY">RETRY</a> <br>
+<p>
+<a name="ADDRESS_SOCKS5_CONNECT"></a><p><dt><strong><strong><code>SOCKS5-CONNECT:&lt;socks-server&gt;:&lt;socks-port&gt;:&lt;target-host&gt;:&lt;target-port&gt;</code></strong></strong><dd>
+<p><dt><strong><strong><code>SOCKS5-CONNECT:&lt;socks-server&gt;:&lt;target-host&gt;:&lt;target-port&gt;</code></strong></strong><dd>
+   Connects via &lt;socks-server&gt; [<a href="socat.html#TYPE_IP_ADDRESS">IP address</a>]
+   to &lt;target-host&gt; [<a href="socat.html#TYPE_IPV4_ADDRESS">IPv4 address</a>]
+   on &lt;target-port&gt; [<a href="socat.html#TYPE_TCP_SERVICE">TCP service</a>],
+   using socks version 5 protocol over TCP. Currently no authentication mechanism is provided.<br>
+   Option groups: <a href="socat.html#GROUP_FD">FD</a>, <a href="socat.html#GROUP_SOCKET">SOCKET</a>, <a href="socat.html#GROUP_IP4">IP4</a>, <a href="socat.html#GROUP_IP6">IP6</a>, <a href="socat.html#GROUP_TCP">TCP</a>, <a href="socat.html#GROUP_CHILD">CHILD</a>, <a href="socat.html#GROUP_RETRY">RETRY</a><br>
+   Useful options:
+   <a href="socat.html#OPTION_SOCKSPORT">socksport</a>,
+   <a href="socat.html#OPTION_SOURCEPORT">sourceport</a>,
+   <a href="socat.html#OPTION_PROTOCOL_FAMILY">pf</a>,
+   <a href="socat.html#OPTION_RETRY">retry</a><br>
+   See also:
+   <a href="socat.html#ADDRESS_SOCKS5_LISTEN">SOCKS5-LISTEN</a>,
+   <a href="socat.html#ADDRESS_SOCKS4">SOCKS4</a>,
+   <a href="socat.html#ADDRESS_SOCKS4A">SOCKS4A</a>,
+   <a href="socat.html#ADDRESS_PROXY_CONNECT">PROXY</a>,
+   <a href="socat.html#ADDRESS_TCP_CONNECT">TCP</a>
+<p>
+<a name="ADDRESS_SOCKS5_LISTEN"></a><p><dt><strong><strong><code>SOCKS5-LISTEN:&lt;socks-server&gt;:&lt;socks-port&gt;:&lt;listen-host&gt;:&lt;listen-port&gt;</code></strong></strong><dd>
+<p><dt><strong><strong><code>SOCKS5-LISTEN:&lt;socks-server&gt;:&lt;listen-host&gt;:&lt;listen-port&gt;</code></strong></strong><dd>
+   Connects to &lt;socks-server&gt; [<a href="socat.html#TYPE_IP_ADDRESS">IP address</a>]
+   using socks version 5 protocol over TCP
+   and makes it listen for incoming connections on &lt;listen-port&gt; [<a href="socat.html#TYPE_TCP_SERVICE">TCP service</a>], binding to &lt;-listen-host&gt; [<a href="socat.html#TYPE_IPV4_ADDRESS">IPv4 address</a>]
+   Currently not authentication mechanism is provided.<br>
+   Option groups: <a href="socat.html#GROUP_FD">FD</a>, <a href="socat.html#GROUP_SOCKET">SOCKET</a>, <a href="socat.html#GROUP_IP4">IP4</a>, <a href="socat.html#GROUP_IP6">IP6</a>, <a href="socat.html#GROUP_TCP">TCP</a>, <a href="socat.html#GROUP_CHILD">CHILD</a>, <a href="socat.html#GROUP_RETRY">RETRY</a><br>
+   Useful options:
+   <a href="socat.html#OPTION_SOURCEPORT">sourceport</a>,
+   <a href="socat.html#OPTION_PROTOCOL_FAMILY">pf</a>,
+   <a href="socat.html#OPTION_RETRY">retry</a><br>
+   See also:
+   <a href="socat.html#ADDRESS_SOCKS5_CONNECT">SOCKS5-CONNECT</a>,
+<p>
 <a name="ADDRESS_STDERR"></a><p><dt><strong><strong><code>STDERR</code></strong></strong><dd>
    Uses file descriptor 2.<br>
+   This is a write-only address, see options <a href="socat.html#option_u">-u</a> and
+   <a href="socat.html#option_U">-U</a>, and <a href="socat.html#ADDRESS_DUAL">dual addresses</a>.<br>
    Option groups: <a href="socat.html#GROUP_FD">FD</a> (<a href="socat.html#GROUP_TERMIOS">TERMIOS</a>,<a href="socat.html#GROUP_REG">REG</a>,<a href="socat.html#GROUP_SOCKET">SOCKET</a>) <br>
    See also: <a href="socat.html#ADDRESS_FD">FD</a>
 <a name="ADDRESS_STDIN"></a><p><dt><strong><strong><code>STDIN</code></strong></strong><dd>
    Uses file descriptor 0.<br>
+   This is a read-only address, see options <a href="socat.html#option_u">-u</a> and
+   <a href="socat.html#option_U">-U</a>, and <a href="socat.html#ADDRESS_DUAL">dual addresses</a>.<br>
    Option groups: <a href="socat.html#GROUP_FD">FD</a> (<a href="socat.html#GROUP_TERMIOS">TERMIOS</a>,<a href="socat.html#GROUP_REG">REG</a>,<a href="socat.html#GROUP_SOCKET">SOCKET</a>) <br>
    Useful options:
    <a href="socat.html#OPTION_READBYTES">readbytes</a><br>
@@ -968,8 +1204,37 @@ parameters, and semantics.
    See also: <a href="socat.html#ADDRESS_FD">FD</a>
 <a name="ADDRESS_STDOUT"></a><p><dt><strong><strong><code>STDOUT</code></strong></strong><dd>
    Uses file descriptor 1.<br>
+   This is a write-only address, see options <a href="socat.html#option_u">-u</a> and
+   <a href="socat.html#option_U">-U</a>, and <a href="socat.html#ADDRESS_DUAL">dual addresses</a>.<br>
    Option groups: <a href="socat.html#GROUP_FD">FD</a> (<a href="socat.html#GROUP_TERMIOS">TERMIOS</a>,<a href="socat.html#GROUP_REG">REG</a>,<a href="socat.html#GROUP_SOCKET">SOCKET</a>) <br>
    See also: <a href="socat.html#ADDRESS_FD">FD</a>
+<a name="ADDRESS_SHELL"></a><p><dt><strong><strong><code>SHELL:&lt;shell-command&gt;</code></strong></strong><dd>
+   Forks a sub process that establishes communication with its parent process
+   and invokes the specified program with the configured shell ($SHELL).
+   Note that &lt;shell-command&gt; [<a href="socat.html#TYPE_STRING">string</a>] must
+   not contain ',' or "!!", and that shell meta characters may have to be
+   protected.
+   After successful program start, <strong>socat</strong> writes data to stdin of the 
+   process and reads from its stdout.<br>
+   Option groups: <a href="socat.html#GROUP_FD">FD</a>,<a href="socat.html#GROUP_SOCKET">SOCKET</a>,<a href="socat.html#GROUP_EXEC">EXEC</a>,<a href="socat.html#GROUP_FORK">FORK</a>,<a href="socat.html#GROUP_TERMIOS">TERMIOS</a> <br>
+   Useful options:
+   <a href="socat.html#OPTION_PATH">path</a>,
+   <a href="socat.html#OPTION_FDIN">fdin</a>,
+   <a href="socat.html#OPTION_FDOUT">fdout</a>,
+   <a href="socat.html#OPTION_CHROOT">chroot</a>,
+   <a href="socat.html#OPTION_SUBSTUSER">su</a>,
+   <a href="socat.html#OPTION_SUBSTUSER_DELAYED">su-d</a>,
+   <a href="socat.html#OPTION_NOFORK">nofork</a>,
+   <a href="socat.html#OPTION_SO_TYPE">socktype</a>,
+   <a href="socat.html#OPTION_PTY">pty</a>,
+   <a href="socat.html#OPTION_STDERR">stderr</a>,
+   <a href="socat.html#OPTION_CTTY">ctty</a>,
+   <a href="socat.html#OPTION_SETSID">setsid</a>,
+   <a href="socat.html#OPTION_PIPES">pipes</a>,
+   <a href="socat.html#OPTION_UMASK">umask</a>,
+   <a href="socat.html#OPTION_SIGINT">sigint</a>,
+   <a href="socat.html#OPTION_SIGQUIT">sigquit</a><br>
+   See also: <a href="socat.html#ADDRESS_EXEC">EXEC</a>, <a href="socat.html#ADDRESS_SYSTEM">SYSTEM</a>
 <a name="ADDRESS_SYSTEM"></a><p><dt><strong><strong><code>SYSTEM:&lt;shell-command&gt;</code></strong></strong><dd>
    Forks a sub process that establishes communication with its parent process
    and invokes the specified program with 
@@ -989,14 +1254,17 @@ parameters, and semantics.
    <a href="socat.html#OPTION_SUBSTUSER">su</a>,
    <a href="socat.html#OPTION_SUBSTUSER_DELAYED">su-d</a>,
    <a href="socat.html#OPTION_NOFORK">nofork</a>,
+   <a href="socat.html#OPTION_SO_TYPE">socktype</a>,
    <a href="socat.html#OPTION_PTY">pty</a>,
    <a href="socat.html#OPTION_STDERR">stderr</a>,
    <a href="socat.html#OPTION_CTTY">ctty</a>,
    <a href="socat.html#OPTION_SETSID">setsid</a>,
    <a href="socat.html#OPTION_PIPES">pipes</a>,
+   <a href="socat.html#OPTION_UMASK">umask</a>,
    <a href="socat.html#OPTION_SIGINT">sigint</a>,
-   <a href="socat.html#OPTION_SIGQUIT">sigquit</a><br>
-   See also: <a href="socat.html#ADDRESS_EXEC">EXEC</a>
+   <a href="socat.html#OPTION_SIGQUIT">sigquit</a>,
+   <a href="socat.html#OPTION_NETNS">netns</a><br>
+   See also: <a href="socat.html#ADDRESS_EXEC">EXEC</a>, <a href="socat.html#ADDRESS_SHELL">SHELL</a>
 <a name="ADDRESS_TCP_CONNECT"></a><p><dt><strong><strong><code>TCP:&lt;host&gt;:&lt;port&gt;</code></strong></strong><dd>
    Connects to &lt;port&gt; [<a href="socat.html#TYPE_TCP_SERVICE">TCP service</a>] on
    &lt;host&gt; [<a href="socat.html#TYPE_IP_ADDRESS">IP address</a>] using TCP/IP version 4 or 6
@@ -1004,17 +1272,18 @@ parameters, and semantics.
    <a href="socat.html#OPTION_PROTOCOL_FAMILY">pf</a>.<br> 
    Option groups: <a href="socat.html#GROUP_FD">FD</a>,<a href="socat.html#GROUP_SOCKET">SOCKET</a>,<a href="socat.html#GROUP_IP4">IP4</a>,<a href="socat.html#GROUP_IP6">IP6</a>,<a href="socat.html#GROUP_TCP">TCP</a>,<a href="socat.html#GROUP_RETRY">RETRY</a> <br>
    Useful options:
+   <a href="socat.html#OPTION_CONNECT_TIMEOUT">connect-timeout</a>,
+   <a href="socat.html#OPTION_RETRY">retry</a>,
+   <a href="socat.html#OPTION_SOURCEPORT">sourceport</a>,
+   <a href="socat.html#OPTION_NETNS">netns</a>,
    <a href="socat.html#OPTION_CRNL">crnl</a>,
    <a href="socat.html#OPTION_BIND">bind</a>,
    <a href="socat.html#OPTION_PROTOCOL_FAMILY">pf</a>,
-   <a href="socat.html#OPTION_CONNECT_TIMEOUT">connect-timeout</a>,
    <a href="socat.html#OPTION_TOS">tos</a>,
    <a href="socat.html#OPTION_MTUDISCOVER">mtudiscover</a>,
    <a href="socat.html#OPTION_MSS">mss</a>,
    <a href="socat.html#OPTION_TCP_NODELAY">nodelay</a>,
-   <a href="socat.html#OPTION_NONBLOCK">nonblock</a>,
-   <a href="socat.html#OPTION_SOURCEPORT">sourceport</a>,
-   <a href="socat.html#OPTION_RETRY">retry</a>,
+   <a href="socat.html#OPTION_O_NONBLOCK">nonblock</a>,
    <a href="socat.html#OPTION_READBYTES">readbytes</a><br>
    See also:
    <a href="socat.html#ADDRESS_TCP4_CONNECT">TCP4</a>,
@@ -1049,7 +1318,7 @@ parameters, and semantics.
    <a href="socat.html#OPTION_ACCEPT_TIMEOUT">accept-timeout</a>,
    <a href="socat.html#OPTION_MSS">mss</a>,
    <a href="socat.html#OPTION_SUBSTUSER">su</a>,
-   <a href="socat.html#OPTION_REUSEADDR">reuseaddr</a>,
+   <a href="socat.html#OPTION_SO_REUSEADDR">reuseaddr</a>,
    <a href="socat.html#OPTION_RETRY">retry</a>,
    <a href="socat.html#OPTION_COOL_WRITE">cool-write</a><br>
    See also:
@@ -1071,7 +1340,7 @@ parameters, and semantics.
    <a href="socat.html#OPTION_IPV6_V6ONLY">ipv6only</a><br>
    Option groups: <a href="socat.html#GROUP_FD">FD</a>,<a href="socat.html#GROUP_SOCKET">SOCKET</a>,<a href="socat.html#GROUP_LISTEN">LISTEN</a>,<a href="socat.html#GROUP_CHILD">CHILD</a>,<a href="socat.html#GROUP_RANGE">RANGE</a>,<a href="socat.html#GROUP_IP6">IP6</a>,<a href="socat.html#GROUP_TCP">TCP</a>,<a href="socat.html#GROUP_RETRY">RETRY</a> <br>
 <a name="ADDRESS_TUN"></a><p><dt><strong><strong><code>TUN[:&lt;if-addr&gt;/&lt;bits&gt;]</code></strong></strong><dd>
-   Creates a Linux TUN/TAP device and optionally assignes it the address and
+   Creates a Linux TUN/TAP device and optionally assigns it the address and
    netmask given by the parameters. The resulting network interface is almost
    ready for use by other processes; socat serves its "wire side". This address
    requires read and write access to the tunnel cloning device, usually
@@ -1082,15 +1351,18 @@ parameters, and semantics.
    Note: If you intend to transfer packets between two Socat "wire sides" you
    need a protocol that keeps packet boundaries, e.g.UDP; TCP might work with
    option <a href="socat.html#OPTION_TCP_NODELAY">nodelay</a>.<br>
-   Option groups: <a href="socat.html#GROUP_FD">FD</a>,<a href="socat.html#GROUP_NAMED">NAMED</a>,<a href="socat.html#GROUP_OPEN">OPEN</a>,<a href="socat.html#GROUP_TUN">TUN</a> <br>
+   Option groups: <a href="socat.html#GROUP_FD">FD</a>,<a href="socat.html#GROUP_NAMED">NAMED</a>,<a href="socat.html#GROUP_OPEN">OPEN</a>,<a href="socat.html#GROUP_INTERFACE">TUN</a> <br>
    Useful options:
    <a href="socat.html#OPTION_IFF_UP">iff-up</a>,
    <a href="socat.html#OPTION_TUN_DEVICE">tun-device</a>,
    <a href="socat.html#OPTION_TUN_NAME">tun-name</a>,
    <a href="socat.html#OPTION_TUN_TYPE">tun-type</a>,
-   <a href="socat.html#OPTION_IFF_NO_PI">iff-no-pi</a> <br>
+   <a href="socat.html#OPTION_IFF_NO_PI">iff-no-pi</a>,
+   <a href="socat.html#OPTION_NETNS">netns</a><br>
    See also:
    <a href="socat.html#ADDRESS_IP_RECV">ip-recv</a>
+<p>
+<a name="ADDRESSES_UDP"></a>
 <a name="ADDRESS_UDP_CONNECT"></a><p><dt><strong><strong><code>UDP:&lt;host&gt;:&lt;port&gt;</code></strong></strong><dd>
    Connects to &lt;port&gt; [<a href="socat.html#TYPE_UDP_SERVICE">UDP service</a>] on
    &lt;host&gt; [<a href="socat.html#TYPE_IP_ADDRESS">IP address</a>] using UDP/IP version 4 or 6
@@ -1137,6 +1409,8 @@ parameters, and semantics.
    <a href="socat.html#OPTION_IP_MULTICAST_IF">ip-multicast-if</a>,
    <a href="socat.html#OPTION_IP_ADD_MEMBERSHIP">ip-add-membership</a>,
    <a href="socat.html#OPTION_IP_ADD_SOURCE_MEMBERSHIP">ip-add-source-membership</a>,
+   <a href="socat.html#OPTION_IPV6_JOIN_GROUP">ipv6-join-group</a>,
+   <a href="socat.html#OPTION_IPV6_JOIN_SOURCE_GROUP">ipv6-join-source-group</a>,
    <a href="socat.html#OPTION_TTL">ttl</a>,
    <a href="socat.html#OPTION_TOS">tos</a>,
    <a href="socat.html#OPTION_SOURCEPORT">sourceport</a>,
@@ -1196,7 +1470,8 @@ parameters, and semantics.
    <a href="socat.html#OPTION_PROTOCOL_FAMILY">pf</a>. It sends packets to and receives packets
    from that peer socket only.  
    This address effectively implements a datagram client.
-   It works well with socat UDP-RECVFROM and UDP-RECV address peers.<br>
+   It works well with socat UDP-RECVFROM and UDP-RECV address peers.
+   When the peer might send data first, <a href="socat.html#ADDRESS_UDP_DATAGRAM">UDP-DATAGRAM</a> is preferable.<br>
    Option groups: <a href="socat.html#GROUP_FD">FD</a>,<a href="socat.html#GROUP_SOCKET">SOCKET</a>,<a href="socat.html#GROUP_IP4">IP4</a>,<a href="socat.html#GROUP_IP6">IP6</a> <br>
    Useful options:
    <a href="socat.html#OPTION_TTL">ttl</a>,
@@ -1234,7 +1509,8 @@ parameters, and semantics.
    <a name="NOTE_RECVFROM"></a>Note: When the second address fails before entering the transfer loop the
    packet is dropped. Use option <a href="socat.html#OPTION_RETRY">retry</a> or
    <a href="socat.html#OPTION_FOREVER">forever</a> on the second address to avoid data loss.
-   <br>
+   When you know the peer address, <a href="socat.html#ADDRESS_UDP_DATAGRAM">UDP-DATAGRAM</a> is
+   preferable.<br>
    Option groups: <a href="socat.html#GROUP_FD">FD</a>,<a href="socat.html#GROUP_SOCKET">SOCKET</a>,<a href="socat.html#GROUP_IP4">IP4</a>,<a href="socat.html#GROUP_IP6">IP6</a>,<a href="socat.html#GROUP_CHILD">CHILD</a>,<a href="socat.html#GROUP_RANGE">RANGE</a> <br>
    Useful options:
    <a href="socat.html#OPTION_FORK">fork</a>,
@@ -1263,7 +1539,11 @@ parameters, and semantics.
    Creates a UDP socket on &lt;port&gt; [<a href="socat.html#TYPE_UDP_SERVICE">UDP service</a>] using UDP/IP version 4 or 6
    depending on option <a href="socat.html#OPTION_PROTOCOL_FAMILY">pf</a>.
    It receives packets from multiple unspecified peers and merges the data.
-   No replies are possible. It works well with, e.g., socat <a href="socat.html#ADDRESS_UDP_SENDTO">UDP-SENDTO</a> address peers; it behaves similar to a syslog server.<br>
+   No replies are possible. It works well with, e.g., socat
+   <a href="socat.html#ADDRESS_UDP_SENDTO">UDP-SENDTO</a> address peers; it behaves similar to a
+   syslog server.<br>
+   This is a read-only address, see options <a href="socat.html#option_u">-u</a> and
+   <a href="socat.html#option_U">-U</a>, and <a href="socat.html#ADDRESS_DUAL">dual addresses</a>.<br>
    Note: if you need the <a href="socat.html#OPTION_FORK">fork</a> option, use <a href="socat.html#ADDRESS_UDP_RECVFROM">UDP-RECVFROM</a> in unidirectional mode (with <a href="socat.html#option_u">option -u</a>) instead.<br>
    Option groups: <a href="socat.html#GROUP_FD">FD</a>,<a href="socat.html#GROUP_SOCKET">SOCKET</a>,<a href="socat.html#GROUP_IP4">IP4</a>,<a href="socat.html#GROUP_IP6">IP6</a>,<a href="socat.html#GROUP_RANGE">RANGE</a> <br>
    Useful options:
@@ -1287,6 +1567,29 @@ parameters, and semantics.
 <a name="ADDRESS_UDP6_RECV"></a><p><dt><strong><strong><code>UDP6-RECV:&lt;port&gt;</code></strong></strong><dd>
    Like <a href="socat.html#ADDRESS_UDP_RECV">UDP-RECV</a>, but only supports IPv6 protocol.<br>
    Option groups: <a href="socat.html#GROUP_FD">FD</a>,<a href="socat.html#GROUP_SOCKET">SOCKET</a>,<a href="socat.html#GROUP_IP6">IP6</a>,<a href="socat.html#GROUP_RANGE">RANGE</a>
+<p>
+<a name="ADDRESS_UDPLITE"></a>
+<p><dt><strong><strong><code>UDPLITE-CONNECT:&lt;host&gt;:&lt;port&gt;</code></strong></strong><dd>
+<p><dt><strong><strong><code>UDPLITE4-CONNECT:&lt;host&gt;:&lt;port&gt;</code></strong></strong><dd>
+<p><dt><strong><strong><code>UDPLITE6-CONNECT:&lt;host&gt;:&lt;port&gt;</code></strong></strong><dd>
+<p><dt><strong><strong><code>UDPLITE-DATAGRAM:&lt;address&gt;:&lt;port&gt;</code></strong></strong><dd>
+<p><dt><strong><strong><code>UDPLITE4-DATAGRAM:&lt;address&gt;:&lt;port&gt;</code></strong></strong><dd>
+<p><dt><strong><strong><code>UDPLITE6-DATAGRAM:&lt;address&gt;:&lt;port&gt;</code></strong></strong><dd>
+<p><dt><strong><strong><code>UDPLITE-LISTEN:&lt;port&gt;</code></strong></strong><dd>
+<p><dt><strong><strong><code>UDPLITE4-LISTEN:&lt;port&gt;</code></strong></strong><dd>
+<p><dt><strong><strong><code>UDPLITE6-LISTEN:&lt;port&gt;</code></strong></strong><dd>
+<p><dt><strong><strong><code>UDPLITE-SENDTO:&lt;host&gt;:&lt;port&gt;</code></strong></strong><dd>
+<p><dt><strong><strong><code>UDPLITE4-SENDTO:&lt;host&gt;:&lt;port&gt;</code></strong></strong><dd>
+<p><dt><strong><strong><code>UDPLITE6-SENDTO:&lt;host&gt;:&lt;port&gt;</code></strong></strong><dd>
+<p><dt><strong><strong><code>UDPLITE-RECVFROM:&lt;port&gt;</code></strong></strong><dd>
+<p><dt><strong><strong><code>UDPLITE4-RECVFROM:&lt;port&gt;</code></strong></strong><dd>
+<p><dt><strong><strong><code>UDPLITE6-RECVFROM:&lt;port&gt;</code></strong></strong><dd>
+<p><dt><strong><strong><code>UDPLITE-RECV:&lt;port&gt;</code></strong></strong><dd>
+<p><dt><strong><strong><code>UDPLITE4-RECV:&lt;port&gt;</code></strong></strong><dd>
+<p><dt><strong><strong><code>UDPLITE6-RECV:&lt;port&gt;</code></strong></strong><dd>
+   The UDPLITE addresses are almost identical to the related <a href="socat.html#ADDRESSES_UDP">UDP addresses</a>
+   but they use UDP-Lite protocol and have the additional <a href="socat.html#GROUP_UDPLITE">UDPLITE option
+   group</a>.<br>
 <p>
 <a name="ADDRESS_UNIX_CONNECT"></a><p><dt><strong><strong><code>UNIX-CONNECT:&lt;filename&gt;</code></strong></strong><dd>
    Connects to <a href="socat.html#TYPE_FILENAME">&lt;filename&gt;</a> assuming it is a UNIX domain
@@ -1353,6 +1656,7 @@ parameters, and semantics.
    See the <a href="socat.html#NOTE_RECVFROM">note about RECVFROM addresses</a>.<br>
    Useful options:
    <a href="socat.html#OPTION_FORK">fork</a><br>
+   <a href="socat.html#OPTION_UMASK">umask</a><br>
    See also:
    <a href="socat.html#ADDRESS_UNIX_SENDTO">UNIX-SENDTO</a>,
    <a href="socat.html#ADDRESS_UNIX_RECV">UNIX-RECV</a>,
@@ -1363,9 +1667,13 @@ parameters, and semantics.
 <a name="ADDRESS_UNIX_RECV"></a><p><dt><strong><strong><code>UNIX-RECV:&lt;filename&gt;</code></strong></strong><dd>
    Creates a UNIX domain datagram socket [<a href="socat.html#TYPE_FILENAME">&lt;filename&gt;</a>].
    Receives packets from multiple unspecified peers and merges the data.
-   No replies are possible. It can be, e.g., addressed by socat UNIX-SENDTO address peers.
+   No replies are possible, this is a read-only address, see options <a href="socat.html#option_u">-u</a> and
+   <a href="socat.html#option_U">-U</a>, and <a href="socat.html#ADDRESS_DUAL">dual addresses</a>.
+   It can be, e.g., addressed by socat UNIX-SENDTO address peers.
    It behaves similar to a syslog server.<br>
    Option groups: <a href="socat.html#GROUP_FD">FD</a>,<a href="socat.html#GROUP_SOCKET">SOCKET</a>,<a href="socat.html#GROUP_NAMED">NAMED</a>,<a href="socat.html#GROUP_SOCK_UNIX">UNIX</a> <br>
+   Useful options:
+   <a href="socat.html#OPTION_UMASK">umask</a><br>
    See also:
    <a href="socat.html#ADDRESS_UNIX_SENDTO">UNIX-SENDTO</a>,
    <a href="socat.html#ADDRESS_UNIX_RECVFROM">UNIX-RECVFROM</a>,
@@ -1392,7 +1700,6 @@ parameters, and semantics.
    Option groups: <a href="socat.html#GROUP_FD">FD</a>,<a href="socat.html#GROUP_SOCKET">SOCKET</a>,<a href="socat.html#GROUP_CHILD">CHILD</a>,<a href="socat.html#GROUP_RETRY">RETRY</a> <br>
    Useful options:
    <a href="socat.html#OPTION_BIND">bind</a>,
-   <a href="socat.html#OPTION_PROTOCOL_FAMILY">pf</a>,
    <a href="socat.html#OPTION_CONNECT_TIMEOUT">connect-timeout</a>,
    <a href="socat.html#OPTION_RETRY">retry</a>,
    <a href="socat.html#OPTION_READBYTES">readbytes</a><br>
@@ -1407,13 +1714,11 @@ parameters, and semantics.
    Useful options:
    <a href="socat.html#OPTION_FORK">fork</a>,
    <a href="socat.html#OPTION_BIND">bind</a>,
-   <a href="socat.html#OPTION_PROTOCOL_FAMILY">pf</a>,
    <a href="socat.html#OPTION_MAX_CHILDREN">max-children</a>,
    <a href="socat.html#OPTION_BACKLOG">backlog</a>,
    <a href="socat.html#OPTION_SUBSTUSER">su</a>,
-   <a href="socat.html#OPTION_REUSEADDR">reuseaddr</a>,
-   <a href="socat.html#OPTION_RETRY">retry</a>,
-   <a href="socat.html#OPTION_COOL_WRITE">cool-write</a><br>
+   <a href="socat.html#OPTION_SO_REUSEADDR">reuseaddr</a>,
+   <a href="socat.html#OPTION_RETRY">retry</a><br>
    See also:
    <a href="socat.html#ADDRESS_VSOCK_CONNECT">VSOCK-CONNECT</a>
 <p>
@@ -1428,7 +1733,9 @@ parameters, and semantics.
    UNIX domain address space. To achieve this the socket address strings are
    prefixed with "\0" internally. This feature is available (only?) on Linux.
    Option groups are the same as with the related UNIX addresses, except that
-   the ABSTRACT addresses are not member of the NAMED group.
+   the ABSTRACT addresses are not member of the NAMED group.<br>
+   Useful options:
+   <a href="socat.html#OPTION_NETNS">netns</a>
 </dl>
 <p>
 <a name="ADDRESS_OPTIONS"></a>
@@ -1509,7 +1816,7 @@ provides another, non-fd based mechanism.
 For these options, it depends on the actual address type and its option groups 
 which mechanism is used. The second, non-fd based mechanism is prioritized.
 <dl>
-<a name="OPTION_CLOEXEC"></a><p><dt><strong><strong><code>cloexec=&lt;bool&gt;</code></strong></strong><dd>
+<a name="OPTION_CLOEXEC"></a><p><dt><strong><strong><code>cloexec[=&lt;bool&gt;]</code></strong></strong><dd>
    Sets the 
 <code>FD_CLOEXEC</code>
  flag with the 
@@ -1522,7 +1829,7 @@ which mechanism is used. The second, non-fd based mechanism is prioritized.
    internally handles 
    this flag for the fds it controls, so in most cases there will be no need to
    apply this option. 
-<a name="OPTION_SETLK_WR"></a><p><dt><strong><strong><code>setlk</code></strong></strong><dd>
+<a name="OPTION_SETLK_WR"></a><p><dt><strong><strong><code>setlk[=&lt;bool&gt;]</code></strong></strong><dd>
    Tries to set a discretionary write lock to the whole file using the 
 <code>fcntl(fd,
    F_SETLK, ...)</code>
@@ -1531,7 +1838,7 @@ which mechanism is used. The second, non-fd based mechanism is prioritized.
    On Linux, when the file permissions for group are "S" (g-x,g+s), and the
    file system is locally mounted with the "mand" option, the lock is
    mandatory, i.e. prevents other processes from opening the file.
-<a name="OPTION_SETLKW_WR"></a><p><dt><strong><strong><code>setlkw</code></strong></strong><dd>
+<a name="OPTION_SETLKW_WR"></a><p><dt><strong><strong><code>setlkw[=&lt;bool&gt;]</code></strong></strong><dd>
    Tries to set a discretionary waiting write lock to the whole file using the
    
 <code>fcntl(fd, F_SETLKW, ...)</code>
@@ -1539,7 +1846,7 @@ which mechanism is used. The second, non-fd based mechanism is prioritized.
    this call blocks. 
    See option <a href="socat.html#OPTION_SETLK_WR">setlk</a> for information about making this
    lock mandatory. 
-<a name="OPTION_SETLK_RD"></a><p><dt><strong><strong><code>setlk-rd</code></strong></strong><dd>
+<a name="OPTION_SETLK_RD"></a><p><dt><strong><strong><code>setlk-rd[=&lt;bool&gt;]</code></strong></strong><dd>
    Tries to set a discretionary read lock to the whole file using the 
 <code>fcntl(fd,
    F_SETLK, ...)</code>
@@ -1547,7 +1854,7 @@ which mechanism is used. The second, non-fd based mechanism is prioritized.
    results in an error. 
    See option <a href="socat.html#OPTION_SETLK_WR">setlk</a> for information about making this
    lock mandatory. 
-<a name="OPTION_SETLKW_RD"></a><p><dt><strong><strong><code>setlkw-rd</code></strong></strong><dd>
+<a name="OPTION_SETLKW_RD"></a><p><dt><strong><strong><code>setlkw-rd[=&lt;bool&gt;]</code></strong></strong><dd>
    Tries to set a discretionary waiting read lock to the whole file using the
    
 <code>fcntl(fd, F_SETLKW, ...)</code>
@@ -1555,31 +1862,31 @@ which mechanism is used. The second, non-fd based mechanism is prioritized.
    locked, this call blocks. 
    See option <a href="socat.html#OPTION_SETLK_WR">setlk</a> for information about making this
    lock mandatory. 
-<a name="OPTION_FLOCK_EX"></a><p><dt><strong><strong><code>flock-ex</code></strong></strong><dd>
+<a name="OPTION_FLOCK_EX"></a><p><dt><strong><strong><code>flock-ex[=&lt;bool&gt;]</code></strong></strong><dd>
    Tries to set a blocking exclusive advisory lock to the file using the
    
 <code>flock(fd, LOCK_EX)</code>
  system call. <strong>Socat</strong> hangs in this call if the file
    is locked by another process.
-<a name="OPTION_FLOCK_EX_NB"></a><p><dt><strong><strong><code>flock-ex-nb</code></strong></strong><dd>
+<a name="OPTION_FLOCK_EX_NB"></a><p><dt><strong><strong><code>flock-ex-nb[=&lt;bool&gt;]</code></strong></strong><dd>
    Tries to set a nonblocking exclusive advisory lock to the file using the
    
 <code>flock(fd, LOCK_EX|LOCK_NB)</code>
  system call. If the file is already locked,
    this option results in an error.
-<a name="OPTION_FLOCK_SH"></a><p><dt><strong><strong><code>flock-sh</code></strong></strong><dd>
+<a name="OPTION_FLOCK_SH"></a><p><dt><strong><strong><code>flock-sh[=&lt;bool&gt;]</code></strong></strong><dd>
    Tries to set a blocking shared advisory lock to the file using the
    
 <code>flock(fd, LOCK_SH)</code>
  system call. <strong>Socat</strong> hangs in this call if the file
    is locked by another process.
-<a name="OPTION_FLOCK_SH_NB"></a><p><dt><strong><strong><code>flock-sh-nb</code></strong></strong><dd>
+<a name="OPTION_FLOCK_SH_NB"></a><p><dt><strong><strong><code>flock-sh-nb[=&lt;bool&gt;]</code></strong></strong><dd>
    Tries to set a nonblocking shared advisory lock to the file using the
    
 <code>flock(fd, LOCK_SH|LOCK_NB)</code>
  system call. If the file is already locked,
    this option results in an error.
-<a name="OPTION_LOCK"></a><p><dt><strong><strong><code>lock</code></strong></strong><dd>
+<a name="OPTION_LOCK"></a><p><dt><strong><strong><code>lock[=&lt;bool&gt;]</code></strong></strong><dd>
    Sets a blocking lock on the file. Uses the setlk or flock mechanism
    depending on availability on the particular platform. If both are available,
    the POSIX variant (setlkw) is used.
@@ -1637,8 +1944,10 @@ which mechanism is used. The second, non-fd based mechanism is prioritized.
    Otherwise, <strong>socat</strong> sets the mode of the stream
    using 
 <code>fchmod()</code>
-. 
-   These calls might require ownership or root privilege.
+ which, btw, might not have any effect.<br>
+   These calls might require ownership or root privilege.<br>
+   Note: this option can only tighten the permissions implied by processes
+   umask. See option <a href="socat.html#OPTION_UMASK">umask</a> to loosen permissions.
 <a name="OPTION_PERM_LATE"></a><p><dt><strong><strong><code>perm-late=&lt;mode&gt;</code></strong></strong><dd>
    Sets the permissions of the fd to value &lt;mode&gt;
    [<a href="socat.html#TYPE_MODE_T">mode_t</a>] using the 
@@ -1646,7 +1955,7 @@ which mechanism is used. The second, non-fd based mechanism is prioritized.
  system call after
    opening or connecting the channel.
    This is useful only on file system entries. 
-<a name="OPTION_APPEND"></a><p><dt><strong><strong><code>append=&lt;bool&gt;</code></strong></strong><dd>
+<a name="OPTION_APPEND"></a><p><dt><strong><strong><code>append[=&lt;bool&gt;]</code></strong></strong><dd>
    Always writes data to the actual end of file.
    If the address is member of the OPEN option group, 
    <strong>socat</strong> uses the 
@@ -1658,7 +1967,7 @@ which mechanism is used. The second, non-fd based mechanism is prioritized.
    Otherwise, <strong>socat</strong> applies the 
 <code>fcntl(fd, F_SETFL, O_APPEND)</code>
  call.
-<a name="OPTION_NONBLOCK"></a><p><dt><strong><strong><code>nonblock=&lt;bool&gt;</code></strong></strong><dd>
+<a name="OPTION_O_NONBLOCK"></a><p><dt><strong><strong><code>nonblock[=&lt;bool&gt;]</code></strong></strong><dd>
    Tries to open or use file in nonblocking mode. Its only effects are that the
    
 <code>connect()</code>
@@ -1675,22 +1984,25 @@ which mechanism is used. The second, non-fd based mechanism is prioritized.
  call.
  
 
-<a name="OPTION_O_BINARY"></a><p><dt><strong><strong><code>binary</code></strong></strong><dd>
+<a name="OPTION_O_BINARY"></a><p><dt><strong><strong><code>binary[=&lt;bool&gt;]</code></strong></strong><dd>
    Opens the file in binary mode to avoid implicit line terminator
    conversions (Cygwin).
-<a name="OPTION_O_TEXT"></a><p><dt><strong><strong><code>text</code></strong></strong><dd>
+<a name="OPTION_O_TEXT"></a><p><dt><strong><strong><code>text[=&lt;bool&gt;]</code></strong></strong><dd>
    Opens the file in text mode to force implicit line terminator conversions
    (Cygwin).
-<a name="OPTION_O_NOINHERIT"></a><p><dt><strong><strong><code>noinherit</code></strong></strong><dd>
+<a name="OPTION_O_NOINHERIT"></a><p><dt><strong><strong><code>noinherit[=&lt;bool&gt;]</code></strong></strong><dd>
    Does not keep this file open in a spawned process (Cygwin).
-<a name="OPTION_COOL_WRITE"></a><p><dt><strong><strong><code>cool-write</code></strong></strong><dd>
+<a name="OPTION_COOL_WRITE"></a><p><dt><strong><strong><code>cool-write[=&lt;bool&gt;]</code></strong></strong><dd>
    Takes it easy when write fails with EPIPE or ECONNRESET and logs the message
    with <em>notice</em> level instead of <em>error</em>.
    This prevents the log file from being filled with useless error messages
-   when socat is used as a high volume server or proxy where clients often
-   abort the connection.<br>
-   This option is experimental.
-<a name="OPTION_END_CLOSE"></a><p><dt><strong><strong><code>end-close</code></strong></strong><dd>
+   when <strong>socat</strong> is used as a high volume server or proxy where clients often
+   abort the connection. Use this option only with option
+   <a href="socat.html#OPTION_FORK">fork</a> because otherwise it might cause <strong>socat</strong> to exit
+   with code 0 even on failure.<br>
+   This option is deprecated, consider using
+   <a href="socat.html#OPTION_CHILDRED_SHUTUP">option children-shutup</a> instead.
+<a name="OPTION_END_CLOSE"></a><p><dt><strong><strong><code>end-close[=&lt;bool&gt;]</code></strong></strong><dd>
    Changes the (address dependent) method of ending a connection to just close
    the file descriptors. This is useful when the connection is to be reused by
    or shared with other processes (<a href="socat.html#EXAMPLE_END_CLOSE">example</a>).<br>
@@ -1701,21 +2013,21 @@ which mechanism is used. The second, non-fd based mechanism is prioritized.
    Similarly, when an address of type EXEC or SYSTEM is ended, socat usually
    will explicitly kill the sub process. With this option, it will just close
    the file descriptors.
-<a name="OPTION_SHUT_NONE"></a><p><dt><strong><strong><code>shut-none</code></strong></strong><dd>
+<a name="OPTION_SHUT_NONE"></a><p><dt><strong><strong><code>shut-none[=&lt;bool&gt;]</code></strong></strong><dd>
    Changes the (address dependent) method of shutting down the write part of a
    connection to not do anything.
-<a name="OPTION_SHUT_DOWN"></a><p><dt><strong><strong><code>shut-down</code></strong></strong><dd>
+<a name="OPTION_SHUT_DOWN"></a><p><dt><strong><strong><code>shut-down[=&lt;bool&gt;]</code></strong></strong><dd>
    Changes the (address dependent) method of shutting down the write part of a
    connection to shutdown(fd, SHUT_WR). Is only useful with sockets.
-<a name="OPTION_SHUT_CLOSE"></a><p><dt><strong><strong><code>shut-close</code></strong></strong><dd>
+<a name="OPTION_SHUT_CLOSE"></a><p><dt><strong><strong><code>shut-close[=&lt;bool&gt;]</code></strong></strong><dd>
    Changes the (address dependent) method of shutting down the write part of a
    connection to close(fd).
-<a name="OPTION_SHUT_NULL"></a><p><dt><strong><strong><code>shut-null</code></strong></strong><dd>
+<a name="OPTION_SHUT_NULL"></a><p><dt><strong><strong><code>shut-null[=&lt;bool&gt;]</code></strong></strong><dd>
    When one address indicates EOF, <strong>socat</strong> will send a zero sized packet to the
    write channel of the other address to transfer the EOF condition. This is
    useful with UDP and other datagram protocols. Has been tested against
    netcat and socat with option <a href="socat.html#OPTION_NULL_EOF">null-eof</a>.
-<a name="OPTION_NULL_EOF"></a><p><dt><strong><strong><code>null-eof</code></strong></strong><dd>
+<a name="OPTION_NULL_EOF"></a><p><dt><strong><strong><code>null-eof[=&lt;bool&gt;]</code></strong></strong><dd>
    Normally <strong>socat</strong> will ignore empty (zero size payload) packets arriving on
    datagram sockets, so it survives port scans. With this option <strong>socat</strong>
    interprets empty datagram packets as EOF indicator (see
@@ -1771,27 +2083,23 @@ See also options <a href="socat.html#OPTION_USER">user</a>, <a href="socat.html#
 <code>chmod()</code>
  system call. This call might require ownership or root
    privilege. 
-<a name="OPTION_UMASK"></a><p><dt><strong><strong><code>umask=&lt;mode&gt;</code></strong></strong><dd>
-   Sets the umask of the process to &lt;mode&gt; [<a href="socat.html#TYPE_MODE_T">mode_t</a>] before
-   accessing the file system entry (useful 
-   with UNIX domain sockets!). This call might affect all further operations
-   of the <strong>socat</strong> process!  
-<a name="OPTION_UNLINK_EARLY"></a><p><dt><strong><strong><code>unlink-early</code></strong></strong><dd>
+<a name="OPTION_UNLINK_EARLY"></a><p><dt><strong><strong><code>unlink-early[=&lt;bool&gt;]</code></strong></strong><dd>
    Unlinks (removes) the file before opening it and even before applying
    user-early etc. 
-<a name="OPTION_UNLINK"></a><p><dt><strong><strong><code>unlink</code></strong></strong><dd>
+<a name="OPTION_UNLINK"></a><p><dt><strong><strong><code>unlink[=&lt;bool&gt;]</code></strong></strong><dd>
    Unlinks (removes) the file before accessing it, but after user-early etc.
-<a name="OPTION_UNLINK_LATE"></a><p><dt><strong><strong><code>unlink-late</code></strong></strong><dd>
+<a name="OPTION_UNLINK_LATE"></a><p><dt><strong><strong><code>unlink-late[=&lt;bool&gt;]</code></strong></strong><dd>
    Unlinks (removes) the file after opening it to make it inaccessible for
    other processes after a short race condition. 
-<a name="OPTION_UNLINK_CLOSE"></a><p><dt><strong><strong><code>unlink-close</code></strong></strong><dd>
-   Removes the addresses file system entry when closing the address.
+<a name="OPTION_UNLINK_CLOSE"></a><p><dt><strong><strong><code>unlink-close[=&lt;bool&gt;]</code></strong></strong><dd>
+   Controls removal of the addresses file system entry when closing the address.
    For <a href="socat.html#ADDRESS_NAMED_PIPE">named pipes</a>,
    <a href="socat.html#ADDRESS_UNIX_LISTEN">UNIX domain sockets</a>,
    and the <a href="socat.html#OPTION_SYMBOLIC_LINK">symbolic links</a> of <a href="socat.html#ADDRESS_PTY">pty addresses</a>,
-   the default is 1; for <a href="socat.html#ADDRESS_CREAT">created files</a>,
+   the default is remove (1); for <a href="socat.html#ADDRESS_CREAT">created files</a>,
    <a href="socat.html#ADDRESS_OPEN">opened files</a>, and
-   <a href="socat.html#ADDRESS_GOPEN">generic opened files</a> the default is 0.
+   <a href="socat.html#ADDRESS_GOPEN">generic opened files</a> the default is keep (0).
+   Setting this option to 1 removes the entry, 0 keeps it. No value means 1.
 </dl>
 <p>
 <dl></dl><br>
@@ -1803,48 +2111,54 @@ The OPEN group options allow setting flags with the
  system call. 
 E.g., option `creat' sets the 
 <code>O_CREAT</code>
- flag.<br>
+ flag. When the used address does
+not use 
+<code>open()</code>
+ (e.g.STDIO), the 
+<code>fcntl(..., F_SETFL, ...)</code>
+ call is
+used instead.<br>
 See also options <a href="socat.html#OPTION_APPEND">append</a> and
-<a href="socat.html#OPTION_NONBLOCK">nonblock</a>.
+<a href="socat.html#OPTION_O_NONBLOCK">nonblock</a>.
 <dl>
-<a name="OPTION_O_CREAT"></a><p><dt><strong><strong><code>creat=&lt;bool&gt;</code></strong></strong><dd>
+<a name="OPTION_O_CREAT"></a><p><dt><strong><strong><code>creat[=&lt;bool&gt;]</code></strong></strong><dd>
    Creates the file if it does not exist (<a href="socat.html#EXAMPLE_OPTION_CREAT">example</a>).
-<a name="OPTION_DSYNC"></a><p><dt><strong><strong><code>dsync=&lt;bool&gt;</code></strong></strong><dd>
+<a name="OPTION_DSYNC"></a><p><dt><strong><strong><code>dsync[=&lt;bool&gt;]</code></strong></strong><dd>
    Blocks 
 <code>write()</code>
  calls until metainfo is physically written to media.
-<a name="OPTION_EXCL"></a><p><dt><strong><strong><code>excl=&lt;bool&gt;</code></strong></strong><dd>
+<a name="OPTION_O_EXCL"></a><p><dt><strong><strong><code>excl[=&lt;bool&gt;]</code></strong></strong><dd>
    With option creat, if file exists this is an error.
-<a name="OPTION_LARGEFILE"></a><p><dt><strong><strong><code>largefile=&lt;bool&gt;</code></strong></strong><dd>
+<a name="OPTION_LARGEFILE"></a><p><dt><strong><strong><code>largefile[=&lt;bool&gt;]</code></strong></strong><dd>
    On 32 bit systems, allows a file larger than 2^31 bytes.
-<a name="OPTION_O_NOATIME"></a><p><dt><strong><strong><code>noatime</code></strong></strong><dd>
+<a name="OPTION_O_NOATIME"></a><p><dt><strong><strong><code>noatime[=&lt;bool&gt;]</code></strong></strong><dd>
    Sets the O_NOATIME options, so reads do not change the access timestamp.
-<a name="OPTION_NOCTTY"></a><p><dt><strong><strong><code>noctty=&lt;bool&gt;</code></strong></strong><dd>
+<a name="OPTION_NOCTTY"></a><p><dt><strong><strong><code>noctty[=&lt;bool&gt;]</code></strong></strong><dd>
    Does not make this file the controlling terminal.
-<a name="OPTION_NOFOLLOW"></a><p><dt><strong><strong><code>nofollow=&lt;bool&gt;</code></strong></strong><dd>
+<a name="OPTION_NOFOLLOW"></a><p><dt><strong><strong><code>nofollow[=&lt;bool&gt;]</code></strong></strong><dd>
    Does not follow symbolic links.
-<a name="OPTION_NSHARE"></a><p><dt><strong><strong><code>nshare=&lt;bool&gt;</code></strong></strong><dd>
+<a name="OPTION_NSHARE"></a><p><dt><strong><strong><code>nshare[=&lt;bool&gt;]</code></strong></strong><dd>
    Does not allow sharing this file with other processes.
-<a name="OPTION_RSHARE"></a><p><dt><strong><strong><code>rshare=&lt;bool&gt;</code></strong></strong><dd>
+<a name="OPTION_RSHARE"></a><p><dt><strong><strong><code>rshare[=&lt;bool&gt;]</code></strong></strong><dd>
    Does not allow other processes to open this file for writing.
-<a name="OPTION_RSYNC"></a><p><dt><strong><strong><code>rsync=&lt;bool&gt;</code></strong></strong><dd>
+<a name="OPTION_RSYNC"></a><p><dt><strong><strong><code>rsync[=&lt;bool&gt;]</code></strong></strong><dd>
    Blocks 
 <code>write()</code>
  until metainfo is physically written to media.
-<a name="OPTION_SYNC"></a><p><dt><strong><strong><code>sync=&lt;bool&gt;</code></strong></strong><dd>
+<a name="OPTION_SYNC"></a><p><dt><strong><strong><code>sync[=&lt;bool&gt;]</code></strong></strong><dd>
    Blocks 
 <code>write()</code>
  until data is physically written to media.
 
 
-	
 
-<a name="OPTION_RDONLY"></a><p><dt><strong><strong><code>rdonly=&lt;bool&gt;</code></strong></strong><dd>
+
+<a name="OPTION_RDONLY"></a><p><dt><strong><strong><code>rdonly[=&lt;bool&gt;]</code></strong></strong><dd>
    Opens the file for reading only.
 
-<a name="OPTION_WRONLY"></a><p><dt><strong><strong><code>wronly=&lt;bool&gt;</code></strong></strong><dd>
+<a name="OPTION_WRONLY"></a><p><dt><strong><strong><code>wronly[=&lt;bool&gt;]</code></strong></strong><dd>
    Opens the file for writing only.
-<a name="OPTION_O_TRUNC"></a><p><dt><strong><strong><code>trunc</code></strong></strong><dd>
+<a name="OPTION_O_TRUNC"></a><p><dt><strong><strong><code>trunc[=&lt;bool&gt;]</code></strong></strong><dd>
    Truncates the file to size 0 during opening it.
 </dl>
 <p>
@@ -1893,17 +2207,17 @@ semantics make sense only on a file supporting random access.
    <a href="socat.html#TYPE_OFF64">off64_t</a>]. Please note that a missing value defaults to 1,
    not 0.
 <p>
-<a name="OPTION_FS_SECRM_FL"></a><p><dt><strong><strong><code>secrm=&lt;bool&gt;</code></strong></strong><dd>
-<a name="OPTION_FS_UNRM"></a><p><dt><strong><strong><code>unrm=&lt;bool&gt;</code></strong></strong><dd>
-<a name="OPTION_FS_COMPR"></a><p><dt><strong><strong><code>compr=&lt;bool&gt;</code></strong></strong><dd>
-<a name="OPTION_FS_SYNC"></a><p><dt><strong><strong><code>fs-sync=&lt;bool&gt;</code></strong></strong><dd>
-<a name="OPTION_FS_IMMUTABLE"></a><p><dt><strong><strong><code>immutable=&lt;bool&gt;</code></strong></strong><dd>
-<a name="OPTION_FS_APPEND"></a><p><dt><strong><strong><code>fs-append=&lt;bool&gt;</code></strong></strong><dd>
-<a name="OPTION_FS_NODUMP"></a><p><dt><strong><strong><code>nodump=&lt;bool&gt;</code></strong></strong><dd>
-<a name="OPTION_FS_NOATIME"></a><p><dt><strong><strong><code>fs-noatime=&lt;bool&gt;</code></strong></strong><dd>
-<a name="OPTION_FS_JOURNAL_DATA"></a><p><dt><strong><strong><code>journal-data=&lt;bool&gt;</code></strong></strong><dd>
-<a name="OPTION_FS_NOTAIL"></a><p><dt><strong><strong><code>notail=&lt;bool&gt;</code></strong></strong><dd>
-<a name="OPTION_FS_DIRSYNC"></a><p><dt><strong><strong><code>dirsync=&lt;bool&gt;</code></strong></strong><dd>
+<a name="OPTION_FS_SECRM_FL"></a><p><dt><strong><strong><code>secrm[=&lt;bool&gt;]</code></strong></strong><dd>
+<a name="OPTION_FS_UNRM"></a><p><dt><strong><strong><code>unrm[=&lt;bool&gt;]</code></strong></strong><dd>
+<a name="OPTION_FS_COMPR"></a><p><dt><strong><strong><code>compr[=&lt;bool&gt;]</code></strong></strong><dd>
+<a name="OPTION_FS_SYNC"></a><p><dt><strong><strong><code>fs-sync[=&lt;bool&gt;]</code></strong></strong><dd>
+<a name="OPTION_FS_IMMUTABLE"></a><p><dt><strong><strong><code>immutable[=&lt;bool&gt;]</code></strong></strong><dd>
+<a name="OPTION_FS_APPEND"></a><p><dt><strong><strong><code>fs-append[=&lt;bool&gt;]</code></strong></strong><dd>
+<a name="OPTION_FS_NODUMP"></a><p><dt><strong><strong><code>nodump[=&lt;bool&gt;]</code></strong></strong><dd>
+<a name="OPTION_FS_NOATIME"></a><p><dt><strong><strong><code>fs-noatime[=&lt;bool&gt;]</code></strong></strong><dd>
+<a name="OPTION_FS_JOURNAL_DATA"></a><p><dt><strong><strong><code>journal-data[=&lt;bool&gt;]</code></strong></strong><dd>
+<a name="OPTION_FS_NOTAIL"></a><p><dt><strong><strong><code>notail[=&lt;bool&gt;]</code></strong></strong><dd>
+<a name="OPTION_FS_DIRSYNC"></a><p><dt><strong><strong><code>dirsync[=&lt;bool&gt;]</code></strong></strong><dd>
    These options change non standard file attributes on operating systems and
    file systems that support these features, like Linux with ext2fs and
    successors, xfs, or reiserfs. See man 1 chattr for information on these
@@ -1913,13 +2227,49 @@ semantics make sense only on a file supporting random access.
 <p>
 <dl></dl><br>
 <p>
+<a name="GROUP_PIPE"></a><em><strong>PIPE options</strong></em>
+<p>
+These options may be applied to pipes (fifos).
+<p>
+<dl>
+<a name="OPTION_F_SETPIPE_SZ"></a><p><dt><strong><strong><code>f-setpipe-sz=&lt;int&gt;</code></strong></strong><dd>
+<p><dt><strong><strong><code>setpipe=&lt;int&gt;</code></strong></strong><dd>
+   Set the number of bytes a pipe can buffer. Where more bytes are written the
+   writing process might block. When more bytes are written in a single
+   <code>write()</code> the writing process blocks and might never recover.
+</dl>
+<p>
+<dl></dl><br>
+<p>
+<a name="GROUP_ADDRS"></a><em><strong>General address options</strong></em>
+<p>
+These options may be applied to all address types. They change some process
+properties that are restored after opening the address.
+<p>
+<dl>
+<a name="OPTION_CHDIR"></a><p><dt><strong><strong><code>chdir=&lt;filename&gt;</code></strong></strong><dd> <p><dt><strong><strong><code>cd=&lt;filename&gt;</code></strong></strong><dd>
+   Changes the working directory. After opening the address the master process
+   changes back to the original working directory. Sub processes inherit the
+   temporary setting.
+<a name="OPTION_UMASK"></a><p><dt><strong><strong><code>umask=&lt;mode&gt;</code></strong></strong><dd>
+   Sets the umask of the process to &lt;mode&gt; [<a href="socat.html#TYPE_MODE_T">mode_t</a>] before
+   opening the address. Useful when file system entries are created or a shell
+   or program is invoked. Usually the value is specified as octal number with
+   leading '0'.<br>
+   The processes <code>umask</code> value is inherited by child processes.<br>
+   Note: umask is an inverted value: creating a file with umask=0026 results in
+   permissions 0640.
+</dl>
+<p>
+<dl></dl><br>
+<p>
 <a name="GROUP_PROCESS"></a><em><strong>PROCESS option group</strong></em>
 <p>
 Options of this group change the process properties instead of just affecting
 one data channel.
 For EXEC and SYSTEM addresses and for LISTEN and CONNECT type addresses with
-option FORK, 
-these options apply to the child processes instead of the main socat process.
+option <a href="socat.html#OPTION_FORK">fork</a>,
+these options apply to the child processes instead of the main <strong>socat</strong> process.
 <dl>
 <a name="OPTION_CHROOT"></a><p><dt><strong><strong><code>chroot=&lt;directory&gt;</code></strong></strong><dd>
    Performs a 
@@ -1936,7 +2286,7 @@ these options apply to the child processes instead of the main socat process.
    processing the address. This call might require root privilege. Please note
    that this option does not drop other group related privileges.
 <a name="OPTION_SETGID_EARLY"></a><p><dt><strong><strong><code>setgid-early=&lt;group&gt;</code></strong></strong><dd>
-   Like <a href="socat.html#OPTION_SETGID">setgit</a> but is performed before opening the address.
+   Like <a href="socat.html#OPTION_SETGID">setgid</a> but is performed before opening the address.
 <a name="OPTION_SETUID"></a><p><dt><strong><strong><code>setuid=&lt;user&gt;</code></strong></strong><dd>
    Changes the <a href="socat.html#TYPE_USER">&lt;user&gt;</a> (owner) of the process after processing
    the address. This call might require root privilege. Please note that this
@@ -1964,6 +2314,12 @@ these options apply to the child processes instead of the main socat process.
    process group. 
 <a name="OPTION_SETSID"></a><p><dt><strong><strong><code>setsid</code></strong></strong><dd>
    Makes the process the leader of a new session (<a href="socat.html#EXAMPLE_OPTION_SETSID">example</a>).
+<a name="OPTION_NETNS"></a><p><dt><strong><strong><code>netns=&lt;net-namespace-name&gt;</code></strong></strong><dd>
+   Before opening the address it tries to switch to the named network namespace.
+   After opening the address it switches back to the previous namespace
+   (<a href="socat.html#EXAMPLE_OPTION_NETNS">example with TCP forwarder</a>,
+   <a href="socat.html#EXAMPLE_TUN_NETNS">example with virtual network connection</a>).<br>
+   Only on Linux; requires root; use option <code>--experimental</code>.<br>
 </dl>
 <p>
 <dl></dl><br>
@@ -1984,7 +2340,7 @@ These options apply to the readline address type.
    Specifies a regular pattern for a prompt that prevents the following input
    line from being displayed on the screen and from being added to the history.
    The prompt is defined as the text that was output to the readline address 
-   after the lastest newline character and before an input character was
+   after the last newline character and before an input character was
    typed. The pattern is a regular expression, e.g.
    "^[Pp]assword:.*$" or "([Uu]ser:|[Pp]assword:)". See regex(7) for details.
    (<a href="socat.html#EXAMPLE_OPTION_NOECHO">example</a>)
@@ -2044,8 +2400,8 @@ These options are intended for all kinds of sockets, e.g. IP or UNIX domain. Mos
  system
    call. The form of &lt;sockname&gt; is socket domain dependent:
    IP4 and IP6 allow the form [hostname|hostaddress][:(service|port)] (<a href="socat.html#EXAMPLE_OPTION_BIND_TCP4">example</a>),
-   UNIX domain sockets require <a href="socat.html#TYPE_FILENAME">&lt;filename&gt;</a>,
-   VSOCK allow the form [cid][:(port)].
+   VSOCK allows the form [cid][:(port)].<br>
+   See also: <a href="socat.html#OPTION_UNIX_BIND_TEMPNAME">unix-bind-tempname</a>
 <a name="OPTION_CONNECT_TIMEOUT"></a><p><dt><strong><strong><code>connect-timeout=&lt;seconds&gt;</code></strong></strong><dd>
    Abort the connection attempt after &lt;seconds&gt; [<a href="socat.html#TYPE_TIMEVAL">timeval</a>]
    with error status.
@@ -2086,12 +2442,33 @@ These options are intended for all kinds of sockets, e.g. IP or UNIX domain. Mos
    connected to &lt;bytes&gt; [<a href="socat.html#TYPE_INT">int</a>]. 
    With TCP sockets, this value corresponds to the socket's 
    maximal window size. 
+<a name="OPTION_SO_RCVTIMOE"></a><p><dt><strong><strong><code>so-rcvtimeo=&lt;time&gt;, rcvtimeo=&lt;time&gt;</code></strong></strong><dd>
+   Specifies the time [<a href="socat.html#TYPE_TIMEVAL">int</a>] until 
+<code>recv()</code>
+, 
+<code>read()</code>
+
+   etc. functions timeout when no data is received. Note that in the transfer
+   phase <strong>socat</strong> only calls these functions when 
+<code>select()</code>
+ has reported
+   that data is available. However this option is useful with DTLS addresses to
+   timeout during connection negotiation.
+<a name="OPTION_SO_SNDTIMOE"></a><p><dt><strong><strong><code>so-sndtimeo=&lt;time&gt;, sndtimeo=&lt;time&gt;</code></strong></strong><dd>
+   Like <a href="socat.html#OPTION_SO_RCVTIMOE">so-recvtimeo</a>, but for 
+<code>send</code>
+. Not usecase
+   known.
 <a name="OPTION_RCVLOWAT"></a><p><dt><strong><strong><code>rcvlowat=&lt;bytes&gt;</code></strong></strong><dd>
    Specifies the minimum number of received bytes [<a href="socat.html#TYPE_INT">int</a>] until
    the socket layer will pass the buffered data to <strong>socat</strong>. 
-<a name="OPTION_REUSEADDR"></a><p><dt><strong><strong><code>reuseaddr</code></strong></strong><dd>
+<a name="OPTION_SO_REUSEADDR"></a><p><dt><strong><strong><code>reuseaddr[=[0|1]]</code></strong></strong><dd>
    Allows other sockets to bind to an address even if parts of it (e.g. the
-   local port) are already in use by <strong>socat</strong> (<a href="socat.html#EXAMPLE_OPTION_REUSEADDR">example</a>). 
+   local port) are already in use by <strong>socat</strong>.<br>
+   With version 1.8.0, this socket option is set automatically for TCP LISTEN
+   addresses. If you prefer the system default (no related
+   <code>setsockopt(...SO_REUSEADDR...)</code> call at all), use form <code>reuseaddr=</code>.<br>
+   (<a href="socat.html#EXAMPLE_OPTION_SO_REUSEADDR">example</a>).
 <a name="OPTION_SNDBUF"></a><p><dt><strong><strong><code>sndbuf=&lt;bytes&gt;</code></strong></strong><dd>
    Sets the size of the send buffer after the 
 <code>socket()</code>
@@ -2123,6 +2500,7 @@ These options are intended for all kinds of sockets, e.g. IP or UNIX domain. Mos
    [<a href="socat.html#TYPE_INT">int</a>]. Address resolution is not affected by this option.
    Under Linux, 1 means stream oriented socket, 2 means datagram socket, 3
    means raw socket, and 5 seqpacket (stream keeping packet boundaries).
+   Datagrams are useful when you want to keep packet boundaries.
 <a name="OPTION_SO_PROTOCOL"></a><p><dt><strong><strong><code>protocol</code></strong></strong><dd>
    Sets the protocol of the socket, specified as third argument to the
    
@@ -2178,6 +2556,22 @@ These options are intended for all kinds of sockets, e.g. IP or UNIX domain. Mos
    Like <code>setsockopt</code>, but &lt;optval&gt; is a <a href="socat.html#TYPE_STRING">string</a>.
    This string is passed to the function with trailing null character, and the
    length parameter is automatically derived from the data.
+<a name="OPTION_SETSOCKOPT_SOCKET"></a><p><dt><strong><strong><code>setsockopt-socket=&lt;level&gt;:&lt;optname&gt;:&lt;optval&gt;</code></strong></strong><dd>
+   Like <code>setsockopt</code>, but is applied to the socket before other operations
+   (
+<code>bind()</code>
+, 
+<code>connect()</code>
+, 
+<code>accept()</code>
+, ...)
+<a name="OPTION_SETSOCKOPT_CONNECTED"></a><p><dt><strong><strong><code>setsockopt-connected=&lt;level&gt;:&lt;optname&gt;:&lt;optval&gt;</code></strong></strong><dd>
+   Like <code>setsockopt</code>, but is applied only when the socket has been connected
+   by a 
+<code>connect()</code>
+ or 
+<code>listen()</code>
+ call.
 </dl>
 <p>
 <dl></dl><br>
@@ -2186,7 +2580,20 @@ These options are intended for all kinds of sockets, e.g. IP or UNIX domain. Mos
 <p>
 These options apply to UNIX domain based addresses.
 <dl>
-<a name="OPTION_UNIX_TIGHTSOCKLEN"></a><p><dt><strong><strong><code>unix-tightsocklen=[0|1]</code></strong></strong><dd>
+<a name="OPTION_UNIX_BIND_TEMPNAME"></a><p><dt><strong><strong><code>bind-tempname[=/tmp/pre-XXXXXX],
+   unix-bind-tempname[=/tmp/pre-XXXXXX]</code></strong></strong><dd>
+   Binds to a random path or random address (on abstract namespace sockets).
+   This is useful with datagram client addresses (<code>SENDTO</code>, or <code>CLIENT</code>)
+   that are opened in child processes forked off from a common
+   parent process where the child processes cannot have different bind options.
+   In the path 
+<code>X</code>
+'s get replaced with a random character sequence
+   similar to tempnam(3). When no argument is given <strong>socat</strong> takes a
+   default like 
+<code>/tmp/fileXXXXXX</code>
+.<br>
+<a name="OPTION_UNIX_TIGHTSOCKLEN"></a><p><dt><strong><strong><code>unix-tightsocklen[=(0|1)]</code></strong></strong><dd>
    On socket operations, pass a socket address length that does not include the
    whole 
 <code>struct sockaddr_un</code>
@@ -2254,24 +2661,50 @@ These options can be used with IPv4 and IPv6 based sockets.
 <p><dt><strong><strong><code>ip-add-membership=&lt;multicast-address:interface-index&gt;</code></strong></strong><dd>
 <p><dt><strong><strong><code>ip-add-membership=&lt;multicast-address:interface-address:interface-name&gt;</code></strong></strong><dd>
 <p><dt><strong><strong><code>ip-add-membership=&lt;multicast-address:interface-address:interface-index&gt;</code></strong></strong><dd>
-   Makes the socket member of the specified multicast group. This is currently
-   only implemented for IPv4. The option takes the IP address of the multicast
-   group and info about the desired network interface. The most common syntax
-   is the first one, while the others are only available on systems that
-   provide <code>struct mreqn</code> (Linux).<br>
+   Makes the socket member of the specified multicast group. This only works
+   for IPv4, see <a href="socat.html#OPTION_IPV6_JOIN_GROUP">ipv6-join-group</a> for the IPv6
+   variant. The option takes the IP address of the multicast group and info
+   about the desired network interface. The most common syntax is the first
+   one, while the others are only available on systems that provide
+   <code>struct mreqn</code> (Linux).<br>
    The indices of active network interfaces can be shown using the utility
    <strong>procan</strong>.
 <a name="OPTION_IP_ADD_SOURCE_MEMBERSHIP"></a>
 <p><dt><strong><strong><code>ip-add-source-membership=&lt;multicast-address:interface-address:source-address&gt;</code></strong></strong><dd>
-   Makes the socket member of the specified multicast group for the specified
-   source, i.e. only multicast traffic from this address is to be delivered.
-   This is currently only implemented for IPv4.<br>
+   Makes the socket member of the specified multicast group for the
+   specified source, i.e. only multicast traffic from this address is to be
+   delivered. This only works for IPv4, see
+   <a href="socat.html#OPTION_IPV6_JOIN_SOURCE_GROUP">ipv6-join-source-group</a> for the IPv6
+   variant. The option takes the IP address of the multicast group, the IP
+   address of the desired network interface and the source IP address of the
+   multicast traffic.
+<a name="OPTION_IPV6_JOIN_GROUP"></a>
+<p><dt><strong><strong><code>ipv6-join-group=&lt;multicast-address:interface-name&gt;</code></strong></strong><dd>
+<p><dt><strong><strong><code>ipv6-join-group=&lt;multicast-address:interface-index&gt;</code></strong></strong><dd>
+   Makes the socket member of the specified multicast group. This only works
+   for IPv6, see <a href="socat.html#OPTION_IP_ADD_MEMBERSHIP">ip-add-membership</a> for the
+   IPv4 variant. The option takes the IP address of the multicast
+   group and info about the desired network interface.
+   The indices of active network interfaces can be shown using the utility
+   <strong>procan</strong>.
+<a name="OPTION_IPV6_JOIN_SOURCE_GROUP"></a>
+<p><dt><strong><strong><code>ipv6-join-source-group=&lt;multicast-address:interface-name:source-address&gt;</code></strong></strong><dd>
+<p><dt><strong><strong><code>ipv6-join-source-group=&lt;multicast-address:interface-index:source-address&gt;</code></strong></strong><dd>
+   Makes the socket member of the specified multicast group for the
+   specified source, i.e. only multicast traffic from this address is to be
+   delivered. This only works for IPv6, see
+   <a href="socat.html#OPTION_IP_ADD_SOURCE_MEMBERSHIP">ip-add-source-membership</a> for the
+   IPv4 variant. The option takes the IP address of the multicast group,
+   info about the desired network interface and the source IP address of the
+   multicast traffic. The indices of active network interfaces can be shown
+   using the utility <strong>procan</strong>.<br>
+   This feature is experimental.
 <a name="OPTION_IP_MULTICAST_IF"></a>
 <p><dt><strong><strong><code>ip-multicast-if=&lt;hostname&gt;</code></strong></strong><dd>
    Specifies hostname or address of the network interface to be used for
    multicast traffic.
 <a name="OPTION_IP_MULTICAST_LOOP"></a>
-<p><dt><strong><strong><code>ip-multicast-loop=&lt;bool&gt;</code></strong></strong><dd>
+<p><dt><strong><strong><code>ip-multicast-loop[=&lt;bool&gt;]</code></strong></strong><dd>
    Specifies if outgoing multicast traffic should loop back to the interface.
 <a name="OPTION_IP_MULTICAST_TTL"></a>
 <p><dt><strong><strong><code>ip-multicast-ttl=&lt;byte&gt;</code></strong></strong><dd>
@@ -2280,6 +2713,58 @@ These options can be used with IPv4 and IPv6 based sockets.
 <p><dt><strong><strong><code>ip-transparent</code></strong></strong><dd>
    Sets the IP_TRANSPARENT socket option.
    This option might require root privilege.
+</dl>
+<p>
+<dl></dl><br>
+<p>
+<a name="OPTIONS_RESOLVER"></a><em><strong>Resolver options</strong></em>
+<p>
+These options temporarily change the behaviour of hostname resolution. The
+options of form 
+<code>ai-*</code>
+ affect behaviour of the 
+<code>getaddrinfo()</code>
+ function that
+includes 
+<code>/etc/hosts</code>
+ and NIS based lookups.
+<p>
+The addresses of form 
+<code>res-*</code>
+ only affect DNS lookups, and only when the
+result is not cached in 
+<code>nscd</code>
+. These options might not work on all
+operating systems or libc implementations.
+<p>
+<dl>
+<a name="OPTION_AI_ADDRCONFIG"></a>
+<p><dt><strong><strong><code>ai-addrconfig[=0|1]</code></strong></strong><dd> <p><dt><strong><strong><code>addrconfig[=0|1]</code></strong></strong><dd>
+   Sets or unsets the AI_ADDRCONFIG flag to prevent name resolution to address
+   families that are not available on the computer (e.g. IPv6). Default value
+   is 1 in case the resolver does not get an address family hint from Socat
+   address or defaults.
+<a name="OPTION_AI_PASSIVE"></a>
+<p><dt><strong><strong><code>ai-passive[=0|1]</code></strong></strong><dd> <p><dt><strong><strong><code>passive[=0|1]</code></strong></strong><dd>
+   Sets of unsets the AI_PASSIVE flag for 
+<code>getaddrinfo()</code>
+ calls.
+   Default is 1 for LISTEN, RECV, and RECVFROM type addresses, and with
+   <a href="socat.html#OPTION_BIND">bind</a> option. 
+<a name="OPTION_AI_V4MAPPED"></a>
+<p><dt><strong><strong><code>ai-v4mapped[=0|1]</code></strong></strong><dd> <p><dt><strong><strong><code>v4mapped[=0|1]</code></strong></strong><dd>
+   Sets or unsets the AI_V4MAPPED flag for 
+<code>getaddrinfo()</code>
+. With <strong>socat</strong>
+   addresses requiring IPv6 addresses, this resolves IPv4 addresses to the
+   appropriate IPv6 address [::ffff:*:*]. For IPv6 <strong>socat</strong> addresses, the
+   default is 1.
+<a name="OPTION_AI_ALL"></a>
+<p><dt><strong><strong><code>ai-all[=0|1]</code></strong></strong><dd>
+   Sets or unsets the AI_ALL flag for 
+<code>getaddrinfo()</code>
+.
+<p>
 <a name="OPTION_RES_DEBUG"></a><p><dt><strong><strong><code>res-debug</code></strong></strong><dd>
 <a name="OPTION_RES_AAONLY"></a><p><dt><strong><strong><code>res-aaonly</code></strong></strong><dd>
 <a name="OPTION_RES_USEVC"></a><p><dt><strong><strong><code>res-usevc</code></strong></strong><dd>
@@ -2290,10 +2775,33 @@ These options can be used with IPv4 and IPv6 based sockets.
 <a name="OPTION_RES_STAYOPEN"></a><p><dt><strong><strong><code>res-stayopen</code></strong></strong><dd>
 <a name="OPTION_RES_DNSRCH"></a><p><dt><strong><strong><code>res-dnsrch</code></strong></strong><dd>
    These options set the corresponding resolver (name resolution) option flags.
-   Append "=0" to clear a default option. See man resolver(5) for more
-   information on these options. Note: these options are valid only for the
-   address they are applied to.
-<p>
+   Append "=0" to clear a default option. See man resolver(5) for
+   more information on these options. <strong>Socat</strong> restores the old values after
+   finishing the open phase of the address, so these options are valid just for
+   the address they are applied to.<br>
+   Please note that these flags only affect DNS resolution, but not hosts or
+   NIS based name resolution, and they have no effect when (g)libc retrieves
+   the results from 
+<code>nscd</code>
+.
+<a name="OPTION_RES_RETRANS"></a><p><dt><strong><strong><code>res-retrans=&lt;int&gt;</code></strong></strong><dd>
+   Sets the retransmission time interval of the DNS resolver (based on an
+   undocumented feature).
+<a name="OPTION_RES_RETRY"></a><p><dt><strong><strong><code>res-retry=&lt;int&gt;</code></strong></strong><dd>
+   Sets the number of retransmits of the DNS resolver (based on an undocumented
+   feature).
+<a name="OPTION_RES_NSADDR"></a><p><dt><strong><strong><code>res-nsaddr=&lt;ipaddr&gt;[:&lt;port&gt;]</code></strong></strong><dd>
+   Tries to overwrite nameserver settings loaded from /etc/resolv.conf by
+   writing the given IPv4 address into the undocumented
+   
+<code>_res:nsaddr_list[0]</code>
+ field.
+   
+<code>/etc/hosts</code>
+ is still checked by resolver. Please note that glibc's
+   
+<code>nscd</code>
+ is always queried first when it is running!
 </dl>
 <p>
 <dl></dl><br>
@@ -2304,7 +2812,7 @@ These options can only be used on IPv6 based sockets. See <a href="socat.html#GR
 options</a> for options that can be applied to both IPv4 and IPv6
 sockets.
 <dl>
-<a name="OPTION_IPV6_V6ONLY"></a><p><dt><strong><strong><code>ipv6only=&lt;bool&gt;</code></strong></strong><dd>
+<a name="OPTION_IPV6_V6ONLY"></a><p><dt><strong><strong><code>ipv6only[=&lt;bool&gt;]</code></strong></strong><dd>
    Sets the IPV6_V6ONLY socket option. If 0, the TCP stack will also accept
    connections using IPv4 protocol on the same port. The default is system
    dependent.
@@ -2423,6 +2931,20 @@ This option may be applied to UDP datagram sockets.
 <p>
 <dl></dl><br>
 <p>
+<a name="GROUP_UDPLITE"></a><em><strong>UDPLITE option group</strong></em>
+<p>
+These options may be applied to UDPLITE addresses:
+<dl>
+<a name="OPTION_UDPLITE_SEND_CSCOV"></a><p><dt><strong><strong><code>udplite-send-cscov</code></strong></strong><dd>
+   Sets the number of bytes for which the checksum is calculated and sent
+   ("checksum coverage").
+<a name="OPTION_UDPLITE_RECV_CSCOV"></a><p><dt><strong><strong><code>udplite-recv-cscov</code></strong></strong><dd>
+   Sets the number of bytes for which the checksum is checked ("checksum
+   coverage").
+</dl>
+<p>
+<dl></dl><br>
+<p>
 <a name="GROUP_SCTP"></a><em><strong>SCTP option group</strong></em>
 <p>
 These options may be applied to SCTP stream sockets.
@@ -2436,13 +2958,25 @@ These options may be applied to SCTP stream sockets.
 <p>
 <dl></dl><br>
 <p>
-<em><strong>UDP, TCP, and SCTP option group</strong></em>
+<a name="GROUP_DCCP"></a><em><strong>DCCP option group</strong></em>
+<p>
+These options may be applied to DCCP sockets.
+<dl>
+<a name="OPTION_DCCP_SET_CCID"></a><p><dt><strong><strong><code>dccp-set-ccid=&lt;int&gt;</code></strong></strong><dd>
+<p><dt><strong><strong><code>ccid=&lt;int&gt;</code></strong></strong><dd>
+   Selects the desired congestion control mechanism (CCID).
+</dl>
+<p>
+<dl></dl><br>
+<p>
+<a name="GROUP_IPAPP"></a><em><strong>UDP, TCP, SCTP, DCCP, and UDPLITE option group</strong></em>
 <p>
 Here we find options that are related to the network port mechanism and thus
-can be used with UDP, TCP, and SCTP client and server addresses.
+can be used with UDP, TCP, SCTP, DCCP, and UDP-Lite client and server addresses.
+<p>
 <dl>
 <a name="OPTION_SOURCEPORT"></a><p><dt><strong><strong><code>sourceport=&lt;port&gt;</code></strong></strong><dd>
-   For outgoing (client) TCP and UDP connections, it sets the source
+   For outgoing (client) connections, it sets the source
    <a href="socat.html#TYPE_PORT">&lt;port&gt;</a> using an extra 
 <code>bind()</code>
  call.
@@ -2452,7 +2986,7 @@ can be used with UDP, TCP, and SCTP client and server addresses.
    it does not match.
    (<a href="socat.html#EXAMPLE_OPTION_SOURCEPORT">example</a>).
 <a name="OPTION_LOWPORT"></a><p><dt><strong><strong><code>lowport</code></strong></strong><dd>
-   Outgoing (client) TCP and UDP connections with this option use
+   Outgoing (client) connections with this option use
    an unused random source port between 640 and 1023 incl. On UNIX class operating
    systems, this requires root privilege, and thus indicates that the
    client process is authorized by local root.
@@ -2483,13 +3017,17 @@ Options that can be provided with HTTP type addresses. The only HTTP address
 currently implemented is <a href="socat.html#ADDRESS_PROXY_CONNECT">proxy-connect</a>.
 <p>
 <dl>
+<a name="OPTION_HTTP_VERSION"></a><p><dt><strong><strong><code>http-version=&lt;string&gt;</code></strong></strong><dd>
+   Changes the default "1.0" that is sent to the server in the initial HTTP
+   request. Currently it has not other effect, in particular it does not
+   provide any means to send a Host header.
 <a name="OPTION_PROXYPORT"></a><p><dt><strong><strong><code>proxyport=&lt;TCP service&gt;</code></strong></strong><dd>
    Overrides the default HTTP proxy port 8080 with
    <a href="socat.html#TYPE_TCP_SERVICE">&lt;TCP service&gt;</a>.
 <a name="OPTION_IGNORECR"></a><p><dt><strong><strong><code>ignorecr</code></strong></strong><dd>
    The HTTP protocol requires the use of CR+NL as line terminator. When a proxy
    server violates this standard, socat might not understand its answer. 
-   This option directs socat to interprete NL as line terminator and
+   This option directs socat to interpret NL as line terminator and
    to ignore CR in the answer. Nevertheless, socat sends CR+NL to the proxy.
 <a name="OPTION_PROXY_AUTHORIZATION"></a><p><dt><strong><strong><code>proxy-authorization=&lt;username&gt;:&lt;password&gt;</code></strong></strong><dd>
    Provide "basic" authentication to the proxy server. The argument to the
@@ -2556,15 +3094,15 @@ Options specific to listening sockets.
 <a name="OPTION_ACCEPT_TIMEOUT"></a><p><dt><strong><strong><code>accept-timeout=&lt;seconds&gt;</code></strong></strong><dd>
    End waiting for a connection after &lt;seconds&gt; [<a href="socat.html#TYPE_TIMEVAL">timeval</a>]
    with error status.
-<a name="OPTION_MAX_CHILDREN"></a><p><dt><strong><strong><code>max-children=&lt;count&gt;</code></strong></strong><dd>
-   Limits the number of concurrent child processes [<a href="socat.html#TYPE_INT">int</a>].
-    Default is no limit. 
 </dl>
+<p>
 <dl></dl><br>
 <p>
 <a name="GROUP_CHILD"></a><em><strong>CHILD option group</strong></em>
 <p>
-Options for addresses with multiple connections via child processes.
+Addresses of LISTEN and CONNECT type take the
+<a href="socat.html#OPTION_FORK">fork</a> option to handle multiple connections via child
+processes.
 <dl>
 <a name="OPTION_FORK"></a><p><dt><strong><strong><code>fork</code></strong></strong><dd>
    After establishing a connection, handles its channel in a child process and
@@ -2578,6 +3116,17 @@ Options for addresses with multiple connections via child processes.
    inherited by the child process.<br>
    On some operating systems (e.g. FreeBSD) this option does not work for
    UDP-LISTEN addresses.<br>
+<a name="OPTION_MAX_CHILDREN"></a><p><dt><strong><strong><code>max-children=&lt;count&gt;</code></strong></strong><dd>
+   Limits the number of concurrent child processes [<a href="socat.html#TYPE_INT">int</a>].
+   Default is no limit.
+<a name="OPTION_CHILDRED_SHUTUP"></a><p><dt><strong><strong><code>children-shutup[=1|2|..]</code></strong></strong><dd>
+   Decreases the severity of log messages produced by child processes. For
+   example, with value 1 notices are logged as info (or dropped depending on
+   <a href="socat.html#option_d">option -dX</a>), and errors are logged as warnings but still
+   cause termination of the child process.<br>
+   This option is intended to reduce logging of high volume servers or
+   proxies.<br>
+   This option succeeds <a href="socat.html#OPTION_COOL_WRITE">option cool-write</a>.
 </dl>
 <p>
 <dl></dl><br>
@@ -2624,6 +3173,8 @@ socat process.
    <li> the first socat address cannot be OPENSSL or READLINE
    <li> socat options -b, -t, -D, -l, -v, -x become useless
    <li> for both addresses, options ignoreeof, cr, and crnl become useless
+   <li> for both addresses, address specific end/shutdown handling (e.g.,
+   graceful socket shutdown) and related options become useless
    <li> for the second address (the one with option nofork), options 
       append, <!--async,--> cloexec, flock, user, group, mode, nonblock,
       perm-late, setlk, and setpgid cannot be applied. Some of these could be
@@ -2670,6 +3221,17 @@ socat process.
 <p>
 <dl></dl><br>
 <p>
+<a name="GROUP_SHELL"></a>Options for <a href="socat.html#ADDRESS_SHELL">address SHELL</a>
+<p>
+<dl>
+<a name="OPTION_SHELL"></a><p><dt><strong><strong><code>shell=&lt;filename&gt;</code></strong></strong><dd>
+   Overwrites use the default shell with the named executable, e.g.
+   <code>/bin/dash</code>. Also sets the <code>SHELL</code> environment variable.
+<p>
+</dl>
+<p>
+<dl></dl><br>
+<p>
 <a name="GROUP_TERMIOS"></a><em><strong>TERMIOS option group</strong></em>
 <p>
 For addresses that work on a tty (e.g., stdio, file:/dev/tty, exec:...,pty), the terminal parameters defined in the UN*X termios mechanism are made available as address option parameters.
@@ -2689,9 +3251,9 @@ your implementation.<br>
 Note: On some operating systems, these options may not be
 available. Use <a href="socat.html#OPTION_ISPEED">ispeed</a> or <a href="socat.html#OPTION_OSPEED">ospeed</a>
 instead.
-<a name="OPTION_ECHO"></a><p><dt><strong><strong><code>echo=&lt;bool&gt;</code></strong></strong><dd>
+<a name="OPTION_ECHO"></a><p><dt><strong><strong><code>echo[=&lt;bool&gt;]</code></strong></strong><dd>
    Enables or disables local echo.
-<a name="OPTION_ICANON"></a><p><dt><strong><strong><code>icanon=&lt;bool&gt;</code></strong></strong><dd>
+<a name="OPTION_ICANON"></a><p><dt><strong><strong><code>icanon[=&lt;bool&gt;]</code></strong></strong><dd>
    Sets or clears canonical mode, enabling line buffering and some special
    characters. 
 <a name="OPTION_RAW"></a><p><dt><strong><strong><code>raw</code></strong></strong><dd>
@@ -2700,13 +3262,13 @@ instead.
    Makes terminal rawer than <a href="socat.html#OPTION_RAW">raw</a> option. This option implicitly turns off echo. (<a href="socat.html#EXAMPLE_OPTION_TERMIOS_RAWER">example</a>).
 <a name="OPTION_TERMIOS_CFMAKERAW"></a><p><dt><strong><strong><code>cfmakeraw</code></strong></strong><dd>
    Sets raw mode by invoking <code>cfmakeraw()</code> or by simulating this call. This option implicitly turns off echo.
-<a name="OPTION_IGNBRK"></a><p><dt><strong><strong><code>ignbrk=&lt;bool&gt;</code></strong></strong><dd>
-   Ignores or interpretes the BREAK character (e.g., ^C)
-<a name="OPTION_BRKINT"></a><p><dt><strong><strong><code>brkint=&lt;bool&gt;</code></strong></strong><dd>
+<a name="OPTION_IGNBRK"></a><p><dt><strong><strong><code>ignbrk[=&lt;bool&gt;]</code></strong></strong><dd>
+   Ignores or interprets the BREAK character (e.g., ^C)
+<a name="OPTION_BRKINT"></a><p><dt><strong><strong><code>brkint[=&lt;bool&gt;]</code></strong></strong><dd>
 <a name="OPTION_BS0"></a><p><dt><strong><strong><code>bs0</code></strong></strong><dd>
 <a name="OPTION_BS1"></a><p><dt><strong><strong><code>bs1</code></strong></strong><dd>
 <a name="OPTION_BSDLY"></a><p><dt><strong><strong><code>bsdly=&lt;0|1&gt;</code></strong></strong><dd>
-<a name="OPTION_CLOCAL"></a><p><dt><strong><strong><code>clocal=&lt;bool&gt;</code></strong></strong><dd>
+<a name="OPTION_CLOCAL"></a><p><dt><strong><strong><code>clocal[=&lt;bool&gt;]</code></strong></strong><dd>
 <p>
 <a name="OPTION_CR0"></a><a name="OPTION_CR1"></a><a name="OPTION_CR2"></a><a name="OPTION_CR3"></a>
 
@@ -2722,8 +3284,8 @@ instead.
    0 means no delay, the other values are terminal dependent.
 <p>
 <a name="OPTION_CRDLY"></a><p><dt><strong><strong><code>crdly=&lt;0|1|2|3&gt;</code></strong></strong><dd>
-<a name="OPTION_CREAD"></a><p><dt><strong><strong><code>cread=&lt;bool&gt;</code></strong></strong><dd>
-<a name="OPTION_CRTSCTS"></a><p><dt><strong><strong><code>crtscts=&lt;bool&gt;</code></strong></strong><dd>
+<a name="OPTION_CREAD"></a><p><dt><strong><strong><code>cread[=&lt;bool&gt;]</code></strong></strong><dd>
+<a name="OPTION_CRTSCTS"></a><p><dt><strong><strong><code>crtscts[=&lt;bool&gt;]</code></strong></strong><dd>
 <p>
 <a name="OPTION_CS5"></a><a name="OPTION_CS6"></a><a name="OPTION_CS7"></a><a name="OPTION_CS8"></a>
 
@@ -2738,18 +3300,18 @@ instead.
    Sets the character size to 5, 6, 7, or 8 bits, respectively.
 <p>
 <a name="OPTION_CSIZE"></a><p><dt><strong><strong><code>csize=&lt;0|1|2|3&gt;</code></strong></strong><dd>
-<a name="OPTION_CSTOPB"></a><p><dt><strong><strong><code>cstopb=&lt;bool&gt;</code></strong></strong><dd>
+<a name="OPTION_CSTOPB"></a><p><dt><strong><strong><code>cstopb[=&lt;bool&gt;]</code></strong></strong><dd>
    Sets two stop bits, rather than one.
 <a name="OPTION_VDSUSP"></a><p><dt><strong><strong><code>dsusp=&lt;byte&gt;</code></strong></strong><dd>
    Sets the value for the VDSUSP character that suspends the current foreground
    process and reactivates the shell (all except Linux).
-<a name="OPTION_ECHOCTL"></a><p><dt><strong><strong><code>echoctl=&lt;bool&gt;</code></strong></strong><dd>
+<a name="OPTION_ECHOCTL"></a><p><dt><strong><strong><code>echoctl[=&lt;bool&gt;]</code></strong></strong><dd>
    Echos control characters in hat notation (e.g. ^A)
-<a name="OPTION_ECHOE"></a><p><dt><strong><strong><code>echoe=&lt;bool&gt;</code></strong></strong><dd>
-<a name="OPTION_ECHOK"></a><p><dt><strong><strong><code>echok=&lt;bool&gt;</code></strong></strong><dd>
-<a name="OPTION_ECHOKE"></a><p><dt><strong><strong><code>echoke=&lt;bool&gt;</code></strong></strong><dd>
-<a name="OPTION_ECHONL"></a><p><dt><strong><strong><code>echonl=&lt;bool&gt;</code></strong></strong><dd>
-<a name="OPTION_ECHOPRT"></a><p><dt><strong><strong><code>echoprt=&lt;bool&gt;</code></strong></strong><dd>
+<a name="OPTION_ECHOE"></a><p><dt><strong><strong><code>echoe[=&lt;bool&gt;]</code></strong></strong><dd>
+<a name="OPTION_ECHOK"></a><p><dt><strong><strong><code>echok[=&lt;bool&gt;]</code></strong></strong><dd>
+<a name="OPTION_ECHOKE"></a><p><dt><strong><strong><code>echoke[=&lt;bool&gt;]</code></strong></strong><dd>
+<a name="OPTION_ECHONL"></a><p><dt><strong><strong><code>echonl[=&lt;bool&gt;]</code></strong></strong><dd>
+<a name="OPTION_ECHOPRT"></a><p><dt><strong><strong><code>echoprt[=&lt;bool&gt;]</code></strong></strong><dd>
 <a name="OPTION_EOF"></a><p><dt><strong><strong><code>eof=&lt;byte&gt;</code></strong></strong><dd>
 <a name="OPTION_EOL"></a><p><dt><strong><strong><code>eol=&lt;byte&gt;</code></strong></strong><dd>
 <a name="OPTION_EOL2"></a><p><dt><strong><strong><code>eol2=&lt;byte&gt;</code></strong></strong><dd>
@@ -2757,51 +3319,51 @@ instead.
 <a name="OPTION_DISCARD"></a><p><dt><strong><strong><code>discard=&lt;byte&gt;</code></strong></strong><dd>
 <a name="OPTION_FF0"></a><p><dt><strong><strong><code>ff0</code></strong></strong><dd>
 <a name="OPTION_FF1"></a><p><dt><strong><strong><code>ff1</code></strong></strong><dd>
-<a name="OPTION_FFDLY"></a><p><dt><strong><strong><code>ffdly=&lt;bool&gt;</code></strong></strong><dd>
-<a name="OPTION_FLUSHO"></a><p><dt><strong><strong><code>flusho=&lt;bool&gt;</code></strong></strong><dd>
-<a name="OPTION_HUPCL"></a><p><dt><strong><strong><code>hupcl=&lt;bool&gt;</code></strong></strong><dd>
-<a name="OPTION_ICRNL"></a><p><dt><strong><strong><code>icrnl=&lt;bool&gt;</code></strong></strong><dd>
-<a name="OPTION_IEXTEN"></a><p><dt><strong><strong><code>iexten=&lt;bool&gt;</code></strong></strong><dd>
-<a name="OPTION_IGNCR"></a><p><dt><strong><strong><code>igncr=&lt;bool&gt;</code></strong></strong><dd>
-<a name="OPTION_IGNPAR"></a><p><dt><strong><strong><code>ignpar=&lt;bool&gt;</code></strong></strong><dd>
-<a name="OPTION_IMAXBEL"></a><p><dt><strong><strong><code>imaxbel=&lt;bool&gt;</code></strong></strong><dd>
-<a name="OPTION_INLCR"></a><p><dt><strong><strong><code>inlcr=&lt;bool&gt;</code></strong></strong><dd>
-<a name="OPTION_INPCK"></a><p><dt><strong><strong><code>inpck=&lt;bool&gt;</code></strong></strong><dd>
+<a name="OPTION_FFDLY"></a><p><dt><strong><strong><code>ffdly[=&lt;bool&gt;]</code></strong></strong><dd>
+<a name="OPTION_FLUSHO"></a><p><dt><strong><strong><code>flusho[=&lt;bool&gt;]</code></strong></strong><dd>
+<a name="OPTION_HUPCL"></a><p><dt><strong><strong><code>hupcl[=&lt;bool&gt;]</code></strong></strong><dd>
+<a name="OPTION_ICRNL"></a><p><dt><strong><strong><code>icrnl[=&lt;bool&gt;]</code></strong></strong><dd>
+<a name="OPTION_IEXTEN"></a><p><dt><strong><strong><code>iexten[=&lt;bool&gt;]</code></strong></strong><dd>
+<a name="OPTION_IGNCR"></a><p><dt><strong><strong><code>igncr[=&lt;bool&gt;]</code></strong></strong><dd>
+<a name="OPTION_IGNPAR"></a><p><dt><strong><strong><code>ignpar[=&lt;bool&gt;]</code></strong></strong><dd>
+<a name="OPTION_IMAXBEL"></a><p><dt><strong><strong><code>imaxbel[=&lt;bool&gt;]</code></strong></strong><dd>
+<a name="OPTION_INLCR"></a><p><dt><strong><strong><code>inlcr[=&lt;bool&gt;]</code></strong></strong><dd>
+<a name="OPTION_INPCK"></a><p><dt><strong><strong><code>inpck[=&lt;bool&gt;]</code></strong></strong><dd>
 <a name="OPTION_INTR"></a><p><dt><strong><strong><code>intr=&lt;byte&gt;</code></strong></strong><dd>
-<a name="OPTION_ISIG"></a><p><dt><strong><strong><code>isig=&lt;bool&gt;</code></strong></strong><dd>
+<a name="OPTION_ISIG"></a><p><dt><strong><strong><code>isig[=&lt;bool&gt;]</code></strong></strong><dd>
 <a name="OPTION_ISPEED"></a><p><dt><strong><strong><code>ispeed=&lt;unsigned-int&gt;</code></strong></strong><dd>
    Set the baud rate for incoming data on this line.<br>
    See also: <a href="socat.html#OPTION_OSPEED">ospeed</a>, <a href="socat.html#OPTION_B19200">b19200</a>
-<a name="OPTION_ISTRIP"></a><p><dt><strong><strong><code>istrip=&lt;bool&gt;</code></strong></strong><dd>
-<a name="OPTION_IUCLC"></a><p><dt><strong><strong><code>iuclc=&lt;bool&gt;</code></strong></strong><dd>
-<a name="OPTION_IXANY"></a><p><dt><strong><strong><code>ixany=&lt;bool&gt;</code></strong></strong><dd>
-<a name="OPTION_IXOFF"></a><p><dt><strong><strong><code>ixoff=&lt;bool&gt;</code></strong></strong><dd>
-<a name="OPTION_IXON"></a><p><dt><strong><strong><code>ixon=&lt;bool&gt;</code></strong></strong><dd>
+<a name="OPTION_ISTRIP"></a><p><dt><strong><strong><code>istrip[=&lt;bool&gt;]</code></strong></strong><dd>
+<a name="OPTION_IUCLC"></a><p><dt><strong><strong><code>iuclc[=&lt;bool&gt;]</code></strong></strong><dd>
+<a name="OPTION_IXANY"></a><p><dt><strong><strong><code>ixany[=&lt;bool&gt;]</code></strong></strong><dd>
+<a name="OPTION_IXOFF"></a><p><dt><strong><strong><code>ixoff[=&lt;bool&gt;]</code></strong></strong><dd>
+<a name="OPTION_IXON"></a><p><dt><strong><strong><code>ixon[=&lt;bool&gt;]</code></strong></strong><dd>
 <a name="OPTION_KILL"></a><p><dt><strong><strong><code>kill=&lt;byte&gt;</code></strong></strong><dd>
 <a name="OPTION_LNEXT"></a><p><dt><strong><strong><code>lnext=&lt;byte&gt;</code></strong></strong><dd>
 <a name="OPTION_MIN"></a><p><dt><strong><strong><code>min=&lt;byte&gt;</code></strong></strong><dd>
 <a name="OPTION_NL0"></a><p><dt><strong><strong><code>nl0</code></strong></strong><dd>
    Sets the newline delay to 0.
 <a name="OPTION_NL1"></a><p><dt><strong><strong><code>nl1</code></strong></strong><dd>
-<a name="OPTION_NLDLY"></a><p><dt><strong><strong><code>nldly=&lt;bool&gt;</code></strong></strong><dd>
-<a name="OPTION_NOFLSH"></a><p><dt><strong><strong><code>noflsh=&lt;bool&gt;</code></strong></strong><dd>
-<a name="OPTION_OCRNL"></a><p><dt><strong><strong><code>ocrnl=&lt;bool&gt;</code></strong></strong><dd>
-<a name="OPTION_OFDEL"></a><p><dt><strong><strong><code>ofdel=&lt;bool&gt;</code></strong></strong><dd>
-<a name="OPTION_OFILL"></a><p><dt><strong><strong><code>ofill=&lt;bool&gt;</code></strong></strong><dd>
-<a name="OPTION_OLCUC"></a><p><dt><strong><strong><code>olcuc=&lt;bool&gt;</code></strong></strong><dd>
-<a name="OPTION_ONLCR"></a><p><dt><strong><strong><code>onlcr=&lt;bool&gt;</code></strong></strong><dd>
-<a name="OPTION_ONLRET"></a><p><dt><strong><strong><code>onlret=&lt;bool&gt;</code></strong></strong><dd>
-<a name="OPTION_ONOCR"></a><p><dt><strong><strong><code>onocr=&lt;bool&gt;</code></strong></strong><dd>
-<a name="OPTION_OPOST"></a><p><dt><strong><strong><code>opost=&lt;bool&gt;</code></strong></strong><dd>
+<a name="OPTION_NLDLY"></a><p><dt><strong><strong><code>nldly[=&lt;bool&gt;]</code></strong></strong><dd>
+<a name="OPTION_NOFLSH"></a><p><dt><strong><strong><code>noflsh[=&lt;bool&gt;]</code></strong></strong><dd>
+<a name="OPTION_OCRNL"></a><p><dt><strong><strong><code>ocrnl[=&lt;bool&gt;]</code></strong></strong><dd>
+<a name="OPTION_OFDEL"></a><p><dt><strong><strong><code>ofdel[=&lt;bool&gt;]</code></strong></strong><dd>
+<a name="OPTION_OFILL"></a><p><dt><strong><strong><code>ofill[=&lt;bool&gt;]</code></strong></strong><dd>
+<a name="OPTION_OLCUC"></a><p><dt><strong><strong><code>olcuc[=&lt;bool&gt;]</code></strong></strong><dd>
+<a name="OPTION_ONLCR"></a><p><dt><strong><strong><code>onlcr[=&lt;bool&gt;]</code></strong></strong><dd>
+<a name="OPTION_ONLRET"></a><p><dt><strong><strong><code>onlret[=&lt;bool&gt;]</code></strong></strong><dd>
+<a name="OPTION_ONOCR"></a><p><dt><strong><strong><code>onocr[=&lt;bool&gt;]</code></strong></strong><dd>
+<a name="OPTION_OPOST"></a><p><dt><strong><strong><code>opost[=&lt;bool&gt;]</code></strong></strong><dd>
    Enables or disables output processing; e.g., converts NL to CR-NL.
 <a name="OPTION_OSPEED"></a><p><dt><strong><strong><code>ospeed=&lt;unsigned-int&gt;</code></strong></strong><dd>
    Set the baud rate for outgoing data on this line.<br>
    See also: <a href="socat.html#OPTION_ISPEED">ispeed</a>, <a href="socat.html#OPTION_B19200">b19200</a>
-<a name="OPTION_PARENB"></a><p><dt><strong><strong><code>parenb=&lt;bool&gt;</code></strong></strong><dd>
+<a name="OPTION_PARENB"></a><p><dt><strong><strong><code>parenb[=&lt;bool&gt;]</code></strong></strong><dd>
    Enable parity generation on output and parity checking for input.
-<a name="OPTION_PARMRK"></a><p><dt><strong><strong><code>parmrk=&lt;bool&gt;</code></strong></strong><dd>
-<a name="OPTION_PARODD"></a><p><dt><strong><strong><code>parodd=&lt;bool&gt;</code></strong></strong><dd>
-<a name="OPTION_PENDIN"></a><p><dt><strong><strong><code>pendin=&lt;bool&gt;</code></strong></strong><dd>
+<a name="OPTION_PARMRK"></a><p><dt><strong><strong><code>parmrk[=&lt;bool&gt;]</code></strong></strong><dd>
+<a name="OPTION_PARODD"></a><p><dt><strong><strong><code>parodd[=&lt;bool&gt;]</code></strong></strong><dd>
+<a name="OPTION_PENDIN"></a><p><dt><strong><strong><code>pendin[=&lt;bool&gt;]</code></strong></strong><dd>
 <a name="OPTION_QUIT"></a><p><dt><strong><strong><code>quit=&lt;byte&gt;</code></strong></strong><dd>
 <a name="OPTION_REPRINT"></a><p><dt><strong><strong><code>reprint=&lt;byte&gt;</code></strong></strong><dd>
 <a name="OPTION_SANE"></a><p><dt><strong><strong><code>sane</code></strong></strong><dd>
@@ -2816,12 +3378,12 @@ instead.
 <a name="OPTION_TAB3"></a><p><dt><strong><strong><code>tab3</code></strong></strong><dd>
 <a name="OPTION_TABDLY"></a><p><dt><strong><strong><code>tabdly=&lt;unsigned-int&gt;</code></strong></strong><dd>
 <a name="OPTION_TIME"></a><p><dt><strong><strong><code>time=&lt;byte&gt;</code></strong></strong><dd>
-<a name="OPTION_TOSTOP"></a><p><dt><strong><strong><code>tostop=&lt;bool&gt;</code></strong></strong><dd>
+<a name="OPTION_TOSTOP"></a><p><dt><strong><strong><code>tostop[=&lt;bool&gt;]</code></strong></strong><dd>
 <a name="OPTION_VT0"></a><p><dt><strong><strong><code>vt0</code></strong></strong><dd>
 <a name="OPTION_VT1"></a><p><dt><strong><strong><code>vt1</code></strong></strong><dd>
-<a name="OPTION_VTDLY"></a><p><dt><strong><strong><code>vtdly=&lt;bool&gt;</code></strong></strong><dd>
+<a name="OPTION_VTDLY"></a><p><dt><strong><strong><code>vtdly[=&lt;bool&gt;]</code></strong></strong><dd>
 <a name="OPTION_WERASE"></a><p><dt><strong><strong><code>werase=&lt;byte&gt;</code></strong></strong><dd>
-<a name="OPTION_XCASE"></a><p><dt><strong><strong><code>xcase=&lt;bool&gt;</code></strong></strong><dd>
+<a name="OPTION_XCASE"></a><p><dt><strong><strong><code>xcase[=&lt;bool&gt;]</code></strong></strong><dd>
 <a name="OPTION_XTABS"></a><p><dt><strong><strong><code>xtabs</code></strong></strong><dd>
 <a name="OPTION_I_POP_ALL"></a><p><dt><strong><strong><code>i-pop-all</code></strong></strong><dd>
    With UNIX System V STREAMS, removes all drivers from the stack.
@@ -2865,6 +3427,12 @@ type.
    periodically checks the HUP condition using <code>poll()</code> to find if the pty's
    slave side has been opened. The default polling interval is 1s. Use the
    pty-interval option [<a href="socat.html#TYPE_TIMEVAL">timeval</a>] to change this value.
+<a name="OPTION_SITOUT_EIO"></a><p><dt><strong><strong><code>sitout-eio=&lt;timeval&gt;</code></strong></strong><dd>
+   The login program in Linux closes its tty/pty and reopens it for security
+   reasons. During this time the pty master would get EIO on I/O operations and
+   might terminate. With this option <strong>socat</strong> tolerates EIO for the specified
+   time. Please note that in this state <strong>socat</strong> blocks traffic in both
+   directions, even when it is not related to this channel.
 </dl>
 <p>
 <dl></dl><br>
@@ -2907,7 +3475,7 @@ These options apply to the <a href="socat.html#ADDRESS_OPENSSL_CONNECT">openssl<
    <p><dt><strong><code>TLS1</code></strong><dd> Select TLS protocol version 1.
    <p><dt><strong><code>TLS1.1</code></strong><dd> Select TLS protocol version 1.1.
    <p><dt><strong><code>TLS1.2</code></strong><dd> Select TLS protocol version 1.2.
-   When this option is not provided OpenSSL negotiates the mothod with its
+   When this option is not provided OpenSSL negotiates the method with its
    peer.
    </dl>
 <a name="OPTION_OPENSSL_MIN_PROTO_VERSION"></a><p><dt><strong><strong><code>min-proto-version</code></strong></strong><dd>
@@ -2925,7 +3493,7 @@ These options apply to the <a href="socat.html#ADDRESS_OPENSSL_CONNECT">openssl<
    This option is similar to <a href="socat.html#OPTION_OPENSSL_MIN_PROTO_VERSION">min-proto-version</a>,
    however, it disallows use of a higher protocol version. Useful for testing
    the peer.
-<a name="OPTION_OPENSSL_VERIFY"></a><p><dt><strong><strong><code>verify=&lt;bool&gt;</code></strong></strong><dd>
+<a name="OPTION_OPENSSL_VERIFY"></a><p><dt><strong><strong><code>verify[=&lt;bool&gt;]</code></strong></strong><dd>
    Controls check of the peer's certificate. Default is 1 (true). Disabling
    verify might open your socket for everyone, making the encryption useless!
 <a name="OPTION_OPENSSL_CERTIFICATE"></a><p><dt><strong><strong><code>cert=&lt;filename&gt;</code></strong></strong><dd>
@@ -2955,12 +3523,21 @@ These options apply to the <a href="socat.html#ADDRESS_OPENSSL_CONNECT">openssl<
    On some systems, openssl requires an explicit source of random data. Specify
    the socket name where an entropy gathering daemon like egd provides random
    data, e.g. /dev/egd-pool.
+<a name="OPTION_OPENSSL_MAXFRAGLEN"></a><p><dt><strong><strong><code>openssl-maxfraglen=&lt;int&gt;, maxfraglen=&lt;int&gt;</code></strong></strong><dd>
+   For client connections, make a Max Fragment Length Negotiation Request to the server to limit the
+   maximum size fragment the server will send to us. Supported lengths are: 512, 1024, 2048, or
+   4096. Note that this option is not applicable for <a href="socat.html#ADDRESS_OPENSSL_LISTEN">OPENSSL-LISTEN</a>.
+<a name="OPTION_OPENSSL_MAXSENDFRAG"></a><p><dt><strong><strong><code>openssl-maxsendfrag=&lt;int&gt;, maxsendfrag=&lt;int&gt;</code></strong></strong><dd>
+   Limit the maximum size of the fragment we will send to the other side. Supported length range:
+   512 - 16384. Note that under <a href="socat.html#ADDRESS_OPENSSL_LISTEN">OPENSSL-LISTEN</a>, the maximum fragment
+   size may be further limited by the client's Maximum Fragment Length Negotiation Request, if it
+   makes one.
 <a name="OPTION_OPENSSL_PSEUDO"></a><p><dt><strong><strong><code>pseudo</code></strong></strong><dd>
    On systems where openssl cannot find an entropy source and where no entropy
    gathering daemon can be utilized, this option activates a mechanism for
    providing pseudo entropy. This is achieved by taking the current time in
    microseconds for feeding the libc pseudo random number generator with an
-   initial value. openssl is then feeded with output from random() calls.<br>
+   initial value. openssl is then fed with output from random() calls.<br>
    NOTE:This mechanism is not sufficient for generation of secure keys!
 <a name="OPTION_OPENSSL_COMPRESS"></a><p><dt><strong><strong><code>compress</code></strong></strong><dd>
    Enable or disable the use of compression for a connection. Setting this to
@@ -2977,7 +3554,7 @@ These options apply to the <a href="socat.html#ADDRESS_OPENSSL_CONNECT">openssl<
    certificates commonname. This option has only meaning when option
    <a href="socat.html#OPTION_OPENSSL_VERIFY">verify</a> is not disabled and the chosen cipher
    provides a peer certificate.
-<a name="OPTION_OPENSSL_NO_SNI"></a><p><dt><strong><strong><code>no-sni=&lt;bool&gt;</code></strong></strong><dd>
+<a name="OPTION_OPENSSL_NO_SNI"></a><p><dt><strong><strong><code>no-sni[=&lt;bool&gt;]</code></strong></strong><dd>
    Do not use the client side Server Name Indication (SNI) feature that selects
    the desired server certificate.<br>
    Note: SNI is automatically used since <strong>socat</strong> version 1.7.4.0 and uses
@@ -3016,27 +3593,23 @@ attempts.
 <p>
 <dl></dl><br>
 <p>
-<a name="GROUP_TUN"></a><em><strong>TUN option group</strong></em>
+<a name="GROUP_INTERFACE"></a><em><strong>INTERFACE option group</strong></em>
 <p>
-Options that control Linux TUN/TAP interface device addresses.
+These options may be applied to addresses <a href="socat.html#ADDRESS_INTERFACE">INTERFACE</a> and
+<a href="socat.html#ADDRESS_TUN">TUN</a>. These address types and options are currently only
+implemented on Linux operating system.
+<p>
+Note regarding VLANs: On incoming packets the Linux kernel strips off the VLAN
+tag before passing the data to the user space program on raw sockets. Special
+measures are required to get the VLAN information, see packet(7) PACKET_AUXDATA,
+and to optionally insert the tag into the packet again, use option
+<a href="socat.html#OPTION_RETRIEVE_VLAN">retrieve-vlan</a> when you need this.
 <p>
 <dl>
-<a name="OPTION_TUN_DEVICE"></a><p><dt><strong><strong><code>tun-device=&lt;device-file&gt;</code></strong></strong><dd>
-   Instructs socat to take another path for the TUN clone device. Default is
-   <code>/dev/net/tun</code>.
-<a name="OPTION_TUN_NAME"></a><p><dt><strong><strong><code>tun-name=&lt;if-name&gt;</code></strong></strong><dd>
-   Gives the resulting network interface a specific name instead of the system
-   generated (tun0, tun1, etc.)
-<a name="OPTION_TUN_TYPE"></a><p><dt><strong><strong><code>tun-type=[tun|tap]</code></strong></strong><dd>
-   Sets the type of the TUN device; use this option to generate a TAP
-   device. See the Linux docu for the difference between these types.
-   When you try to establish a tunnel between two TUN devices, their types
-   should be the same.
-<a name="OPTION_IFF_NO_PI"></a><p><dt><strong><strong><code>iff-no-pi</code></strong></strong><dd>
-   Sets the IFF_NO_PI flag which controls if the device includes additional
-   packet information in the tunnel.
-   When you try to establish a tunnel between two TUN devices, these flags
-   should have the same values.
+<a name="OPTION_RETRIEVE_VLAN"></a><p><dt><strong><strong><code>retrieve-vlan</code></strong></strong><dd>
+   On packets incoming on raw sockets, retrieve the VLAN information and insert
+   it into the packets for further processing (Linux)
+<p>
 <a name="OPTION_IFF_UP"></a><p><dt><strong><strong><code>iff-up</code></strong></strong><dd>
    Sets the TUN network interface status UP. Strongly recommended.
 <a name="OPTION_IFF_BROADCAST"></a><p><dt><strong><strong><code>iff-broadcast</code></strong></strong><dd>
@@ -3073,6 +3646,50 @@ Options that control Linux TUN/TAP interface device addresses.
 <p>
 <dl></dl><br>
 <p>
+<a name="GROUP_TUN"></a><em><strong>TUN option group</strong></em>
+<p>
+Options that control Linux TUN/TAP interface device addresses.
+<p>
+<dl>
+<a name="OPTION_TUN_DEVICE"></a><p><dt><strong><strong><code>tun-device=&lt;device-file&gt;</code></strong></strong><dd>
+   Instructs socat to take another path for the TUN clone device. Default is
+   <code>/dev/net/tun</code>.
+<a name="OPTION_TUN_NAME"></a><p><dt><strong><strong><code>tun-name=&lt;if-name&gt;</code></strong></strong><dd>
+   Gives the resulting network interface a specific name instead of the system
+   generated (tun0, tun1, etc.)
+<a name="OPTION_TUN_TYPE"></a><p><dt><strong><strong><code>tun-type=[tun|tap]</code></strong></strong><dd>
+   Sets the type of the TUN device; use this option to generate a TAP
+   device. See the Linux docu for the difference between these types.
+   When you try to establish a tunnel between two TUN devices, their types
+   should be the same.
+<a name="OPTION_IFF_NO_PI"></a><p><dt><strong><strong><code>iff-no-pi</code></strong></strong><dd>
+   Sets the IFF_NO_PI flag which controls if the device includes additional
+   packet information in the tunnel.
+   When you try to establish a tunnel between two TUN devices, these flags
+   should have the same values.
+</dl>
+<p>
+<dl></dl><br>
+<p>
+<a name="GROUP_POSIXMQ"></a><em><strong>POSIX-MQ option group</strong></em>
+<p>
+Options that may be applied to POSIX-MQ addresses.
+<p>
+<dl>
+<a name="OPTION_POSIXMQ_PRIORITY"></a><p><dt><strong><strong><code>posixmq-priority (mq-prio)</code></strong></strong><dd>
+   Sets the priority of messages (packets) written to the queue, or the minimal
+   priority of packet read from the queue.
+<a name="OPTION_POSIXMQ_FLUSH"></a><p><dt><strong><strong><code>posixmq-flush (mq-flush)</code></strong></strong><dd>
+   "Consumes" (drops) all messages currently in the queue before starting
+   transfers.
+<a name="OPTION_POSIXMQ_MAXMSG"></a><p><dt><strong><strong><code>posixmq-maxmsg (mq-maxmsg)</code></strong></strong><dd>
+   Sets the maxmsg parameter of the POSIX message queue when creating it.<br>
+   Note: This option applies only when the queue does not already exist.
+<a name="OPTION_POSIXMQ_MSGSIZE"></a><p><dt><strong><strong><code>posixmq-msgsize (mq-msgsize)</code></strong></strong><dd>
+   Sets the msgsize parameter of the POSIX message queue when creating it.<br>
+   Note: This option applies only when the queue does not already exist.
+</dl>
+<p>
 <a name="VALUES"></a>
 <h2>DATA VALUES</h2>
 <p>
@@ -3096,7 +3713,8 @@ address options can take.
    A string specifying a program name and its arguments, separated by single
    spaces. 
 <a name="TYPE_DATA"></a><p><dt><strong>data</strong><dd>
-   This is a more general data specification. The given text string contains
+   This is a more general data specification, "dalan" (low level data
+   description language). The given text string contains
    information about the target data type and value. Generally a leading
    character specifies the type of the following data item. In its specific
    context a default data type may exist.<br>
@@ -3112,12 +3730,12 @@ address options can take.
    <p><dt><strong>b</strong><dd>  A signed byte (signed char).<br>
    <p><dt><strong>B</strong><dd>  An unsigned byte (unsigned char).<br>
    <p><dt><strong>x</strong><dd>  Following is an even number of hex digits, stored as sequence of
-   bytes.<br>
+   bytes, the data length is the resulting number of bytes.<br>
    Example:    <strong>x7f000001</strong> (IP address 127.0.0.1)
    <p><dt><strong>"</strong><dd>  Following is a string that is used with the common conversions 
    \n \r \t \f \b \a \e \0; the string must be closed with '"'. Please note
    that the quotes and backslashes need to be escaped from shell and <strong>socat</strong>
-   conversion.<br>
+   conversion. No implicit \0 is appended.<br>
    Example:    <strong>"Hello world!\n"</strong>
    <p><dt><strong>'</strong><dd>  A single char, with the usual conversions. Please note that the
    quotes and backslashes need to be escaped from shell and <strong>socat</strong> conversion.
@@ -3175,10 +3793,10 @@ address options can take.
 <code>strtoll()</code>
 . The value must fit into a C long long.
 <a name="TYPE_OFF"></a><p><dt><strong>off_t</strong><dd>
-   An implementation dependend signed number, usually 32 bits, read with strtol
+   An implementation dependent signed number, usually 32 bits, read with strtol
    or strtoll.
 <a name="TYPE_OFF64"></a><p><dt><strong>off64_t</strong><dd>
-   An implementation dependend signed number, usually 64 bits, read with strtol
+   An implementation dependent signed number, usually 64 bits, read with strtol
    or strtoll.
 <a name="TYPE_MODE_T"></a><p><dt><strong>mode_t</strong><dd>
    An unsigned integer, read with 
@@ -3260,8 +3878,13 @@ address options can take.
 <p>
 <dl>
 <p>
+
 <a name="EXAMPLE_ADDRESS_TCP4_CONNECT"></a>
-<p><dt><strong><strong><code>socat - TCP4:www.domain.org:80</code></strong></strong><dd>
+
+
+
+
+<hr><div class="shell">socat - TCP4:www.domain.org:80</div>
 <p>
 transfers data between <a href="socat.html#ADDRESS_STDIO">STDIO</a> (-) and a
 <a href="socat.html#ADDRESS_TCP4_CONNECT">TCP4</a> connection to port 80 of host 
@@ -3274,8 +3897,12 @@ close the relay with ^D or abort it with ^C.
 
 
 
-<dt><code><strong>socat -d -d  READLINE,history=$HOME/.http_history \</strong><br>
-<strong>TCP4:www.domain.org:www,crnl</strong></code><dd>
+
+
+
+<hr><div class="shell">socat -d -d &#x5C;
+    READLINE,history=$HOME/.http_history &#x5C;
+    TCP4:www.domain.org:www,crnl</div>
 <p>
 this is similar to the previous example, but you can edit the current line in a
 bash like manner (<a href="socat.html#ADDRESS_READLINE">READLINE</a>) and use the
@@ -3285,7 +3912,15 @@ progress (<a href="socat.html#option_d_d">-d -d</a>). The  port is specified by 
 (<a href="socat.html#OPTION_CRNL">crnl</a>) instead of NL are used.
 <p>
 <a name="EXAMPLE_ADDRESS_TCP4_LISTEN"></a>
-<p><dt><strong><strong><code>socat TCP4-LISTEN:www TCP4:www.domain.org:www</code></strong></strong><dd>
+
+
+
+
+
+
+<hr><div class="shell">socat &#x5C;
+    TCP4-LISTEN:www &#x5C;
+    TCP4:www.domain.org:www</div>
 <p>
 installs a simple TCP port forwarder. With
 <a href="socat.html#ADDRESS_TCP4_LISTEN">TCP4-LISTEN</a> it listens on local port "www" until a
@@ -3294,16 +3929,19 @@ connection comes in, accepts it, then connects to the remote host
 a second connection. 
 <p>
 <a name="EXAMPLE_OPTION_BIND_TCP4"></a>
-<a name="EXAMPLE_OPTION_REUSEADDR"></a>
+<a name="EXAMPLE_OPTION_SO_REUSEADDR"></a>
 <a name="EXAMPLE_OPTION_FORK"></a>
 <a name="EXAMPLE_OPTION_SUBSTUSER"></a>
 <a name="EXAMPLE_OPTION_RANGE"></a>
 
 
 
-<dt><code><strong>socat -d -d -lmlocal2 \</strong><br>
-<strong>TCP4-LISTEN:80,bind=myaddr1,su=nobody,fork,range=10.0.0.0/8,reuseaddr \</strong><br>
-<strong>TCP4:www.domain.org:80,bind=myaddr2</strong></code><dd>
+
+
+
+<hr><div class="shell">socat -d -d -lmlocal2 &#x5C;
+    TCP4-LISTEN:80,bind=myaddr1,su=nobody,fork,range=10.0.0.0/8,reuseaddr &#x5C;
+    TCP4:www.domain.org:80,bind=myaddr2</div>
 <p>
 TCP port forwarder, each side bound to another local IP address
 (<a href="socat.html#OPTION_BIND">bind</a>). This example handles an almost
@@ -3314,7 +3952,7 @@ process after each
 . It provides a little security by
 <a href="socat.html#OPTION_SUBSTUSER">su</a>'ing to user 
 nobody after forking; it only permits connections from the private 10 network
-(<a href="socat.html#OPTION_RANGE">range</a>); due to <a href="socat.html#OPTION_REUSEADDR">reuseaddr</a>, it
+(<a href="socat.html#OPTION_RANGE">range</a>); due to <a href="socat.html#OPTION_SO_REUSEADDR">reuseaddr</a>, it
 allows immediate restart after master process's termination, even if some child
 sockets are not completely shut down.
 With <a href="socat.html#option_lm">-lmlocal2</a>, socat logs to stderr until successfully
@@ -3330,8 +3968,12 @@ local2.
 
 
 
-<dt><code><strong>socat TCP4-LISTEN:5555,fork,tcpwrap=script \</strong><br>
-<strong>EXEC:/bin/myscript,chroot=/home/sandbox,su-d=sandbox,pty,stderr</strong></code><dd>
+
+
+
+<hr><div class="shell">socat &#x5C;
+    TCP4-LISTEN:5555,fork,tcpwrap=script &#x5C;
+    EXEC:/bin/myscript,chroot=/home/sandbox,su-d=sandbox,pty,stderr</div>
 <p>
 a simple server that accepts connections
 (<a href="socat.html#ADDRESS_TCP4_LISTEN">TCP4-LISTEN</a>) and <a href="socat.html#OPTION_FORK">fork</a>'s a new
@@ -3354,8 +3996,12 @@ so its error messages are transferred via <strong>socat</strong> to the connecte
 
 
 
-<dt><code><strong>socat EXEC:"mail.sh target@domain.com",fdin=3,fdout=4 \</strong><br>
-<strong>TCP4:mail.relay.org:25,crnl,bind=alias1.server.org,mss=512</strong></code><dd>
+
+
+
+<hr><div class="shell">socat &#x5C;
+    EXEC:"mail.sh target@domain.com",fdin=3,fdout=4 &#x5C;
+    TCP4:mail.relay.org:25,crnl,bind=alias1.server.org,mss=512</div>
 <p>
 <strong>mail.sh</strong> is a shell script, distributed with <strong>socat</strong>, that implements a
 simple 
@@ -3372,7 +4018,15 @@ at most 512 data bytes per packet (<a href="socat.html#OPTION_MSS">mss</a>).
 <a name="EXAMPLE_ADDRESS_GOPEN"></a>
 <a name="EXAMPLE_OPTION_TERMIOS_RAWER"></a>
 <a name="EXAMPLE_OPTION_ESCAPE"></a>
-<p><dt><strong><strong><code>socat -,escape=0x0f /dev/ttyS0,rawer,crnl</code></strong></strong><dd>
+
+
+
+
+
+
+<hr><div class="shell">socat &#x5C;
+    -,escape=0x0f &#x5C;
+    /dev/ttyS0,rawer,crnl</div>
 <p>
 opens an interactive connection via the serial line, e.g. for talking with a
 modem. <a href="socat.html#OPTION_TERMIOS_RAWER">rawer</a> sets the console's and
@@ -3388,8 +4042,12 @@ Consider using <a href="socat.html#ADDRESS_READLINE">READLINE</a> instead of the
 
 
 
-<dt><code><strong>socat UNIX-LISTEN:/tmp/.X11-unix/X1,fork \</strong><br>
-<strong>SOCKS4:host.victim.org:127.0.0.1:6000,socksuser=nobody,sourceport=20</strong></code><dd>
+
+
+
+<hr><div class="shell">socat &#x5C;
+    UNIX-LISTEN:/tmp/.X11-unix/X1,fork &#x5C;
+    SOCKS4:host.victim.org:127.0.0.1:6000,socksuser=nobody,sourceport=20</div>
 <p>
 with <a href="socat.html#ADDRESS_UNIX_LISTEN">UNIX-LISTEN</a>, <strong>socat</strong> opens a listening
 UNIX domain socket <strong>/tmp/.X11-unix/X1</strong>. This path corresponds 
@@ -3408,7 +4066,16 @@ session with a given set of addresses and ports.
 <p>
 <a name="EXAMPLE_option_u"></a>
 <a name="EXAMPLE_OPTION_IGNOREEOF"></a>
-<p><dt><strong><strong><code>socat -u /tmp/readdata,seek-end=0,ignoreeof -</code></strong></strong><dd>
+
+
+
+
+
+
+
+<hr><div class="shell">socat -u &#x5C;
+    /tmp/readdata,seek-end=0,ignoreeof &#x5C;
+    STDIO</div>
 <p>
 this is an example for unidirectional data transfer
 (<a href="socat.html#option_u">-u</a>). <strong>Socat</strong> transfers data 
@@ -3424,8 +4091,13 @@ might also be a listening UNIX domain socket (do not use a seek option then).
 
 
 
-<dt><code><strong>(sleep 5; echo PASSWORD; sleep 5; echo ls; sleep 1) |</strong><br>
-<strong>socat - EXEC:'ssh -l user server',pty,setsid,ctty</strong></code><dd>
+
+
+
+
+<hr><div class="shell">(sleep 5; echo PASSWORD; sleep 5; echo ls; sleep 1) | 
+socat - &#x5C;
+    EXEC:'ssh -l user server',pty,setsid,ctty</div>
 <p>
 <a href="socat.html#ADDRESS_EXEC">EXEC</a>'utes an ssh session to server. Uses a <a href="socat.html#OPTION_PTY">pty</a> for communication between <strong>socat</strong> and
 ssh, makes it ssh's controlling tty (<a href="socat.html#OPTION_CTTY">ctty</a>), 
@@ -3438,19 +4110,31 @@ a new process group (<a href="socat.html#OPTION_SETSID">setsid</a>), so ssh acce
 
 
 
-<dt><code><strong>socat -u TCP4-LISTEN:3334,reuseaddr,fork \</strong><br>
-<strong>OPEN:/tmp/in.log,creat,append</strong></code><dd>
+
+
+
+<hr><div class="shell">socat -u &#x5C;
+    TCP4-LISTEN:3334,reuseaddr,fork &#x5C;
+    OPEN:/tmp/in.log,creat,append</div>
 <p>
 implements a simple network based message collector. 
 For each client connecting to port 3334, a new child process is generated (option <a href="socat.html#OPTION_FORK">fork</a>).
 All data sent by the clients are <a href="socat.html#OPTION_APPEND">append</a>'ed to the file /tmp/in.log.
 If the file does not exist, socat <a href="socat.html#OPTION_O_CREAT">creat</a>'s it. 
-Option <a href="socat.html#OPTION_REUSEADDR">reuseaddr</a> allows immediate restart of the server
+Option <a href="socat.html#OPTION_SO_REUSEADDR">reuseaddr</a> allows immediate restart of the server
 process. 
 <p>
 
 <a name="EXAMPLE_OPTION_NOECHO"></a>
-<p><dt><strong><strong><code>socat READLINE,noecho='[Pp]assword:' EXEC:'ftp ftp.server.com',pty,setsid,ctty</code></strong></strong><dd>
+
+
+
+
+
+
+<hr><div class="shell">socat &#x5C;
+    READLINE,noecho='[Pp]assword:' &#x5C;
+    EXEC:'ftp ftp.server.com',pty,setsid,ctty</div>
 <p>
 wraps a command line history (<a href="socat.html#ADDRESS_READLINE">READLINE</a>) around the <a href="socat.html#ADDRESS_EXEC">EXEC</a>'uted ftp client utility.
 This allows editing and reuse of FTP commands for relatively comfortable
@@ -3462,13 +4146,16 @@ prompts.
 <a name="EXAMPLE_ADDRESS_PTY"></a>
 <a name="EXAMPLE_OPTION_SYMBOLIC_LINK"></a>
 <a name="EXAMPLE_OPTION_WAIT_SLAVE"></a>
-<a name="EXAMPLE_OPTION_NONBLOCK"></a>
+<a name="EXAMPLE_OPTION_O_NONBLOCK"></a>
 
 
 
 
-<dt><code><strong>socat PTY,link=$HOME/dev/vmodem0,rawer,wait-slave \</strong><br>
-<strong>EXEC:'"ssh modemserver.us.org socat - /dev/ttyS0,nonblock,rawer"'</strong></code><dd>
+
+
+<hr><div class="shell">socat &#x5C;
+    PTY,link=$HOME/dev/vmodem0,rawer,wait-slave &#x5C;
+    EXEC:'"ssh modemserver.us.org socat - /dev/ttyS0,nonblock,rawer"'</div>
 <p>
 generates a pseudo terminal 
 device (<a href="socat.html#ADDRESS_PTY">PTY</a>) on the client that can be reached under the
@@ -3478,20 +4165,62 @@ can be configured to use <strong>$HOME/dev/vmodem0</strong>; its traffic will be
 to a modemserver via ssh where another socat instance links it to
 <strong>/dev/ttyS0</strong>.
 <p>
+<a name="EXAMPLE_OPTION_NETNS"></a>
 
 
 
-<dt><code><strong>socat TCP4-LISTEN:2022,reuseaddr,fork \</strong><br>
-<strong>PROXY:proxy:www.domain.org:22,proxyport=3128,proxyauth=user:pass</strong></code><dd>
+
+
+
+<hr><div class="shell">sudo socat --experimental &#x5C;
+    TCP4-LISTEN:8000,reuseaddr,fork,netns=namespace1 &#x5C;
+    TCP4-CONNECT:server2:8000</div>
+<p>
+creates a listener in the given network namespace that accepts TCP connections
+on port 8000 and forwards them to server2.
+<p>
+<a name="EXAMPLE_TUN_NETNS"></a>
+
+
+
+
+
+
+<hr><div class="shell">sudo socat --experimental &#x5C;
+    TUN:192.168.2.1/24,up &#x5C;
+    TUN:192.168.2.2/24,up,netns=namespace2</div>
+<p>
+creates two virtual network interfaces, one in default namespace, the other one
+in namespace2, and forwards packets between them, acting as a virtual
+network connection.
+<p>
+<a name="EXAMPLE_PROXY_CONNECT"></a>
+
+
+
+
+
+
+<hr><div class="shell">socat &#x5C;
+    TCP4-LISTEN:2022,reuseaddr,fork &#x5C;
+    PROXY:proxy.local:www.domain.org:22,proxyport=3128,proxyauth=username:s3cr3t</div>
 <p>
 starts a forwarder that accepts connections on port 2022, and directs them 
 through the <a href="socat.html#ADDRESS_PROXY_CONNECT">proxy</a> daemon listening on port 3128
-(<a href="socat.html#OPTION_PROXYPORT">proxyport</a>) on host proxy, using the
-CONNECT method, where they are authenticated as "user" with "pass" (<a href="socat.html#OPTION_PROXY_AUTHORIZATION">proxyauth</a>). The proxy 
+(<a href="socat.html#OPTION_PROXYPORT">proxyport</a>) on host proxy.local, using the
+CONNECT method, where they are authenticated as "username" with "s3cr3t"
+(<a href="socat.html#OPTION_PROXY_AUTHORIZATION">proxyauth</a>). proxy.local
 should establish connections to host www.domain.org on port 22 then.
 <p>
 <a name="EXAMPLE_ADDRESS_OPENSSL_CONNECT"></a>
-<p><dt><strong><strong><code>socat - SSL:server:4443,cafile=server.crt,cert=client.pem</code></strong></strong><dd>
+
+
+
+
+
+
+<hr><div class="shell">socat - &#x5C;
+    SSL:server:4443,cafile=./server.crt,cert=./client.pem</div>
 <p>
 is an OpenSSL client that tries to establish a secure connection to an SSL
 server. Option <a href="socat.html#OPTION_OPENSSL_CAFILE">cafile</a> specifies a file that
@@ -3504,7 +4233,15 @@ server wishes a client authentication; many Internet servers do not.<br>
 The first address ('-') can be replaced by almost any other socat address.
 <p>
 <a name="EXAMPLE_ADDRESS_OPENSSL_LISTEN"></a>
-<p><dt><strong><strong><code>socat OPENSSL-LISTEN:4443,reuseaddr,pf=ip4,fork,cert=server.pem,cafile=client.crt PIPE</code></strong></strong><dd>
+
+
+
+
+
+
+<hr><div class="shell">socat &#x5C;
+    OPENSSL-LISTEN:4443,reuseaddr,pf=ip4,fork,cert=./server.pem,cafile=./client.crt &#x5C;
+    PIPE</div>
 <p>
 is an OpenSSL server that accepts TCP connections, presents the certificate
 from the file server.pem and forces the client to present a certificate that is
@@ -3514,33 +4251,72 @@ address.<br>
 For instructions on generating and distributing OpenSSL keys and certificates
 see the additional socat docu <code>socat-openssl.txt</code>.
 <p>
-<p><dt><strong><strong><code>echo |socat -u - file:/tmp/bigfile,create,largefile,seek=100000000000</code></strong></strong><dd>
+
+
+
+
+
+
+<hr><div class="shell">echo | 
+socat -u - &#x5C;
+    FILE:/tmp/bigfile,create,largefile,seek=100000000000</div>
 <p>
-creates a 100GB sparse file; this requires a file system type that
-supports this (ext2, ext3, reiserfs, jfs; not minix, vfat). The operation of
+creates a 100GB+1B sparse file; this requires a file system type that
+supports this (ext2, ext3, ext4, reiserfs, xfs; not minix, vfat). The operation of
 writing 1 byte might take long (reiserfs: some minutes; ext2: "no" time), and
 the resulting file can consume some disk space with just its inodes (reiserfs:
 2MB; ext2: 16KB). 
 <p>
-<p><dt><strong><strong><code>socat tcp-l:7777,reuseaddr,fork system:'filan -i 0 -s &gt;&amp;2',nofork</code></strong></strong><dd>
+
+
+
+
+
+
+<hr><div class="shell">socat &#x5C;
+    TCP-L:7777,reuseaddr,fork &#x5C;
+    SYSTEM:'filan -i 0 -s >&amp;2',nofork</div>
 <p>
 listens for incoming TCP connections on port 7777. For each accepted
 connection, invokes a shell. This shell has its stdin and stdout directly
 connected to the TCP socket (<a href="socat.html#OPTION_NOFORK">nofork</a>).  The shell starts filan and lets it print the socket addresses to
 stderr (your terminal window).
 <p>
-<p><dt><strong><strong><code>echo -e "\0\14\0\0\c" |socat -u - file:/usr/bin/squid.exe,seek=0x00074420</code></strong></strong><dd>
+
+
+
+
+
+
+<hr><div class="shell">echo -e "\0\14\0\0\c" |
+socat -u - &#x5C;
+    FILE:/usr/bin/squid.exe,seek=0x00074420</div>
 <p>
 functions as primitive binary editor: it writes the 4 bytes 000 014 000 000 to
-the executable /usr/bin/squid at offset 0x00074420 (this is a real world patch
-to make the squid executable from Cygwin run under Windows, actual per May 2004).
+the executable /usr/bin/squid.exe at offset 0x00074420 (this was a real world patch
+to make the squid executable from Cygwin run under Windows, in 2004).
 <p>
-<p><dt><strong><strong><code>socat - tcp:www.blackhat.org:31337,readbytes=1000</code></strong></strong><dd>
+
+
+
+
+
+
+<hr><div class="shell">socat - &#x5C;
+    TCP:www.blackhat.org:31337,readbytes=1000</div>
 <p>
 connects to an unknown service and prevents being flooded.
 <p>
 <a name="EXAMPLE_END_CLOSE"></a>
-<p><dt><strong><strong><code>socat -U TCP:target:9999,end-close TCP-L:8888,reuseaddr,fork</code></strong></strong><dd>
+
+
+
+
+
+
+<hr><div class="shell">socat -U &#x5C;
+    TCP:target:9999,end-close &#x5C;
+    TCP-L:8888,reuseaddr,fork</div>
 <p>
 merges data arriving from different TCP streams on port 8888 to just one stream
 to target:9999. The <a href="socat.html#OPTION_END_CLOSE">end-close</a> option prevents the child
@@ -3549,14 +4325,56 @@ connection to 9999 (close(2) just unlinks the inode which stays active as long
 as the parent process lives; shutdown(2) would actively terminate the
 connection).
 <p>
+<a name="EXAMPLE_GENERIC_DCCP_SERVER"></a>
+
+
+
+
+
+
+<hr><div class="shell">socat &#x5C;
+    TCP-LISTEN:10021,reuseaddr,socktype=6,protocol=33,fork &#x5C;
+    PIPE</div>
+<p>
+is a simple DCCP echo server. DCCP is now directly provisioned in <strong>socat</strong>,
+however this example shows how use <strong>socat</strong>s TCP procedures and change the
+socket type to SOCK_DCCP=6 (on Linux) and the IP protocol to IPPROTO_DCCP=33.
+<p>
+<a name="EXAMPLE_GENERIC_DCCP_CLIENT"></a>
+
+
+
+
+
+<hr><div class="shell">socat - &#x5C;
+    TCP:&lt;server&gt;:10021,reuseaddr,socktype=6,protocol=33,fork</div>
+<p>
+is a simple DCCP client. DCCP is now directly provisioned in <strong>socat</strong>,
+however this example shows how use <strong>socat</strong>s TCP procedures, but changes the
+socket type to SOCK_DCCP=6 (on Linux) and the IP protocol to IPPROTO_DCCP=33.
+<p>
 <a name="EXAMPLE_ADDRESS_UDP4_BROADCAST_CLIENT"></a>
-<p><dt><strong><strong><code>socat - UDP4-DATAGRAM:192.168.1.0:123,sp=123,broadcast,range=192.168.1.0/24</code></strong></strong><dd>
+
+
+
+
+
+
+<hr><div class="shell">socat - &#x5C;
+    UDP4-DATAGRAM:192.168.1.0:123,sp=123,broadcast,range=192.168.1.0/24</div>
 <p>
 sends a broadcast to the network 192.168.1.0/24 and receives the replies of the
 timeservers there. Ignores NTP packets from hosts outside this network.
 <p>
 <a name="EXAMPLE_ADDRESS_GENERIC_CLIENT"></a>
-<p><dt><strong><strong><code>socat - SOCKET-DATAGRAM:2:2:17:x007bxc0a80100x0000000000000000,bind=x007bx00000000x0000000000000000,setsockopt-int=1:6:1,range=x0000xc0a80100x0000000000000000:x0000xffffff00x0000000000000000</code></strong></strong><dd>
+
+
+
+
+
+
+<hr><div class="shell">socat - &#x5C;
+    SOCKET-DATAGRAM:2:2:17:x007bxc0a80100x0000000000000000,bind=x007bx00000000x0000000000000000,setsockopt-int=1:6:1,range=x0000xc0a80100x0000000000000000:x0000xffffff00x0000000000000000</div>
 <p>
 is semantically equivalent to the <a href="socat.html#EXAMPLE_ADDRESS_UDP4_BROADCAST_CLIENT">previous
 example</a>, but all parameters are
@@ -3564,13 +4382,27 @@ specified in generic form. the value 6 of setsockopt-int is the Linux value for
 <code>SO_BROADCAST</code>.
 <p>
 <a name="EXAMPLE_ADDRESS_IP4_BROADCAST_CLIENT"></a>
-<p><dt><strong><strong><code>socat - IP4-DATAGRAM:255.255.255.255:44,broadcast,range=10.0.0.0/8</code></strong></strong><dd>
+
+
+
+
+
+
+<hr><div class="shell">socat - &#x5C;
+    IP4-DATAGRAM:255.255.255.255:44,broadcast,range=10.0.0.0/8</div>
 <p>
 sends a broadcast to the local network(s) using protocol 44. Accepts replies
 from the private address range only.
 <p>
 <a name="EXAMPLE_ADDRESS_UDP4_MULTICAST"></a>
-<p><dt><strong><strong><code>socat - UDP4-DATAGRAM:224.255.0.1:6666,bind=:6666,ip-add-membership=224.255.0.1:eth0</code></strong></strong><dd>
+
+
+
+
+
+
+<hr><div class="shell">socat - &#x5C;
+    UDP4-DATAGRAM:224.255.0.1:6666,bind=:6666,ip-add-membership=224.255.0.1:eth0</div>
 <p>
 transfers data from stdin to the specified multicast address using UDP. Both
 local and remote ports are 6666. Tells the interface eth0 to also accept
@@ -3581,7 +4413,15 @@ including IP-filters, routing issues, wrong interface selection by the
 operating system, bridges, or a badly configured switch.
 <p>
 <a name="EXAMPLE_ADDRESS_TUN"></a>
-<p><dt><strong><strong><code>socat UDP:host2:4443 TUN:192.168.255.1/24,up</code></strong></strong><dd>
+
+
+
+
+
+
+<hr><div class="shell">socat &#x5C;
+    UDP:host2:4443 &#x5C;
+    TUN:192.168.255.1/24,up</div>
 <p>
 establishes one side of a virtual (but not private!) network with host2 where a
 similar process might run, with UDP-L and tun address 192.168.255.2. They can
@@ -3590,32 +4430,77 @@ streaming eg.via TCP or SSL does not guarantee to retain packet boundaries and
 might thus cause packet loss.
 <p>
 <a name="EXAMPLE_ADDRESS_VSOCK"></a>
-<p><dt><strong><strong><code>socat - VSOCK-CONNECT:2:1234</code></strong></strong><dd>
+
+
+
+
+
+
+<hr><div class="shell">socat - &#x5C;
+    VSOCK-CONNECT:2:1234</div>
 <p>
 establishes a VSOCK connection with the host (host is always reachable with
 the well-know CID=2) on 1234 port.
 <p>
-<p><dt><strong><strong><code>socat - VSOCK-LISTEN:1234</code></strong></strong><dd>
+
+
+
+
+
+
+<hr><div class="shell">socat - &#x5C;
+    VSOCK-LISTEN:1234</div>
 <p>
 listens for a VSOCK connection on 1234 port.
 <p>
-<p><dt><strong><strong><code>socat - VSOCK-CONNECT:31:4321,bind:5555</code></strong></strong><dd>
+
+
+
+
+
+
+<hr><div class="shell">socat - &#x5C;
+    VSOCK-CONNECT:31:4321,bind:5555</div>
 <p>
 establishes a VSOCK connection with the guest that have CID=31 on 1234 port,
 binding the local socket to the 5555 port.
 <p>
-<p><dt><strong><strong><code>socat VSOCK-LISTEN:3333,reuseaddr,fork VSOCK-CONNECT:42,3333</code></strong></strong><dd>
+
+
+
+
+
+
+<hr><div class="shell">socat &#x5C;
+    VSOCK-LISTEN:3333,reuseaddr,fork &#x5C;
+    VSOCK-CONNECT:42,3333</div>
 <p>
 starts a forwarder that accepts VSOCK connections on port 3333, and directs
 them to the guest with CID=42 on the same port.
 <p>
-<p><dt><strong><strong><code>socat VSOCK-LISTEN:22,reuseaddr,fork TCP:localhost:22</code></strong></strong><dd>
+
+
+
+
+
+
+<hr><div class="shell">socat &#x5C;
+    VSOCK-LISTEN:22,reuseaddr,fork &#x5C;
+    TCP:localhost:22</div>
 <p>
 forwards VSOCK connections from 22 port to the local SSH server.
 Running this in a VM allows you to connect via SSH from the host using VSOCK,
 as in the example below.
 <p>
-<p><dt><strong><strong><code>socat TCP4-LISTEN:22222,reuseaddr,fork VSOCK-CONNECT:33:22</code></strong></strong><dd>
+
+
+
+
+
+
+<hr><div class="shell">socat &#x5C;
+    TCP4-LISTEN:22222,reuseaddr,fork &#x5C;
+	   VSOCK-CONNECT:33:22</div>
 <p>
 forwards TCP connections from 22222 port to the guest with CID=33 listening on
 VSOCK port 22.
@@ -3623,7 +4508,15 @@ Running this in the host, allows you to connect via SSH running
 "ssh -p 22222 user@localhost", if the guest runs the example above.
 <p>
 <a name="EXAMPLE_INTERFACE"></a>
-<p><dt><strong><strong><code>socat PTY,link=/var/run/ppp,rawer INTERFACE:hdlc0</code></strong></strong><dd>
+
+
+
+
+
+
+<hr><div class="shell">socat &#x5C;
+    PTY,link=/var/run/ppp,rawer &#x5C;
+    INTERFACE:hdlc0</div>
 <p>
 circumvents the problem that pppd requires a serial device and thus might not
 be able to work on a synchronous line that is represented by a network device.
@@ -3631,28 +4524,97 @@ socat creates a PTY to make pppd happy, binds to the network
 <a href="socat.html#ADDRESS_INTERFACE">interface</a> <code>hdlc0</code>, and can transfer data between
 both devices. Use pppd on device <code>/var/run/ppp</code> then.
 <p>
-<a name="EXAMPLE_HTTPECHO"></a>
-<p><dt><strong><strong><code>socat -T 1 -d -d TCP-L:10081,reuseaddr,fork,crlf SYSTEM:"echo -e \"\\\"HTTP/1.0 200 OK\\\nDocumentType: text/plain\\\n\\\ndate: \$\(date\)\\\nserver:\$SOCAT_SOCKADDR:\$SOCAT_SOCKPORT\\\nclient: \$SOCAT_PEERADDR:\$SOCAT_PEERPORT\\\n\\\"\"; cat; echo -e \"\\\"\\\n\\\"\""</code></strong></strong><dd>
+<a name="EXAMPLE_POSIXMQ_SEND"></a>
+
+
+
+
+
+
+<hr><div class="shell">socat -u &#x5C;
+    STDIO &#x5C;
+    POSIXMQ-SEND:/queue1,unlink-early,mq-prio=10</div>
 <p>
-creates a simple HTTP echo server: each HTTP client that connects gets a valid
+Writes packets read from stdio (i.e., lines of input when run interactively)
+into POSIX message queue, with priority 10.
+<p>
+<a name="EXAMPLE_POSIXMQ_RECV_FORK"></a>
+
+
+
+
+<hr><div class="shell">socat -u &#x5C;
+    POSIXMQ-RECV:/queue1,fork,max-children=3 &#x5C;
+    SYSTEM:"worker.sh"</div>
+<p>
+Receives messages (packets) from POSIX message queue and, for each message,
+forks a sub process that reads and processes the message. At most 3 sub
+processes are allowed at the same time.
+<p>
+<a name="EXAMPLE_HTTPECHO"></a>
+
+
+
+
+
+
+
+<hr><div class="shell">socat -T 1 -d -d &#x5C;
+    TCP-L:10081,reuseaddr,fork,crlf &#x5C;
+    SYSTEM:"echo -e \"\\\"HTTP/1.0 200 OK\\\nDocumentType: text/plain\\\n\\\ndate: \$\(date\)\\\nserver:\$SOCAT_SOCKADDR:\$SOCAT_SOCKPORT\\\nclient: \$SOCAT_PEERADDR:\$SOCAT_PEERPORT\\\n\\\"\"; cat; echo -e \"\\\"\\\n\\\"\""</div>
+<p>
+creates a very primitive HTTP echo server: each HTTP client that connects gets
+a valid
 HTTP reply that contains information about the client address and port as it is
 seen by the server host, the host address (which might vary on multihomed
 servers), and the original client request.
 <p>
 <a name="EXAMPLE_ANCILLARY"></a>
-<p><dt><strong><strong><code>socat -d -d UDP4-RECVFROM:9999,so-broadcast,so-timestamp,ip-pktinfo,ip-recverr,ip-recvopts,ip-recvtos,ip-recvttl!!- SYSTEM:'export; sleep 1' |grep SOCAT</code></strong></strong><dd>
+
+
+
+
+
+
+
+
+<hr><div class="shell">socat -d -d &#x5C;
+    UDP4-RECVFROM:9999,so-broadcast,so-timestamp,ip-pktinfo,ip-recverr,ip-recvopts,ip-recvtos,ip-recvttl!!- &#x5C;
+    SYSTEM:'export; sleep 1' |
+grep SOCAT</div>
 <p>
 waits for an incoming UDP packet on port 9999 and prints the environment 
 variables provided by socat. On BSD based systems you have to replace
-<a href="socat.html#OPTION_IP_PKTINFO"><code>ip-pktinfo</code></a> with <a href="socat.html#OPTION_IP_RECVDSTADDR"><code>ip-recvdstaddr</code></a>,<a href="socat.html#OPTION_IP_RECVIF"><code>ip-recvif</code></a>. Especially interesting is
+<a href="socat.html#OPTION_IP_PKTINFO"><code>ip-pktinfo</code></a> with <a href="socat.html#OPTION_IP_RECVDSTADDR"><code>ip-recvdstaddr</code></a>,<a href="socat.html#OPTION_IP_RECVIF"><code>ip-recvif</code></a>. Especially of interest is
 SOCAT_IP_DSTADDR: it contains the target address of the packet which may be a
 unicast, multicast, or broadcast address.
 <p>
-<a name="EXAMPLE_SSD"></a>
-<p><dt><strong><strong><code>echo -e "M-SEARCH * HTTP/1.1\nHOST: 239.255.255.250:1900\nMAN: \"ssdp:discover\"\nMX: 4\nST: \"ssdp:all\"\n" |socat - UDP-DATAGRAM:239.255.255.250:1900,crlf</code></strong></strong><dd>
+<a name="EXAMPLE_SSDP"></a>
+
+
+
+
+
+
+<hr><div class="shell">echo -e "M-SEARCH * HTTP/1.1\nHOST: 239.255.255.250:1900\nMAN: \"ssdp:discover\"\nMX: 4\nST: \"ssdp:all\"\n" | &#x5C;
+socat - &#x5C;
+    UDP-DATAGRAM:239.255.255.250:1900,crlf</div>
 <p>
 sends an SSDP (Simple Service Discovery Protocol) query to the local network
 and collects and outputs the answers received.
+<p>
+<a name="EXAMPLE_ADDRESS_ACCEPT_FD"></a>
+
+
+
+
+<hr><div class="shell">systemd-socket-activate -l 1077 --inetd socat ACCEPT:0,fork PIPE</div>
+<p>
+<code>systemd-socket-activate</code> is a program for testing <code>systemd</code> socket
+activation of daemons. With <code>--inetd</code> it waits for a connection on the
+specified port. It does not accept the connection but passes the listening file
+descriptor as FDs 0 and 1. <strong>Socat</strong> accepts the waiting connection and starts
+data transfer.
 <p>
 <p><dt><strong><strong><code></code></strong></strong><dd>
 <p>
@@ -3693,6 +4655,15 @@ error.
 /usr/bin/filan <br>
 /usr/bin/procan
 <p>
+<a name="SIGNALS"></a>
+<h2>SIGNALS</h2>
+<p>
+<dl>
+<a name="signal_usr1"></a><p><dt><strong>SIGUSR1:</strong><dd> Causes logging of current transfer statistics.
+<br>
+See also <a href="socat.html#option_statistics">option --statistics</a>
+</dl>
+<p>
 <a name="ENVIRONMENT_VARIABLES"></a>
 <h2>ENVIRONMENT VARIABLES</h2>
 <p>
@@ -3718,8 +4689,16 @@ address format. If name resolution does not return a matching entry, the first
 result (with differing IP version) is taken. With value 0, socat always selects
 the first record and its IP version. 
 <p>
+<p><dt><strong><strong>SOCAT_MAIN_WAIT</strong> (input)</strong><dd> Specifies the time (seconds) to sleep the
+main process on begin of main\(). Useful for debugging.
+<p>
+<p><dt><strong><strong>SOCAT_TRANSFER_WAIT</strong> (input)</strong><dd> Specifies the time (seconds) to sleep the
+process after opening addresses before entering the transfer loop. Useful for
+debugging.
+<p>
 <p><dt><strong><strong>SOCAT_FORK_WAIT</strong> (input)</strong><dd> Specifies the time (seconds) to sleep the
-parent and child processes after successful fork(). Useful for debugging.
+parent and child processes after successful fork(). Useful for
+debugging.
 <p>
 <p><dt><strong><strong>SOCAT_VERSION</strong> (output)</strong><dd> Socat sets this variable to its version string,
 e.g. <code>"1.7.0.0"</code> for released versions or e.g. <code>"1.6.0.1+envvar"</code> for
@@ -3727,8 +4706,8 @@ temporary versions; can be used in scripts invoked by socat.
 <p>
 <p><dt><strong><strong>SOCAT_PID</strong> (output)</strong><dd> Socat sets this variable to its process id. In case
 of <a href="socat.html#OPTION_FORK">fork</a> address option, SOCAT_PID gets the child processes
-id. Forking for <a href="socat.html#ADDRESS_EXEC">exec</a> and <a href="socat.html#ADDRESS_SYSTEM">system</a> does
-not change SOCAT_PID.
+id. Forking for <a href="socat.html#ADDRESS_EXEC">exec</a>, <a href="socat.html#ADDRESS_SYSTEM">system</a>, and
+<a href="socat.html#ADDRESS_SHELL">SHELL</a> does not change SOCAT_PID.
 <p>
 <p><dt><strong><strong>SOCAT_PPID</strong> (output)</strong><dd> Socat sets this variable to its process id. In
 case of <a href="socat.html#OPTION_FORK">fork</a>, SOCAT_PPID keeps the pid of the master process.
@@ -3824,8 +4803,8 @@ With options <a href="socat.html#OPTION_SUBSTUSER">su</a> and
 given user.
 <p>
 <p><dt><strong><strong>PATH</strong> (output)</strong><dd>
-Can be set with option <a href="socat.html#OPTION_PATH">path</a> for <a href="socat.html#ADDRESS_EXEC">exec</a> and
-<a href="socat.html#ADDRESS_SYSTEM">system</a> addresses.
+Can be set with option <a href="socat.html#OPTION_PATH">path</a> for <a href="socat.html#ADDRESS_EXEC">exec</a>,
+<a href="socat.html#ADDRESS_SYSTEM">system</a>, and <a href="socat.html#ADDRESS_SHELL">SHELL</a> addresses.
 <p>
 <p><dt><strong><strong>HOME</strong> (output)</strong><dd>
 With options <a href="socat.html#OPTION_SUBSTUSER">su</a> and
@@ -3853,7 +4832,7 @@ standard specifications available on the Internet for free.
 <a name="VERSION"></a>
 <h2>VERSION</h2>
 <p>
-This man page describes version 1.7.4 of <strong>socat</strong>.
+This man page describes version 1.8.0 of <strong>socat</strong>.
 <p>
 <a name="BUGS"></a>
 <h2>BUGS</h2>

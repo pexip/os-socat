@@ -30,7 +30,7 @@ union sockaddr_union {
 #if WITH_VSOCK
    struct sockaddr_vm vm;
 #endif /* WITH_IP6 */
-#if WITH_INTERFACE
+#if _WITH_INTERFACE
    struct sockaddr_ll ll;
 #endif
 } ;
@@ -43,7 +43,11 @@ struct xiorange {
 } ;
 #endif /* _WITH_SOCKET */
 
-extern ssize_t writefull(int fd, const void *buff, size_t bytes);
+#if _WITH_INTERFACE
+extern const int one;
+#endif
+
+extern ssize_t writefull(int fd, const void *buff, size_t bytes, const struct timeval *tmo0);
 
 #if _WITH_SOCKET
 extern socklen_t socket_init(int af, union sockaddr_union *sa);
@@ -80,6 +84,9 @@ extern int sockaddr_vm_parse(struct sockaddr_vm *sa, const char *cid_str,
 extern const char *inet_ntop(int pf, const void *binaddr,
 			     char *addrtext, socklen_t textlen);
 #endif
+extern int check_ip4addr(const char *address);
+extern int check_ip6addr(const char *address);
+extern int check_ipaddr(const char *address);
 
 #if defined(HAVE_SETGRENT) && defined(HAVE_GETGRENT) && defined(HAVE_ENDGRENT)
 extern int getusergroups(const char *user, gid_t *list, int *ngroups);
@@ -110,5 +117,6 @@ extern int xiosetenvushort(const char *varname, unsigned short value,
 extern unsigned long int Strtoul(const char *nptr, char **endptr, int base, const char *txt);
 extern long long int Strtoll(const char *nptr, char **endptr, int base, const char *txt);
 extern double Strtod(const char *nptr, char **endptr, const char *txt);
+extern int xio_opensnifffile(const char *a, struct timeval *tv);
 
 #endif /* !defined(__sysutils_h_included) */

@@ -8,6 +8,3 @@ Section: Network/Monitoring
 Format: HTML
 Index: /usr/share/doc/socat/index.html
 Files: /usr/share/doc/socat/*.html
-
-Format: Text
-Files: /usr/share/doc/socat/xio.help.gz

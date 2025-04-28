@@ -5,13 +5,14 @@
 /* this file contains the implementation of the openssl addresses */
 
 #include "xiosysincludes.h"
-#if WITH_OPENSSL	/* make this address configure dependend */
+#if WITH_OPENSSL	/* make this address configure dependent */
 #include <openssl/conf.h>
 #include <openssl/x509v3.h>
 
 #include "xioopen.h"
 
 #include "xio-fd.h"
+#include "xio-ip.h"
 #include "xio-socket.h"	/* _xioopen_connect() */
 #include "xio-listen.h"
 #include "xio-udp.h"
@@ -21,11 +22,10 @@
 #include "xio-openssl.h"
 
 /* the openssl library requires a file descriptor for external communications.
-   so our best effort is to provide any possible kind of un*x file descriptor 
+   so our best effort is to provide any possible kind of un*x file descriptor
    (not only tcp, but also pipes, stdin, files...)
    for tcp we want to provide support for socks and proxy.
    read and write functions must use the openssl crypt versions.
-   but currently only plain tcp4 is implemented.
 */
 
 /* Linux: "man 3 ssl" */
@@ -42,27 +42,24 @@
  */
 
 /* static declaration of ssl's open function */
-static int xioopen_openssl_connect(int argc, const char *argv[], struct opt *opts,
-				   int xioflags, xiofile_t *fd, unsigned groups,
-			   int dummy1, int dummy2, int dummy3);
+static int xioopen_openssl_connect(int argc, const char *argv[], struct opt *opts, int xioflags, xiofile_t *fd, const struct addrdesc *addrdesc);
 
 /* static declaration of ssl's open function */
-static int xioopen_openssl_listen(int argc, const char *argv[], struct opt *opts,
-				  int xioflags, xiofile_t *fd, unsigned groups,
-			   int dummy1, int dummy2, int dummy3);
+static int xioopen_openssl_listen(int argc, const char *argv[], struct opt *opts, int xioflags, xiofile_t *fd, const struct addrdesc *addrdesc);
+
 static int openssl_SSL_ERROR_SSL(int level, const char *funcname);
-static int openssl_handle_peer_certificate(struct single *xfd,
+static int openssl_handle_peer_certificate(struct single *sfd,
 					   const char *peername,
 					   bool opt_ver,
 					   int level);
-static int xioSSL_set_fd(struct single *xfd, int level);
-static int xioSSL_connect(struct single *xfd, const char *opt_commonname, bool opt_ver, int level);
+static int xioSSL_set_fd(struct single *sfd, int level);
+static int xioSSL_connect(struct single *sfd, const char *opt_commonname, bool opt_ver, int level);
 static int openssl_delete_cert_info(void);
 
 
 /* description record for ssl connect */
 const struct addrdesc xioaddr_openssl = {
-   "openssl",	/* keyword for selecting this address type in xioopen calls
+   "OPENSSL",	/* keyword for selecting this address type in xioopen calls
 		   (canonical or main name) */
    3,		/* data flow directions this address supports on API layer:
 		   1..read, 2..write, 3..both */
@@ -83,7 +80,7 @@ const struct addrdesc xioaddr_openssl = {
 #if WITH_LISTEN
 /* description record for ssl listen */
 const struct addrdesc xioaddr_openssl_listen = {
-   "openssl-listen",	/* keyword for selecting this address type in xioopen calls
+   "OPENSSL-LISTEN",	/* keyword for selecting this address type in xioopen calls
 		   (canonical or main name) */
    3,		/* data flow directions this address supports on API layer:
 		   1..read, 2..write, 3..both */
@@ -102,9 +99,9 @@ const struct addrdesc xioaddr_openssl_listen = {
 } ;
 #endif /* WITH_LISTEN */
 
-const struct addrdesc xioaddr_openssl_dtls_client = { "openssl-dtls-client", 3, xioopen_openssl_connect, GROUP_FD|GROUP_SOCKET|GROUP_SOCK_IP4|GROUP_SOCK_IP6|GROUP_IP_UDP|GROUP_CHILD|GROUP_OPENSSL|GROUP_RETRY, 1, 0, 0  HELP(":<host>:<port>") } ;
+const struct addrdesc xioaddr_openssl_dtls_client = { "OPENSSL-DTLS-CLIENT", 3, xioopen_openssl_connect, GROUP_FD|GROUP_SOCKET|GROUP_SOCK_IP4|GROUP_SOCK_IP6|GROUP_IP_UDP|GROUP_CHILD|GROUP_OPENSSL|GROUP_RETRY, 1, 0, 0  HELP(":<host>:<port>") } ;
 #if WITH_LISTEN
-const struct addrdesc xioaddr_openssl_dtls_server = { "openssl-dtls-server", 3, xioopen_openssl_listen, GROUP_FD|GROUP_SOCKET|GROUP_SOCK_IP4|GROUP_SOCK_IP6|GROUP_IP_UDP|GROUP_LISTEN|GROUP_CHILD|GROUP_RANGE|GROUP_OPENSSL|GROUP_RETRY, 1, 0, 0  HELP(":<port>") } ;
+const struct addrdesc xioaddr_openssl_dtls_server = { "OPENSSL-DTLS-SERVER", 3, xioopen_openssl_listen, GROUP_FD|GROUP_SOCKET|GROUP_SOCK_IP4|GROUP_SOCK_IP6|GROUP_IP_UDP|GROUP_LISTEN|GROUP_CHILD|GROUP_RANGE|GROUP_OPENSSL|GROUP_RETRY, 1, 0, 0  HELP(":<port>") } ;
 #endif
 
 /* both client and server */
@@ -113,10 +110,10 @@ const struct optdesc opt_openssl_cipherlist = { "openssl-cipherlist", "ciphers",
 const struct optdesc opt_openssl_method     = { "openssl-method",     "method",  OPT_OPENSSL_METHOD,     GROUP_OPENSSL, PH_SPEC, TYPE_STRING, OFUNC_SPEC };
 #endif
 #if HAVE_SSL_CTX_set_min_proto_version || defined(SSL_CTX_set_min_proto_version)
-const struct optdesc opt_openssl_min_proto_version = { "openssl-min-proto-version", "min-version", OPT_OPENSSL_MIN_PROTO_VERSION, GROUP_OPENSSL, PH_INIT, TYPE_STRING, OFUNC_OFFSET, XIO_OFFSETOF(para.openssl.min_proto_version) };
+const struct optdesc opt_openssl_min_proto_version = { "openssl-min-proto-version", "min-version", OPT_OPENSSL_MIN_PROTO_VERSION, GROUP_OPENSSL, PH_OFFSET, TYPE_STRING, OFUNC_OFFSET, XIO_OFFSETOF(para.openssl.min_proto_version) };
 #endif
 #if HAVE_SSL_CTX_set_max_proto_version || defined(SSL_CTX_set_max_proto_version)
-const struct optdesc opt_openssl_max_proto_version = { "openssl-max-proto-version", "max-version", OPT_OPENSSL_MAX_PROTO_VERSION, GROUP_OPENSSL, PH_INIT, TYPE_STRING, OFUNC_OFFSET, XIO_OFFSETOF(para.openssl.max_proto_version) };
+const struct optdesc opt_openssl_max_proto_version = { "openssl-max-proto-version", "max-version", OPT_OPENSSL_MAX_PROTO_VERSION, GROUP_OPENSSL, PH_OFFSET, TYPE_STRING, OFUNC_OFFSET, XIO_OFFSETOF(para.openssl.max_proto_version) };
 #endif
 const struct optdesc opt_openssl_verify     = { "openssl-verify",     "verify",  OPT_OPENSSL_VERIFY,     GROUP_OPENSSL, PH_SPEC, TYPE_BOOL,   OFUNC_SPEC };
 const struct optdesc opt_openssl_certificate = { "openssl-certificate", "cert",  OPT_OPENSSL_CERTIFICATE, GROUP_OPENSSL, PH_SPEC, TYPE_FILENAME, OFUNC_SPEC };
@@ -125,6 +122,12 @@ const struct optdesc opt_openssl_dhparam     = { "openssl-dhparam",     "dh",   
 const struct optdesc opt_openssl_cafile      = { "openssl-cafile",     "cafile", OPT_OPENSSL_CAFILE,      GROUP_OPENSSL, PH_SPEC, TYPE_FILENAME, OFUNC_SPEC };
 const struct optdesc opt_openssl_capath      = { "openssl-capath",     "capath", OPT_OPENSSL_CAPATH,      GROUP_OPENSSL, PH_SPEC, TYPE_FILENAME, OFUNC_SPEC };
 const struct optdesc opt_openssl_egd         = { "openssl-egd",        "egd",    OPT_OPENSSL_EGD,         GROUP_OPENSSL, PH_SPEC, TYPE_FILENAME, OFUNC_SPEC };
+#if HAVE_SSL_CTX_set_tlsext_max_fragment_length || defined(SSL_CTX_set_tlsext_max_fragment_length)
+const struct optdesc opt_openssl_maxfraglen  = { "openssl-maxfraglen",  "maxfraglen",  OPT_OPENSSL_MAXFRAGLEN,  GROUP_OPENSSL, PH_SPEC, TYPE_INT, OFUNC_SPEC };
+#endif
+#if HAVE_SSL_CTX_set_max_send_fragment || defined(SSL_CTX_set_max_send_fragment)
+const struct optdesc opt_openssl_maxsendfrag = { "openssl-maxsendfrag", "maxsendfrag", OPT_OPENSSL_MAXSENDFRAG, GROUP_OPENSSL, PH_SPEC, TYPE_INT, OFUNC_SPEC };
+#endif
 const struct optdesc opt_openssl_pseudo      = { "openssl-pseudo",     "pseudo", OPT_OPENSSL_PSEUDO,      GROUP_OPENSSL, PH_SPEC, TYPE_BOOL,     OFUNC_SPEC };
 #if OPENSSL_VERSION_NUMBER >= 0x00908000L && !defined(OPENSSL_NO_COMP)
 const struct optdesc opt_openssl_compress    = { "openssl-compress",   "compress", OPT_OPENSSL_COMPRESS,  GROUP_OPENSSL, PH_SPEC, TYPE_STRING,   OFUNC_SPEC };
@@ -137,7 +140,6 @@ const struct optdesc opt_openssl_commonname  = { "openssl-commonname", "cn",    
 const struct optdesc opt_openssl_no_sni      = { "openssl-no-sni",    "nosni",   OPT_OPENSSL_NO_SNI,      GROUP_OPENSSL, PH_SPEC, TYPE_BOOL,     OFUNC_SPEC };
 const struct optdesc opt_openssl_snihost     = { "openssl-snihost",   "snihost", OPT_OPENSSL_SNIHOST,     GROUP_OPENSSL, PH_SPEC, TYPE_STRING,   OFUNC_SPEC };
 #endif
-
 
 /* If FIPS is compiled in, we need to track if the user asked for FIPS mode.
  * On forks, the FIPS mode must be reset by a disable, then enable since
@@ -166,6 +168,7 @@ int xio_reset_fips_mode(void) {
 
 static void openssl_conn_loginfo(SSL *ssl) {
    const char *string;
+   SSL_SESSION *session;
 
    string = SSL_get_cipher_version(ssl);
    Notice1("SSL proto version used: %s", string);
@@ -188,40 +191,60 @@ static void openssl_conn_loginfo(SSL *ssl) {
               expansion?sycSSL_COMP_get_name(expansion):"none");
    }
 #endif
+   session = SSL_get_session(ssl);
+   if (session == NULL) {
+      Warn1("SSL_get_session(%p) failed", ssl);
+      return;
+   }
+#if HAVE_SSL_CTX_set_tlsext_max_fragment_length || defined(SSL_CTX_set_tlsext_max_fragment_length)
+   {
+      uint8_t fragcod;
+      int fraglen = -1;
+      fragcod = SSL_SESSION_get_max_fragment_length(session);
+      switch (fragcod) {
+      case TLSEXT_max_fragment_length_DISABLED: fraglen =  0; break;
+      case TLSEXT_max_fragment_length_512:  fraglen =  512; break;
+      case TLSEXT_max_fragment_length_1024: fraglen = 1024; break;
+      case TLSEXT_max_fragment_length_2048: fraglen = 2048; break;
+      case TLSEXT_max_fragment_length_4096: fraglen = 4096; break;
+      default: Warn1("SSL_SESSION_get_max_fragment_length(): unknown code %u",
+		    fragcod);
+	 break;
+      }
+      if (fraglen > 0) {
+	 Info1("OpenSSL: max fragment length is %d", fraglen);
+      }
+   }
+#endif
 }
 
 /* the open function for OpenSSL client */
-static int
-   xioopen_openssl_connect(int argc,
-		   const char *argv[],	/* the arguments in the address string */
-		   struct opt *opts,
-		   int xioflags,	/* is the open meant for reading (0),
+static int xioopen_openssl_connect(
+	int argc,
+	const char *argv[],	/* the arguments in the address string */
+	struct opt *opts,
+	int xioflags,		/* is the open meant for reading (0),
 				   writing (1), or both (2) ? */
-		   xiofile_t *xxfd,	/* a xio file descriptor structure,
+	xiofile_t *xxfd,	/* a xio file descriptor structure,
 				   already allocated */
-		   unsigned groups,	/* the matching address groups... */
-		   int protogrp,	/* first transparent integer value from
-				   addr_openssl */
-		   int dummy2,	/* second transparent integer value from
-				   addr_openssl */
-		   int dummy3)	/* transparent pointer value from
-					   addr_openssl */
+	const struct addrdesc *addrdesc)	/* the above descriptor */
 {
-   struct single *xfd = &xxfd->stream;
+   struct single *sfd = &xxfd->stream;
    struct opt *opts0 = NULL;
    const char *hostname, *portname;
+   int protogrp = addrdesc->arg1;
    int pf = PF_UNSPEC;
    bool use_dtls = (protogrp != 0);
    int socktype = SOCK_STREAM;
    int ipproto = IPPROTO_TCP;
    bool dofork = false;
-   union sockaddr_union us_sa,  *us = &us_sa;
-   union sockaddr_union them_sa, *them = &them_sa;
-   socklen_t uslen = sizeof(us_sa);
-   socklen_t themlen = sizeof(them_sa);
+   int maxchildren = 0;
+   struct addrinfo **bindarr = NULL;
+   struct addrinfo **themarr = NULL;
+   uint16_t bindport = 0;
    bool needbind = false;
    bool lowport = false;
-   int level;
+   int level = E_ERROR;
    SSL_CTX* ctx;
    bool opt_ver = true;	/* verify peer certificate */
    char *opt_cert = NULL;	/* file name of client certificate */
@@ -231,29 +254,23 @@ static int
    int result;
 
    if (!(xioflags & XIO_MAYCONVERT)) {
-      Error("address with data processing not allowed here");
+      Error1("%s: address with data processing not allowed here", argv[0]);
       return STAT_NORETRY;
    }
-   xfd->flags |= XIO_DOESCONVERT;
+   sfd->flags |= XIO_DOESCONVERT;
 
    if (argc != 3) {
-      Error1("%s: 2 parameters required", argv[0]);
+      xio_syntax(argv[0], 2, argc-1, addrdesc->syntax);
       return STAT_NORETRY;
    }
    hostname = argv[1];
    portname = argv[2];
    if (hostname[0] == '\0') {
-      /* we catch this explicitely because empty commonname (peername) disables
+      /* We catch this explicitly because empty commonname (peername) disables
 	 commonName check of peer certificate */
       Error1("%s: empty host name", argv[0]);
       return STAT_NORETRY;
    }
-
-   xfd->howtoend = END_SHUTDOWN;
-   if (applyopts_single(xfd, opts, PH_INIT) < 0)  return -1;
-   applyopts(-1, opts, PH_INIT);
-
-   retropt_bool(opts, OPT_FORK, &dofork);
 
    retropt_string(opts, OPT_OPENSSL_CERTIFICATE, &opt_cert);
    retropt_string(opts, OPT_OPENSSL_COMMONNAME, (char **)&opt_commonname);
@@ -261,7 +278,7 @@ static int
    retropt_bool(opts, OPT_OPENSSL_NO_SNI, &opt_no_sni);
    retropt_string(opts, OPT_OPENSSL_SNIHOST, (char **)&opt_snihost);
 #endif
-   
+
    if (opt_commonname == NULL) {
       opt_commonname = strdup(hostname);
       if (opt_commonname == NULL) {
@@ -270,7 +287,11 @@ static int
    }
 
 #if defined(HAVE_SSL_set_tlsext_host_name) || defined(SSL_set_tlsext_host_name)
-   if (opt_snihost == NULL) {
+   if (opt_snihost != NULL) {
+      if (check_ipaddr(opt_snihost) == 0) {
+	 Warn1("specified SNI host \"%s\" is an IP address", opt_snihost);
+      }
+   } else if (check_ipaddr(opt_commonname) != 0) {
       opt_snihost = strdup(opt_commonname);
       if (opt_snihost == NULL) {
 	 Error1("strdup("F_Zu"): out of memory", strlen(opt_commonname)+1);
@@ -279,88 +300,113 @@ static int
 #endif
 
    result =
-      _xioopen_openssl_prepare(opts, xfd, false, &opt_ver, opt_cert, &ctx, (bool *)&use_dtls);
+      _xioopen_openssl_prepare(opts, sfd, false, &opt_ver, opt_cert, &ctx, (bool *)&use_dtls);
    if (result != STAT_OK)  return STAT_NORETRY;
 
    if (use_dtls) {
       socktype = SOCK_DGRAM;
       ipproto = IPPROTO_UDP;
    }
-   retropt_int(opts, OPT_SO_TYPE,      &socktype);
-   retropt_int(opts, OPT_SO_PROTOTYPE, &ipproto);
 
-   result =
-      _xioopen_ipapp_prepare(opts, &opts0, hostname, portname, &pf, ipproto,
-			     xfd->para.socket.ip.res_opts[1],
-			     xfd->para.socket.ip.res_opts[0],
-			     them, &themlen, us, &uslen,
-			     &needbind, &lowport, socktype);
-   if (result != STAT_OK)  return STAT_NORETRY;
+   /* Apply and retrieve some options */
+   result = _xioopen_ipapp_init(sfd, xioflags, opts,
+				&dofork, &maxchildren,
+				&pf, &socktype, &ipproto);
+   if (result != STAT_OK)
+      return result;
 
-   if (xioopts.logopt == 'm') {
-      Info("starting connect loop, switching to syslog");
-      diag_set('y', xioopts.syslogfac);  xioopts.logopt = 'y';
-   } else {
-      Info("starting connect loop");
-   }
+   opts0 = opts; 	/* save remaining options for each loop */
+   opts = NULL;
 
-   do {	/* loop over failed connect and SSL handshake attempts */
+   Notice2("opening OpenSSL connection to %s:%s", hostname, portname);
+
+   do {	/* loop over retries (failed connect and SSL handshake attempts) and/or forks */
+      int _errno;
 
 #if WITH_RETRY
-      if (xfd->forever || xfd->retry) {
-	 level = E_INFO;
+      if (sfd->forever || sfd->retry) {
+	 level = E_NOTICE;
       } else
 #endif /* WITH_RETRY */
-	 level = E_ERROR;
+	 level = E_WARN;
 
-      /* this cannot fork because we retrieved fork option above */
+      opts = copyopts(opts0, GROUP_ALL);
+
       result =
-	 _xioopen_connect(xfd,
-			  needbind?us:NULL, uslen,
-			  (struct sockaddr *)them, themlen,
-			  opts, pf, socktype, ipproto, lowport, level);
+	 _xioopen_ipapp_prepare(&opts, opts0, hostname, portname,
+				pf, socktype, ipproto,
+				sfd->para.socket.ip.ai_flags,
+				&themarr, &bindarr, &bindport, &needbind, &lowport);
       switch (result) {
       case STAT_OK: break;
 #if WITH_RETRY
       case STAT_RETRYLATER:
       case STAT_RETRYNOW:
-	 if (xfd->forever || xfd->retry) {
-	    dropopts(opts, PH_ALL); opts = copyopts(opts0, GROUP_ALL);
-	    if (result == STAT_RETRYLATER) {
-	       Nanosleep(&xfd->intervall, NULL);
-	    }
-	    --xfd->retry;
+	 if (sfd->forever || sfd->retry--) {
+	    if (result == STAT_RETRYLATER)
+	       Nanosleep(&sfd->intervall, NULL);
+	    if (bindarr != NULL)  xiofreeaddrinfo(bindarr);
+	    xiofreeaddrinfo(themarr);
+	    freeopts(opts);
 	    continue;
 	 }
-	 return STAT_NORETRY;
+#endif /* WITH_RETRY */
+      case STAT_NORETRY:
+	 if (bindarr != NULL)  xiofreeaddrinfo(bindarr);
+	 xiofreeaddrinfo(themarr);
+	 freeopts(opts);
+	 freeopts(opts0);
+	 return result;
+      }
+
+      Notice2("opening connection to server %s:%s", hostname, portname);
+      result =
+	 _xioopen_ipapp_connect(sfd, hostname, opts, themarr,
+				needbind, bindarr, bindport, lowport, level);
+      _errno = errno;
+      if (bindarr != NULL)  xiofreeaddrinfo(bindarr);
+      xiofreeaddrinfo(themarr);
+      switch (result) {
+      case STAT_OK: break;
+#if WITH_RETRY
+      case STAT_RETRYLATER:
+      case STAT_RETRYNOW:
+	 if (sfd->forever || sfd->retry--) {
+	    if (result == STAT_RETRYLATER) {
+	       Nanosleep(&sfd->intervall, NULL);
+	    }
+	    freeopts(opts);
+	    continue;
+	 }
 #endif /* WITH_RETRY */
       default:
+	 Error4("%s:%s:%s: %s", argv[0], hostname, portname,
+		_errno?strerror(_errno):"(See above)");
+	 freeopts(opts0);
+	 freeopts(opts);
 	 return result;
       }
 
-      /*! isn't this too early? */
-      if ((result = _xio_openlate(xfd, opts)) < 0) {
-	 return result;
-      }
-
-      result = _xioopen_openssl_connect(xfd, opt_ver, opt_commonname,
+      result = _xioopen_openssl_connect(sfd, opt_ver, opt_commonname,
 			opt_no_sni, opt_snihost, ctx, level);
       switch (result) {
       case STAT_OK: break;
 #if WITH_RETRY
       case STAT_RETRYLATER:
       case STAT_RETRYNOW:
-	 if (xfd->forever || xfd->retry) {
-	    Close(xfd->fd);
-	    dropopts(opts, PH_ALL); opts = copyopts(opts0, GROUP_ALL);
+	 if (sfd->forever || sfd->retry--) {
 	    if (result == STAT_RETRYLATER) {
-	       Nanosleep(&xfd->intervall, NULL);
+	       Nanosleep(&sfd->intervall, NULL);
 	    }
-	    --xfd->retry;
+	    freeopts(opts);
+	    Close(sfd->fd);
 	    continue;
 	 }
 #endif /* WITH_RETRY */
-      default: return STAT_NORETRY;
+      default:
+	 freeopts(opts);
+	 freeopts(opts0);
+	 return result;
       }
 
       if (dofork) {
@@ -371,49 +417,63 @@ static int
       if (dofork) {
 	 pid_t pid;
 	 int level = E_ERROR;
-	 if (xfd->forever || xfd->retry) {
+	 if (sfd->forever || sfd->retry) {
 	    level = E_WARN;
 	 }
-	 while ((pid = xio_fork(false, level)) < 0) {
-	    if (xfd->forever || --xfd->retry) {
-	       Nanosleep(&xfd->intervall, NULL); continue;
+	 while ((pid = xio_fork(false, level, sfd->shutup)) < 0) {
+	    if (sfd->forever || sfd->retry--) {
+	       Nanosleep(&sfd->intervall, NULL);
+	       freeopts(opts);
+	       continue;
 	    }
+	    freeopts(opts);
+	    freeopts(opts0);
 	    return STAT_RETRYLATER;
 	 }
 
 	 if (pid == 0) {	/* child process */
-	    xfd->forever = false;  xfd->retry = 0;
+	    sfd->forever = false;
+	    sfd->retry = 0;
 	    break;
 	 }
 
 	 /* parent process */
-	 Close(xfd->fd);
-	 sycSSL_free(xfd->para.openssl.ssl);
-	 xfd->para.openssl.ssl = NULL;
+	 Close(sfd->fd);
+	 sycSSL_free(sfd->para.openssl.ssl);
+	 sfd->para.openssl.ssl = NULL;
 	 /* with and without retry */
-	 Nanosleep(&xfd->intervall, NULL);
-	 dropopts(opts, PH_ALL); opts = copyopts(opts0, GROUP_ALL);
+	 Nanosleep(&sfd->intervall, NULL);
+	 while (maxchildren > 0 && num_child >= maxchildren) {
+	    Info1("all %d allowed children are active, waiting", maxchildren);
+	    Nanosleep(&sfd->intervall, NULL);
+	 }
+	 freeopts(opts);
 	 continue;	/* with next socket() bind() connect() */
       }
 #endif /* WITH_RETRY */
       break;
+
    } while (true);	/* drop out on success */
 
-   openssl_conn_loginfo(xfd->para.openssl.ssl);
+   openssl_conn_loginfo(sfd->para.openssl.ssl);
 
    free((void *)opt_commonname);
    free((void *)opt_snihost);
 
-   /* fill in the fd structure */
-   return STAT_OK;
+   Notice2("successfully connected to SSL server %s:%s", hostname, portname);
+
+   result = _xio_openlate(sfd, opts);
+   freeopts(opts);
+   freeopts(opts0);
+   return result;
 }
 
 
 /* this function is typically called within the OpenSSL client fork/retry loop.
-   xfd must be of type DATA_OPENSSL, and its fd must be set with a valid file
+   sfd must be of type DATA_OPENSSL, and its fd must be set with a valid file
    descriptor. this function then performs all SSL related step to make a valid
    SSL connection from an FD and a CTX. */
-int _xioopen_openssl_connect(struct single *xfd,
+int _xioopen_openssl_connect(struct single *sfd,
 			     bool opt_ver,
 			     const char *opt_commonname,
 			     bool no_sni,
@@ -433,38 +493,40 @@ int _xioopen_openssl_connect(struct single *xfd,
       /*Error("SSL_new()");*/
       return STAT_RETRYLATER;
    }
-   xfd->para.openssl.ssl = ssl;
+   sfd->para.openssl.ssl = ssl;
 
-   result = xioSSL_set_fd(xfd, level);
+   result = xioSSL_set_fd(sfd, level);
    if (result != STAT_OK) {
-      sycSSL_free(xfd->para.openssl.ssl);
-      xfd->para.openssl.ssl = NULL;
+      sycSSL_free(sfd->para.openssl.ssl);
+      sfd->para.openssl.ssl = NULL;
       return result;
    }
 
 #if defined(HAVE_SSL_set_tlsext_host_name) || defined(SSL_set_tlsext_host_name)
    if (!no_sni) {
-      if (!SSL_set_tlsext_host_name(ssl, snihost)) {
+      if (snihost == NULL || strlen(snihost) == 0) {
+	 Warn("refusing to set empty SNI host name");
+      } else if (!SSL_set_tlsext_host_name(ssl, snihost)) {
 	 Error1("Failed to set SNI host \"%s\"", snihost);
-	 sycSSL_free(xfd->para.openssl.ssl);
-	 xfd->para.openssl.ssl = NULL;
+	 sycSSL_free(sfd->para.openssl.ssl);
+	 sfd->para.openssl.ssl = NULL;
 	 return STAT_NORETRY;
       }
    }
 #endif
 
-   result = xioSSL_connect(xfd, opt_commonname, opt_ver, level);
+   result = xioSSL_connect(sfd, opt_commonname, opt_ver, level);
    if (result != STAT_OK) {
-      sycSSL_free(xfd->para.openssl.ssl);
-      xfd->para.openssl.ssl = NULL;
+      sycSSL_free(sfd->para.openssl.ssl);
+      sfd->para.openssl.ssl = NULL;
       return result;
    }
 
-   result = openssl_handle_peer_certificate(xfd, opt_commonname,
+   result = openssl_handle_peer_certificate(sfd, opt_commonname,
 					    opt_ver, level);
    if (result != STAT_OK) {
-      sycSSL_free(xfd->para.openssl.ssl);
-      xfd->para.openssl.ssl = NULL;
+      sycSSL_free(sfd->para.openssl.ssl);
+      sfd->para.openssl.ssl = NULL;
       return result;
    }
 
@@ -474,28 +536,23 @@ int _xioopen_openssl_connect(struct single *xfd,
 
 #if WITH_LISTEN
 
-static int
-   xioopen_openssl_listen(int argc,
-		   const char *argv[],	/* the arguments in the address string */
-		   struct opt *opts,
-		   int xioflags,	/* is the open meant for reading (0),
+static int xioopen_openssl_listen(
+	int argc,
+	const char *argv[],	/* the arguments in the address string */
+	struct opt *opts,
+	int xioflags,		/* is the open meant for reading (0),
 				   writing (1), or both (2) ? */
-		   xiofile_t *xxfd,	/* a xio file descriptor structure,
+	xiofile_t *xxfd,	/* a xio file descriptor structure,
 				   already allocated */
-		   unsigned groups,	/* the matching address groups... */
-		   int protogrp,	/* first transparent integer value from
-				   addr_openssl */
-		   int dummy2,	/* second transparent integer value from
-				   addr_openssl */
-		   int dummy3)	/* transparent pointer value from
-					   addr_openssl */
+	const struct addrdesc *addrdesc)	/* the above descriptor */
 {
-   struct single *xfd = &xxfd->stream;
+   struct single *sfd = &xxfd->stream;
    const char *portname;
+   int protogrp = addrdesc->arg1;
    struct opt *opts0 = NULL;
    union sockaddr_union us_sa, *us = &us_sa;
    socklen_t uslen = sizeof(us_sa);
-   int pf;
+   int pf = PF_UNSPEC;
    bool use_dtls = (protogrp != 0);
    int socktype = SOCK_STREAM;
    int ipproto = IPPROTO_TCP;
@@ -511,26 +568,32 @@ static int
       Error("address with data processing not allowed here");
       return STAT_NORETRY;
    }
-   xfd->flags |= XIO_DOESCONVERT;
+   sfd->flags |= XIO_DOESCONVERT;
 
    if (argc != 2) {
-      Error1("%s: 1 parameter required", argv[0]);
+      xio_syntax(argv[0], 1, argc-1, addrdesc->syntax);
       return STAT_NORETRY;
    }
 
+   xioinit_ip(&pf, xioparms.default_ip);
 #if WITH_IP4 && WITH_IP6
-   pf = xioopts.default_ip=='6'?PF_INET6:PF_INET;
+   switch (xioparms.default_ip) {
+   case '4': pf = PF_INET; break;
+   case '6': pf = PF_INET6; break;
+   default: break;		/* includes \0 */
+   }
 #elif WITH_IP6
    pf = PF_INET6;
 #else
    pf = PF_INET;
 #endif
-   
+
    portname = argv[1];
 
-   xfd->howtoend = END_SHUTDOWN;
-   if (applyopts_single(xfd, opts, PH_INIT) < 0)  return -1;
-   applyopts(-1, opts, PH_INIT);
+   if (sfd->howtoend == END_UNSPEC)
+      sfd->howtoend = END_SHUTDOWN;
+   if (applyopts_single(sfd, opts, PH_INIT) < 0)  return -1;
+   applyopts(sfd, -1, opts, PH_INIT);
 
    retropt_string(opts, OPT_OPENSSL_CERTIFICATE, &opt_cert);
    if (opt_cert == NULL) {
@@ -539,10 +602,10 @@ static int
 
    retropt_string(opts, OPT_OPENSSL_COMMONNAME, (char **)&opt_commonname);
 
-   applyopts(-1, opts, PH_EARLY);
+   applyopts(sfd, -1, opts, PH_EARLY);
 
    result =
-      _xioopen_openssl_prepare(opts, xfd, true, &opt_ver, opt_cert, &ctx, &use_dtls);
+      _xioopen_openssl_prepare(opts, sfd, true, &opt_ver, opt_cert, &ctx, &use_dtls);
    if (result != STAT_OK)  return STAT_NORETRY;
 
    if (use_dtls) {
@@ -553,19 +616,20 @@ static int
    retropt_int(opts, OPT_SO_PROTOTYPE, &ipproto);
 
    if (_xioopen_ipapp_listen_prepare(opts, &opts0, portname, &pf, ipproto,
-				     xfd->para.socket.ip.res_opts[1],
-				     xfd->para.socket.ip.res_opts[0],
+				     sfd->para.socket.ip.ai_flags,
 				     us, &uslen, socktype)
        != STAT_OK) {
       return STAT_NORETRY;
    }
+   if (pf == 0)
+      pf = us->soa.sa_family;
 
-   xfd->dtype = XIODATA_OPENSSL;
+   sfd->dtype = XIODATA_OPENSSL;
 
    while (true) {	/* loop over failed attempts */
 
 #if WITH_RETRY
-      if (xfd->forever || xfd->retry) {
+      if (sfd->forever || sfd->retry) {
 	 level = E_INFO;
       } else
 #endif /* WITH_RETRY */
@@ -573,19 +637,23 @@ static int
 
       /* this can fork() for us; it only returns on error or on
 	 successful establishment of connection */
-      if (ipproto == IPPROTO_TCP) {
-	 result = _xioopen_listen(xfd, xioflags,
+      if (ipproto == IPPROTO_TCP
+#ifdef IPPROTO_DCCP
+	  || ipproto == IPPROTO_DCCP
+#endif
+	  ) {
+	 result = _xioopen_listen(sfd, xioflags,
 			       (struct sockaddr *)us, uslen,
 			       opts, pf, socktype, ipproto,
 #if WITH_RETRY
-			       (xfd->retry||xfd->forever)?E_INFO:E_ERROR
+			       (sfd->retry||sfd->forever)?E_INFO:E_ERROR
 #else
 			       E_ERROR
 #endif /* WITH_RETRY */
 			       );
 #if WITH_UDP
       } else {
-	 result = _xioopen_ipdgram_listen(xfd, xioflags,
+	 result = _xioopen_ipdgram_listen(sfd, xioflags,
 		us, uslen, opts, pf, socktype, ipproto);
 #endif /* WITH_UDP */
       }
@@ -595,13 +663,13 @@ static int
 #if WITH_RETRY
       case STAT_RETRYLATER:
       case STAT_RETRYNOW:
-	 if (xfd->forever || xfd->retry) {
+	 if (sfd->forever || sfd->retry) {
 	    dropopts(opts, PH_ALL); opts = copyopts(opts0, GROUP_ALL);
 	    if (result == STAT_RETRYLATER) {
-	       Nanosleep(&xfd->intervall, NULL);
+	       Nanosleep(&sfd->intervall, NULL);
 	    }
 	    dropopts(opts, PH_ALL); opts = copyopts(opts0, GROUP_ALL);
-	    --xfd->retry;
+	    --sfd->retry;
 	    continue;
 	 }
 	 return STAT_NORETRY;
@@ -610,19 +678,19 @@ static int
 	 return result;
       }
 
-      result = _xioopen_openssl_listen(xfd, opt_ver, opt_commonname, ctx, level);
+      result = _xioopen_openssl_listen(sfd, opt_ver, opt_commonname, ctx, level);
       switch (result) {
       case STAT_OK: break;
 #if WITH_RETRY
       case STAT_RETRYLATER:
       case STAT_RETRYNOW:
-	 if (xfd->forever || xfd->retry) {
+	 if (sfd->forever || sfd->retry) {
 	    dropopts(opts, PH_ALL); opts = copyopts(opts0, GROUP_ALL);
 	    if (result == STAT_RETRYLATER) {
-	       Nanosleep(&xfd->intervall, NULL);
+	       Nanosleep(&sfd->intervall, NULL);
 	    }
 	    dropopts(opts, PH_ALL); opts = copyopts(opts0, GROUP_ALL);
-	    --xfd->retry;
+	    --sfd->retry;
 	    continue;
 	 }
 	 return STAT_NORETRY;
@@ -631,7 +699,7 @@ static int
 	 return result;
       }
 
-      openssl_conn_loginfo(xfd->para.openssl.ssl);
+      openssl_conn_loginfo(sfd->para.openssl.ssl);
       break;
 
    }	/* drop out on success */
@@ -642,17 +710,17 @@ static int
 }
 
 
-int _xioopen_openssl_listen(struct single *xfd,
+int _xioopen_openssl_listen(struct single *sfd,
 			     bool opt_ver,
 			    const char *opt_commonname,
 			     SSL_CTX *ctx,
 			     int level) {
-   char error_string[120];
+   char error_string[256];
    unsigned long err;
    int errint, ret;
 
    /* create an SSL object */
-   if ((xfd->para.openssl.ssl = sycSSL_new(ctx)) == NULL) {
+   if ((sfd->para.openssl.ssl = sycSSL_new(ctx)) == NULL) {
       if (ERR_peek_error() == 0)  Msg(level, "SSL_new() failed");
       while (err = ERR_get_error()) {
 	 Msg1(level, "SSL_new(): %s", ERR_error_string(err, NULL));
@@ -662,11 +730,11 @@ int _xioopen_openssl_listen(struct single *xfd,
    }
 
    /* assign the network connection to the SSL object */
-   if (sycSSL_set_fd(xfd->para.openssl.ssl, xfd->fd) <= 0) {
+   if (sycSSL_set_fd(sfd->para.openssl.ssl, sfd->fd) <= 0) {
       if (ERR_peek_error() == 0) Msg(level, "SSL_set_fd() failed");
       while (err = ERR_get_error()) {
 	 Msg2(level, "SSL_set_fd(, %d): %s",
-	      xfd->fd, ERR_error_string(err, NULL));
+	      sfd->fd, ERR_error_string(err, NULL));
       }
    }
 
@@ -676,7 +744,7 @@ int _xioopen_openssl_listen(struct single *xfd,
       const char *ciphers = NULL;
       Debug("available ciphers:");
       do {
-	 ciphers = SSL_get_cipher_list(xfd->para.openssl.ssl, i);
+	 ciphers = SSL_get_cipher_list(sfd->para.openssl.ssl, i);
 	 if (ciphers == NULL)  break;
 	 Debug2("CIPHERS pri=%d: %s", i, ciphers);
 	 ++i;
@@ -685,9 +753,9 @@ int _xioopen_openssl_listen(struct single *xfd,
 #endif /* WITH_DEBUG */
 
    /* connect via SSL by performing handshake */
-   if ((ret = sycSSL_accept(xfd->para.openssl.ssl)) <= 0) {
+   if ((ret = sycSSL_accept(sfd->para.openssl.ssl)) <= 0) {
       /*if (ERR_peek_error() == 0) Msg(level, "SSL_accept() failed");*/
-      errint = SSL_get_error(xfd->para.openssl.ssl, ret);
+      errint = SSL_get_error(sfd->para.openssl.ssl, ret);
       switch (errint) {
       case SSL_ERROR_NONE:
 	 Msg(level, "ok"); break;
@@ -709,7 +777,7 @@ int _xioopen_openssl_listen(struct single *xfd,
 	    while (err = ERR_get_error()) {
 	       ERR_error_string_n(err, error_string, sizeof(error_string));
 	       Msg4(level, "SSL_accept(): %s / %s / %s / %s", error_string,
-		    ERR_lib_error_string(err), ERR_func_error_string(err),
+		    ERR_lib_error_string(err), error_string,
 		    ERR_reason_error_string(err));
 	    }
 	    /* Msg1(level, "SSL_accept(): %s", ERR_error_string(e, buf));*/
@@ -726,7 +794,7 @@ int _xioopen_openssl_listen(struct single *xfd,
       return STAT_RETRYLATER;
    }
 
-   if (openssl_handle_peer_certificate(xfd, opt_commonname, opt_ver, E_ERROR/*!*/) < 0) {
+   if (openssl_handle_peer_certificate(sfd, opt_commonname, opt_ver, E_ERROR/*!*/) < 0) {
       return STAT_NORETRY;
    }
 
@@ -738,7 +806,7 @@ int _xioopen_openssl_listen(struct single *xfd,
 
 #if OPENSSL_VERSION_NUMBER >= 0x00908000L
 /* In OpenSSL 0.9.7 compression methods could be added using
- * SSL_COMP_add_compression_method(3), but the implemntation is not compatible
+ * SSL_COMP_add_compression_method(3), but the implementation is not compatible
  * with the standard (RFC3749).
  */
 static int openssl_setup_compression(SSL_CTX *ctx, char *method)
@@ -901,7 +969,7 @@ static int _xio_openssl_parse_version(const char *verstring, int vergroups) {
 
 int
    _xioopen_openssl_prepare(struct opt *opts,
-			    struct single *xfd,/* a xio file descriptor
+			    struct single *sfd,/* a xio file descriptor
 						  structure, already allocated
 					       */
 			    bool server,	/* SSL client: false */
@@ -927,9 +995,7 @@ int
    unsigned long err;
    int result;
 
-   //*ipproto = IPPROTO_TCP;
-
-   xfd->dtype = XIODATA_OPENSSL;
+   sfd->dtype = XIODATA_OPENSSL;
 
    retropt_bool(opts, OPT_OPENSSL_FIPS, &opt_fips);
    retropt_string(opts, OPT_OPENSSL_METHOD, &me_str);
@@ -959,10 +1025,14 @@ int
    openssl_delete_cert_info();
 
    /* OpenSSL preparation */
-#if HAVE_OPENSSL_INIT_SSL
+#if defined(HAVE_OPENSSL_INIT_SSL) && defined(HAVE_OPENSSL_INIT_new)
    {
       uint64_t opts = 0;
+#if defined(OPENSSL_INIT_SETTINGS)
       OPENSSL_INIT_SETTINGS *settings;
+#else
+      void *settings;
+#endif
       settings = OPENSSL_INIT_new();
 #ifdef OPENSSL_INIT_NO_ATEXIT
       opts |= OPENSSL_INIT_NO_ATEXIT;
@@ -970,12 +1040,14 @@ int
       sycOPENSSL_init_ssl(opts, settings);
    }
 #else
+#  if defined(HAVE_SSL_library_init)
    sycSSL_library_init();
+#  endif
    OpenSSL_add_all_algorithms();
    OpenSSL_add_all_ciphers();
    OpenSSL_add_all_digests();
    sycSSL_load_error_strings();
-#endif
+#endif /* defined(HAVE_OPENSSL_INIT_SSL) && defined(HAVE OPENSSL_INIT_new) */
 
    /*! actions_to_seed_PRNG();*/
 
@@ -1046,7 +1118,7 @@ int
 #elif HAVE_DTLSv1_client_method
 	 method = sycDTLSv1_client_method();
 #else
-#        error "OpenSSL does not seem to provide DTLS client methods"
+#        warning "OpenSSL does not seem to provide DTLS client methods"
 #endif
 	 *use_dtls = true;
       }
@@ -1117,10 +1189,15 @@ int
 #elif HAVE_DTLSv1_server_method
 	 method = sycDTLSv1_server_method();
 #else
-#        error "OpenSSL does not seem to provide DTLS server methods"
+#        warning "OpenSSL does not seem to provide DTLS server methods"
 #endif
 	 *use_dtls = true;
       }
+   }
+
+   if (method == NULL) {
+      Error("no OpenSSL method available");
+      return STAT_NORETRY;
    }
 
    if (opt_egd) {
@@ -1160,35 +1237,35 @@ int
       /*ERR_clear_error;*/
       return STAT_RETRYLATER;
    }
-   xfd->para.openssl.ctx = ctx;
+   sfd->para.openssl.ctx = ctx;
    *ctxp = ctx;
 
 #if HAVE_SSL_CTX_set_min_proto_version || defined(SSL_CTX_set_min_proto_version)
-   if (xfd->para.openssl.min_proto_version != NULL) {
+   if (sfd->para.openssl.min_proto_version != NULL) {
       int sslver, rc;
-      sslver = _xio_openssl_parse_version(xfd->para.openssl.min_proto_version,
+      sslver = _xio_openssl_parse_version(sfd->para.openssl.min_proto_version,
 					  XIO_OPENSSL_VERSIONGROUP_TLS|XIO_OPENSSL_VERSIONGROUP_DTLS);
       if (sslver < 0)
 	 return STAT_NORETRY;
       if ((rc = SSL_CTX_set_min_proto_version(ctx, sslver)) <= 0) {
 	 Debug1("version: %ld", SSL_CTX_get_min_proto_version(ctx));
 	 Error3("_xioopen_openssl_prepare(): SSL_CTX_set_min_proto_version(\"%s\"->%d): failed (%d)",
-		xfd->para.openssl.min_proto_version, sslver, rc);
+		sfd->para.openssl.min_proto_version, sslver, rc);
 	 return STAT_NORETRY;
       }
 	 Debug1("version: %ld", SSL_CTX_get_min_proto_version(ctx));
    }
 #endif /* HAVE_SSL_set_min_proto_version || defined(SSL_set_min_proto_version) */
 #if HAVE_SSL_CTX_set_max_proto_version || defined(SSL_CTX_set_max_proto_version)
-   if (xfd->para.openssl.max_proto_version != NULL) {
+   if (sfd->para.openssl.max_proto_version != NULL) {
       int sslver;
-      sslver = _xio_openssl_parse_version(xfd->para.openssl.max_proto_version,
+      sslver = _xio_openssl_parse_version(sfd->para.openssl.max_proto_version,
 					  XIO_OPENSSL_VERSIONGROUP_TLS|XIO_OPENSSL_VERSIONGROUP_DTLS);
       if (sslver < 0)
 	 return STAT_NORETRY;
       if (SSL_CTX_set_max_proto_version(ctx, sslver) <= 0) {
 	 Error2("_xioopen_openssl_prepare(): SSL_CTX_set_max_proto_version(\"%s\"->%d): failed",
-		xfd->para.openssl.max_proto_version, sslver);
+		sfd->para.openssl.max_proto_version, sslver);
 	 return STAT_NORETRY;
       }
    }
@@ -1328,6 +1405,21 @@ cont_out:
 #endif
    }
 
+   /* set pre openssl-connect options */
+   /* SSL_CIPHERS */
+   if (ci_str != NULL) {
+      if (sycSSL_CTX_set_cipher_list(ctx, ci_str) <= 0) {
+	 if (ERR_peek_error() == 0)
+	    Error1("SSL_set_cipher_list(, \"%s\") failed", ci_str);
+	 while (err = ERR_get_error()) {
+	    Error2("SSL_set_cipher_list(, \"%s\"): %s",
+		   ci_str, ERR_error_string(err, NULL));
+	 }
+	 /*Error("SSL_new()");*/
+	 return STAT_RETRYLATER;
+      }
+   }
+
    if (opt_cert) {
       BIO *bio;
       DH *dh;
@@ -1373,30 +1465,73 @@ cont_out:
       }
    }
 
-   /* set pre openssl-connect options */
-   /* SSL_CIPHERS */
-   if (ci_str != NULL) {
-      if (sycSSL_CTX_set_cipher_list(ctx, ci_str) <= 0) {
-	 if (ERR_peek_error() == 0)
-	    Error1("SSL_set_cipher_list(, \"%s\") failed", ci_str);
-	 while (err = ERR_get_error()) {
-	    Error2("SSL_set_cipher_list(, \"%s\"): %s",
-		   ci_str, ERR_error_string(err, NULL));
-	 }
-	 /*Error("SSL_new()");*/
-	 return STAT_RETRYLATER;
-      }
-   }
-
    if (*opt_ver) {
       sycSSL_CTX_set_verify(ctx,
 			    SSL_VERIFY_PEER| SSL_VERIFY_FAIL_IF_NO_PEER_CERT,
 			    NULL);
+      if (first_child) {
+	 /* The first forked off process, print the warning only once */
+	 Warn("OpenSSL: Warning: this implementation does not check CRLs");
+      }
    } else {
       sycSSL_CTX_set_verify(ctx,
 			    SSL_VERIFY_NONE,
 			    NULL);
    }
+
+#if HAVE_SSL_CTX_set_tlsext_max_fragment_length || defined(SSL_CTX_set_tlsext_max_fragment_length)
+   {
+      /* set client max fragment length negotiation (512, 1024, 2048, or 4096) */
+
+      int opt_maxfraglen = -1;
+
+      retropt_int(opts, OPT_OPENSSL_MAXFRAGLEN, &opt_maxfraglen);
+
+      if (!server) {
+         /* on client connection, ask the server not to send us packets bigger than our inbound buffer */
+         uint8_t mfl_code = TLSEXT_max_fragment_length_DISABLED;
+         if (opt_maxfraglen == -1) {
+            /* max frag length is not specified, leave DISABLED */
+         } else if (opt_maxfraglen == 512) {
+            mfl_code = TLSEXT_max_fragment_length_512;
+         } else if (opt_maxfraglen == 1024) {
+            mfl_code = TLSEXT_max_fragment_length_1024;
+         } else if (opt_maxfraglen == 2048) {
+            mfl_code = TLSEXT_max_fragment_length_2048;
+         } else if (opt_maxfraglen == 4096) {
+            mfl_code = TLSEXT_max_fragment_length_4096;
+         } else {
+            Error1("openssl: maxfraglen %d is not one of 512, 1024, 2048, or 4096", opt_maxfraglen);
+            return STAT_NORETRY;
+         }
+
+         sycSSL_CTX_set_tlsext_max_fragment_length(ctx, mfl_code);
+      } else {
+         if (opt_maxfraglen != -1) {
+            Error("openssl: maxfraglen option not applicable to a server");
+            return STAT_NORETRY;
+         }
+      }
+   }
+#endif
+
+#if HAVE_SSL_CTX_set_max_send_fragment || defined(SSL_CTX_set_max_send_fragment)
+   {
+      /* limit the maximum size of sent packets */
+      const int maxsendfrag_min = 512; /* per OpenSSL documentation */
+      int opt_maxsendfrag = SSL3_RT_MAX_PLAIN_LENGTH;
+
+      retropt_int(opts, OPT_OPENSSL_MAXSENDFRAG, &opt_maxsendfrag);
+
+      if (opt_maxsendfrag < maxsendfrag_min || opt_maxsendfrag > SSL3_RT_MAX_PLAIN_LENGTH) {
+         Error2("openssl: maxsendfrag %d out of range 512 - %d", maxsendfrag_min,
+            SSL3_RT_MAX_PLAIN_LENGTH);
+         return STAT_NORETRY;
+      }
+
+      sycSSL_CTX_set_max_send_fragment(ctx, opt_maxsendfrag);
+   }
+#endif
 
    return STAT_OK;
 }
@@ -1638,7 +1773,7 @@ static bool openssl_check_peername(X509_NAME *name, const char *peername) {
    const unsigned char *text;
    ind = X509_NAME_get_index_by_NID(name, NID_commonName, -1);
    if (ind < 0) {
-      Info("no COMMONNAME field in peer certificate");	
+      Info("no COMMONNAME field in peer certificate");
       return false;
    }
    entry = X509_NAME_get_entry(name, ind);
@@ -1661,7 +1796,7 @@ static bool openssl_check_peername(X509_NAME *name, const char *peername) {
 /* peername is, with OpenSSL client, the server name, or the value of option
    commonname if provided;
    With OpenSSL server, it is the value of option commonname */
-static int openssl_handle_peer_certificate(struct single *xfd,
+static int openssl_handle_peer_certificate(struct single *sfd,
 					   const char *peername,
 					   bool opt_ver, int level) {
    X509 *peer_cert;
@@ -1670,7 +1805,7 @@ static int openssl_handle_peer_certificate(struct single *xfd,
    int extcount, i, ok = 0;
    int status;
 
-   if ((peer_cert = SSL_get_peer_certificate(xfd->para.openssl.ssl)) == NULL) {
+   if ((peer_cert = SSL_get_peer_certificate(sfd->para.openssl.ssl)) == NULL) {
       if (opt_ver) {
 	 Msg(level, "no peer certificate");
 	 status = STAT_RETRYLATER;
@@ -1684,7 +1819,7 @@ static int openssl_handle_peer_certificate(struct single *xfd,
    /* verify peer certificate (trust, signature, validity dates) */
    if (opt_ver) {
       long verify_result;
-      if ((verify_result = sycSSL_get_verify_result(xfd->para.openssl.ssl)) != X509_V_OK) {
+      if ((verify_result = sycSSL_get_verify_result(sfd->para.openssl.ssl)) != X509_V_OK) {
 	 const char *message = NULL;
 	 if (verify_result >= 0 &&
 	     (size_t)verify_result <
@@ -1735,7 +1870,7 @@ static int openssl_handle_peer_certificate(struct single *xfd,
 	 extstr = OBJ_nid2sn(OBJ_obj2nid(X509_EXTENSION_get_object(ext)));
 	 if (!strcasecmp(extstr, "subjectAltName")) {
 	    void *names;
-	    if (!(meth = X509V3_EXT_get(ext))) break;   
+	    if (!(meth = X509V3_EXT_get(ext))) break;
 	    names = X509_get_ext_d2i(peer_cert, NID_subject_alt_name, NULL, NULL);
 	    if (names) {
 	       int numalts;
@@ -1780,7 +1915,7 @@ static int openssl_handle_peer_certificate(struct single *xfd,
 			case 16: /* IPv6 */
 			   inet_ntop(AF_INET6, data, aBuffer, sizeof(aBuffer));
 			   if (peername != NULL) {
-			      xioip6_pton(peername, &ip6bin);
+			      xioip6_pton(peername, &ip6bin, sfd->para.socket.ip.ai_flags);
 			      if (memcmp(data, &ip6bin, sizeof(ip6bin)) == 0) {
 			         Debug2("subjectAltName \"%s\" matches peername \"%s\"",
 					aBuffer, peername);
@@ -1832,15 +1967,15 @@ static int openssl_handle_peer_certificate(struct single *xfd,
    return status;
 }
 
-static int xioSSL_set_fd(struct single *xfd, int level) {
+static int xioSSL_set_fd(struct single *sfd, int level) {
    unsigned long err;
 
    /* assign a network connection to the SSL object */
-   if (sycSSL_set_fd(xfd->para.openssl.ssl, xfd->fd) <= 0) {
+   if (sycSSL_set_fd(sfd->para.openssl.ssl, sfd->fd) <= 0) {
       Msg(level, "SSL_set_fd() failed");
       while (err = ERR_get_error()) {
 	 Msg2(level, "SSL_set_fd(, %d): %s",
-	      xfd->fd, ERR_error_string(err, NULL));
+	      sfd->fd, ERR_error_string(err, NULL));
       }
       return STAT_RETRYLATER;
    }
@@ -1852,16 +1987,24 @@ static int xioSSL_set_fd(struct single *xfd, int level) {
    in case of an error condition, this function check forever and retry
    options and ev. sleeps an interval. It returns NORETRY when the caller
    should not retry for any reason. */
-static int xioSSL_connect(struct single *xfd, const char *opt_commonname,
+static int xioSSL_connect(struct single *sfd, const char *opt_commonname,
 			  bool opt_ver, int level) {
-   char error_string[120];
-   int errint, status, ret;
+   sigset_t masksigs, oldsigs;
+   char error_string[256];
+   int errint, status, _errno, ret;
    unsigned long err;
 
+   sigemptyset(&masksigs);
+   sigaddset(&masksigs, SIGCHLD);
+   sigaddset(&masksigs, SIGUSR1);
+   Sigprocmask(SIG_BLOCK, &masksigs, &oldsigs);
    /* connect via SSL by performing handshake */
-   if ((ret = sycSSL_connect(xfd->para.openssl.ssl)) <= 0) {
+   ret = sycSSL_connect(sfd->para.openssl.ssl);
+   _errno = errno;
+   Sigprocmask(SIG_SETMASK, &oldsigs, NULL);
+   if (ret <= 0) {
       /*if (ERR_peek_error() == 0) Msg(level, "SSL_connect() failed");*/
-      errint = SSL_get_error(xfd->para.openssl.ssl, ret);
+      errint = SSL_get_error(sfd->para.openssl.ssl, ret);
       switch (errint) {
       case SSL_ERROR_NONE:
 	 /* this is not an error, but I dare not continue for security reasons*/
@@ -1883,14 +2026,14 @@ static int xioSSL_connect(struct single *xfd, const char *opt_commonname,
 	    if (ret == 0) {
 	       Msg(level, "SSL_connect(): socket closed by peer");
 	    } else if (ret == -1) {
-	       Msg1(level, "SSL_connect(): %s", strerror(errno));
+	       Msg1(level, "SSL_connect(): %s", strerror(_errno));
 	    }
 	 } else {
 	    Msg(level, "I/O error");	/*!*/
 	    while (err = ERR_get_error()) {
 	       ERR_error_string_n(err, error_string, sizeof(error_string));
 	       Msg4(level, "SSL_connect(): %s / %s / %s / %s", error_string,
-		    ERR_lib_error_string(err), ERR_func_error_string(err),
+		    ERR_lib_error_string(err), error_string,
 		    ERR_reason_error_string(err));
 	    }
 	 }
@@ -1898,7 +2041,7 @@ static int xioSSL_connect(struct single *xfd, const char *opt_commonname,
 	 break;
       case SSL_ERROR_SSL:
 	 status = openssl_SSL_ERROR_SSL(level, "SSL_connect");
-	 if (openssl_handle_peer_certificate(xfd, opt_commonname, opt_ver, level/*!*/) < 0) {
+	 if (openssl_handle_peer_certificate(sfd, opt_commonname, opt_ver, level/*!*/) < 0) {
 	    return STAT_RETRYLATER;
 	 }
 	 break;
@@ -1915,7 +2058,7 @@ static int xioSSL_connect(struct single *xfd, const char *opt_commonname,
 /* on result < 0: errno is set (at least to EIO) */
 ssize_t xioread_openssl(struct single *pipe, void *buff, size_t bufsiz) {
    unsigned long err;
-   char error_string[120];
+   char error_string[256];
    int _errno = EIO;	/* if we have no better idea about nature of error */
    int errint, ret;
 
@@ -1950,7 +2093,7 @@ ssize_t xioread_openssl(struct single *pipe, void *buff, size_t bufsiz) {
 	    while (err = ERR_get_error()) {
 	       ERR_error_string_n(err, error_string, sizeof(error_string));
 	       Error4("SSL_read(): %s / %s / %s / %s", error_string,
-		      ERR_lib_error_string(err), ERR_func_error_string(err),
+		      ERR_lib_error_string(err), error_string,
 		      ERR_reason_error_string(err));
 	    }
 	 }
@@ -1976,7 +2119,7 @@ ssize_t xiopending_openssl(struct single *pipe) {
 /* on result < 0: errno is set (at least to EIO) */
 ssize_t xiowrite_openssl(struct single *pipe, const void *buff, size_t bufsiz) {
    unsigned long err;
-   char error_string[120];
+   char error_string[256];
    int _errno = EIO;	/* if we have no better idea about nature of error */
    int errint, ret;
 
@@ -2009,7 +2152,7 @@ ssize_t xiowrite_openssl(struct single *pipe, const void *buff, size_t bufsiz) {
 	    while (err = ERR_get_error()) {
 	       ERR_error_string_n(err, error_string, sizeof(error_string));
 	       Error4("SSL_write(): %s / %s / %s / %s", error_string,
-		      ERR_lib_error_string(err), ERR_func_error_string(err),
+		      ERR_lib_error_string(err), error_string,
 		      ERR_reason_error_string(err));
 	    }
 	 }
